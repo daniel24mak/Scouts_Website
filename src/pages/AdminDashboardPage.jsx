@@ -2299,12 +2299,16 @@ export default function AdminDashboardPage() {
               <span>Back to Dashboard</span>
             </button>
           )}
+          <Link className="sidebar-control-button" to="/" onClick={() => setIsMobileSidebarOpen(false)} title="Back to Website">
+            <ArrowLeft size={17} aria-hidden="true" />
+            <span>Back to Website</span>
+          </Link>
           <button type="button" className="sidebar-control-button" onClick={toggleSidebarMode} title={sidebarMode === "expanded" ? "Auto Collapse" : "Keep Open"}>
             {sidebarMode === "expanded" ? <PanelLeftClose size={17} aria-hidden="true" /> : <PanelLeftOpen size={17} aria-hidden="true" />}
             <span>{sidebarMode === "expanded" ? "Auto Collapse" : "Keep Open"}</span>
           </button>
         </div>
-        <nav>
+        <nav className="sidebar-navigation">
           {sidebarItems.map(([id, label, Icon]) => (
             <button
               type="button"
@@ -2315,8 +2319,8 @@ export default function AdminDashboardPage() {
                   setActiveSection(id);
                 } else {
                   openDashboardSection(id);
-                  setIsMobileSidebarOpen(false);
                 }
+                setIsMobileSidebarOpen(false);
               }}
               key={id}
               title={label}
@@ -2327,14 +2331,8 @@ export default function AdminDashboardPage() {
             </button>
           ))}
         </nav>
-      </aside>
-      <main className="admin-main">
-        <div className="dashboard-topbar">
-          <button type="button" className="dashboard-menu-button" aria-expanded={isMobileSidebarOpen} aria-controls="dashboard-sidebar" onClick={() => setIsMobileSidebarOpen(true)}>
-            <Menu size={18} aria-hidden="true" />
-            <span>Menu</span>
-          </button>
-          <div>
+        <div className="sidebar-account">
+          <div className="sidebar-account-summary">
             <strong>{user.name}</strong>
             <span>
               {user.role === "admin" ? "Admin" : "Chief"}
@@ -2342,7 +2340,19 @@ export default function AdminDashboardPage() {
               {dashboardGroup?.name ? ` - ${dashboardGroup.name}` : ""}
             </span>
           </div>
-          <button type="button" className="inline-action" onClick={logout}>Log out</button>
+          <button type="button" className="sidebar-logout-button" onClick={() => { setIsMobileSidebarOpen(false); logout(); }} title="Logout">
+            <LockKeyhole size={17} aria-hidden="true" />
+            <span>Logout</span>
+          </button>
+        </div>
+      </aside>
+      <main className="admin-main">
+        <div className="dashboard-topbar">
+          <button type="button" className="dashboard-menu-button" aria-expanded={isMobileSidebarOpen} aria-controls="dashboard-sidebar" onClick={() => setIsMobileSidebarOpen(true)}>
+            <Menu size={18} aria-hidden="true" />
+            <span>Menu</span>
+          </button>
+          <span className="dashboard-topbar-label">{activeTitle}</span>
         </div>
         <div className="admin-main-header">
           <div>

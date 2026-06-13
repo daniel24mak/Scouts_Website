@@ -18,6 +18,10 @@ export default function Layout() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const isHomePage = location.pathname === "/";
+  const isDashboardPage =
+    location.pathname === "/dashboard" ||
+    location.pathname.startsWith("/admin") ||
+    location.pathname.startsWith("/chiefs");
 
   useEffect(() => {
     const updateHeader = () => setIsScrolled(window.scrollY > 24);
@@ -38,8 +42,9 @@ export default function Layout() {
   };
 
   return (
-    <div className="app-shell">
-      <header className={`site-header ${isHomePage && !isScrolled && !isMenuOpen ? "transparent" : "scrolled"}`}>
+    <div className={`app-shell ${isDashboardPage ? "dashboard-shell" : ""}`}>
+      {!isDashboardPage && (
+        <header className={`site-header ${isHomePage && !isScrolled && !isMenuOpen ? "transparent" : "scrolled"}`}>
         <NavLink to="/" className="brand" onClick={closeMenu}>
           <img className="brand-logo" src={scoutLogo} alt="Scout of Saint Mary logo" />
           <span>
@@ -88,10 +93,12 @@ export default function Layout() {
           </div>
         </div>
       </header>
+      )}
       <main>
         <Outlet />
       </main>
-      <footer className="site-footer">
+      {!isDashboardPage && (
+        <footer className="site-footer">
         <div className="footer-brand">
           <img className="footer-logo" src={scoutLogo} alt="Scout of Saint Mary logo" />
           <div>
@@ -122,6 +129,7 @@ export default function Layout() {
         </nav>
         <p className="footer-bottom">Copyright 2026 St. Mary's Scouts Dubai. All rights reserved.</p>
       </footer>
+      )}
     </div>
   );
 }
