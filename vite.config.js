@@ -2,6 +2,7 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  base: "/Scouts_Website/",
   plugins: [react()],
   server: {
     proxy: {
