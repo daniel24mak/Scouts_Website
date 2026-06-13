@@ -10,6 +10,8 @@ import {
   LayoutDashboard,
   LockKeyhole,
   MessageSquare,
+  Menu,
+  X,
   ArrowLeft,
   PanelLeftClose,
   PanelLeftOpen,
@@ -32,7 +34,6 @@ import {
   assignEquipeScouts,
   createAlbum,
   createBlog,
-  createCalendarEvent,
   deleteAlbum,
   deleteBlog,
   deletePhotos,
@@ -57,6 +58,9 @@ import {
   uploadRegistrationSheet
 } from "../api/client.js";
 import { useBootstrap } from "../api/useBootstrap.js";
+import ScoutAttendanceManager from "../features/attendance/ScoutAttendanceManager.jsx";
+import ChiefAttendanceManager from "../features/attendance/ChiefAttendanceManager.jsx";
+import CalendarManagement from "../features/calendar/CalendarManagement.jsx";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import { logAuditEvent } from "../services/auditService.js";
 import { signUpInternalUser } from "../services/authService.js";
@@ -378,22 +382,13 @@ export default function AdminDashboardPage() {
   const [settingsMode, setSettingsMode] = useState(false);
   const [lastDashboardSection, setLastDashboardSection] = useState("overview");
   const [sidebarMode, setSidebarMode] = useState(() => window.localStorage.getItem(sidebarModeKey) ?? "expanded");
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [contentPreviewMode, setContentPreviewMode] = useState("web");
   const [selectedApproval, setSelectedApproval] = useState(null);
   const [selectedApprovalPhotoIds, setSelectedApprovalPhotoIds] = useState([]);
   const [approvalComment, setApprovalComment] = useState("");
   const [lastLiveUpdate, setLastLiveUpdate] = useState(null);
   const [selectedGroupId, setSelectedGroupId] = useState(user?.groupId ?? data.groups[0]?.id ?? "");
-  const [chiefEvent, setChiefEvent] = useState({
-    title: "",
-    dateFrom: "",
-    dateTo: "",
-    startTime: "",
-    endTime: "",
-    location: "Scout Hall",
-    description: "",
-    visibility: "group"
-  });
   const [saveMessage, setSaveMessage] = useState("");
   const [uploadStatus, setUploadStatus] = useState(null);
 
@@ -438,6 +433,24 @@ export default function AdminDashboardPage() {
       setSelectedGroupId(data.groups[0].id);
     }
   }, [data.groups, selectedGroupId]);
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [activeSection, activeSetting, settingsMode]);
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setIsMobileSidebarOpen(false);
+      }
+    };
+
+    document.body.classList.toggle("dashboard-drawer-open", isMobileSidebarOpen);
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.classList.remove("dashboard-drawer-open");
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isMobileSidebarOpen]);
   useEffect(() => {
     const unsubscribe = subscribeDashboardRealtime(async () => {
       await refresh();
@@ -1107,46 +1120,6 @@ export default function AdminDashboardPage() {
     setSaveMessage("Contact message deleted.");
     await refresh();
   };
-  const createDashboardEvent = async (event) => {
-    event.preventDefault();
-
-    if (chiefEvent.dateTo < chiefEvent.dateFrom) {
-      setSaveMessage("Date to cannot be before Date from.");
-      return;
-    }
-
-    if (
-      chiefEvent.dateFrom === chiefEvent.dateTo &&
-      chiefEvent.startTime &&
-      chiefEvent.endTime &&
-      chiefEvent.endTime < chiefEvent.startTime
-    ) {
-      setSaveMessage("End time cannot be before start time for a one-day event.");
-      return;
-    }
-
-    await createCalendarEvent({
-      ...chiefEvent,
-      date: chiefEvent.dateFrom,
-      type: chiefEvent.visibility === "group" ? "meeting" : "event",
-      groupId: chiefEvent.visibility === "group" ? dashboardGroupId : null,
-      visibleGroupIds: chiefEvent.visibility === "group" ? [dashboardGroupId] : [],
-      approvalStatus: isAdmin ? "approved" : "pending"
-    });
-    setChiefEvent({
-      title: "",
-      dateFrom: "",
-      dateTo: "",
-      startTime: "",
-      endTime: "",
-      location: "Scout Hall",
-      description: "",
-      visibility: "group"
-    });
-    setSaveMessage(isAdmin ? "Calendar event published." : "Calendar event submitted for admin approval.");
-    await refresh();
-  };
-
   const renderWebsiteContent = () => (
     <div className="cms-panel-stack">
       <div className="content-editor-shell">
@@ -1403,7 +1376,6 @@ export default function AdminDashboardPage() {
         event.groupId === dashboardGroupId ||
         event.visibleGroupIds?.includes(dashboardGroupId)
     );
-    const canCreateEvents = canCreateGroupMeetings(user) || ["head", "vice"].includes(user?.chiefLevel) || isAdmin;
 
     return (
       <div className="cms-panel-stack">
@@ -1438,62 +1410,9 @@ export default function AdminDashboardPage() {
           </article>
         </div>
         <div className="action-row">
-          {canTakeAttendance(user) && <Link className="inline-action" to="/chiefs/attendance">Take scout attendance</Link>}
+          {canTakeAttendance(user) && <button type="button" className="inline-action" onClick={() => setActiveSection("scoutAttendance")}>Take scout attendance</button>}
           {canPublishContent(user) && <Link className="inline-action" to="/chiefs/content">Submit post or photos</Link>}
-          <Link className="inline-action" to="/calendar">Open calendar</Link>
         </div>
-        {canCreateEvents && (
-          <article className="editor-panel chief-event-panel">
-            <h2>Create group calendar event</h2>
-            <p className="helper-text">
-              Chief-created events are submitted for admin approval. Admin-created events publish immediately.
-            </p>
-            <form className="chief-event-form" onSubmit={createDashboardEvent}>
-              <label>
-                Event title
-                <input required value={chiefEvent.title} onChange={(event) => setChiefEvent((current) => ({ ...current, title: event.target.value }))} />
-              </label>
-              <label>
-                Date from
-                <input
-                  type="date"
-                  required
-                  value={chiefEvent.dateFrom}
-                  onChange={(event) => setChiefEvent((current) => ({ ...current, dateFrom: event.target.value, dateTo: current.dateTo || event.target.value }))}
-                />
-              </label>
-              <label>
-                Date to
-                <input type="date" required value={chiefEvent.dateTo} onChange={(event) => setChiefEvent((current) => ({ ...current, dateTo: event.target.value }))} />
-              </label>
-              <label>
-                Start time
-                <input type="time" value={chiefEvent.startTime} onChange={(event) => setChiefEvent((current) => ({ ...current, startTime: event.target.value }))} />
-              </label>
-              <label>
-                End time
-                <input type="time" value={chiefEvent.endTime} onChange={(event) => setChiefEvent((current) => ({ ...current, endTime: event.target.value }))} />
-              </label>
-              <label>
-                Location
-                <input required value={chiefEvent.location} onChange={(event) => setChiefEvent((current) => ({ ...current, location: event.target.value }))} />
-              </label>
-              <label>
-                Visibility
-                <select value={chiefEvent.visibility} onChange={(event) => setChiefEvent((current) => ({ ...current, visibility: event.target.value }))}>
-                  <option value="group">Group-only</option>
-                  <option value="logged-in">Internal / chiefs-only</option>
-                  {(isAdmin || user?.permissions?.canPublish) && <option value="public">Public</option>}
-                </select>
-              </label>
-              <label className="wide-field">
-                Description
-                <textarea rows="4" required value={chiefEvent.description} onChange={(event) => setChiefEvent((current) => ({ ...current, description: event.target.value }))} />
-              </label>
-              <button type="submit">Submit calendar event</button>
-            </form>
-          </article>
-        )}
         <article className="table-panel">
           <div className="panel-heading">
             <div>
@@ -1589,9 +1508,9 @@ export default function AdminDashboardPage() {
             <article className="admin-panel dashboard-upload-panel">
               <h2>Quick actions</h2>
               <div className="shortcut-list">
-                {canTakeAttendance(user) && <Link to="/chiefs/attendance">Take scout attendance</Link>}
+                {canTakeAttendance(user) && <button type="button" onClick={() => setActiveSection("scoutAttendance")}>Take scout attendance</button>}
                 {canPublishContent(user) && <Link to="/chiefs/content">Submit post or photos</Link>}
-                {canCreateGroupMeetings(user) && <button type="button" onClick={() => setActiveSection("myGroup")}>Create group event</button>}
+                {canCreateGroupMeetings(user) && <button type="button" onClick={() => setActiveSection("calendar")}>Create group event</button>}
               </div>
             </article>
             <article className="admin-panel dashboard-upload-panel">
@@ -1855,7 +1774,7 @@ export default function AdminDashboardPage() {
                 <div className="panel-heading">
                   <div>
                     <h2>{equipe.name}</h2>
-                    <p>{equipeScouts.length} scouts · {maleCount} male · {femaleCount} female</p>
+                    <p>{equipeScouts.length} scouts  -  {maleCount} male  -  {femaleCount} female</p>
                   </div>
                   <label className="checkbox-cell">
                     <input type="checkbox" checked={selectedScoutIds.length > 0 && equipeScouts.every((scout) => selectedScoutIds.includes(scout.id))} onChange={(event) => {
@@ -1974,7 +1893,7 @@ export default function AdminDashboardPage() {
                   return (
                     <article className="admin-panel" key={equipe.id}>
                       <h3>{equipe.name}</h3>
-                      <p>{scouts.length} scouts · {scouts.filter((scout) => scout.gender === "male").length} male · {scouts.filter((scout) => scout.gender === "female").length} female</p>
+                      <p>{scouts.length} scouts  -  {scouts.filter((scout) => scout.gender === "male").length} male  -  {scouts.filter((scout) => scout.gender === "female").length} female</p>
                       <div className="mini-list">{scouts.map((scout) => <span key={scout.id}>{scout.name}</span>)}</div>
                     </article>
                   );
@@ -2349,9 +2268,9 @@ export default function AdminDashboardPage() {
     if (activeSection === "faqs") return renderFaqs();
     if (activeSection === "contactMessages") return renderContactMessages();
     if (activeSection === "approvals") return renderApprovals();
-    if (activeSection === "scoutAttendance") return <AdminLinkPanel to="/chiefs/attendance" title="Scout Attendance" />;
-    if (activeSection === "chiefAttendance") return <AdminLinkPanel to="/admin/chief-attendance" title="Chief Attendance" />;
-    if (activeSection === "calendar") return <AdminLinkPanel to="/calendar" title="Calendar Events" />;
+    if (activeSection === "scoutAttendance") return <ScoutAttendanceManager />;
+    if (activeSection === "chiefAttendance") return <ChiefAttendanceManager />;
+    if (activeSection === "calendar") return <CalendarManagement />;
     if (activeSection === "settings") return renderSettings();
     if (activeSection === "reports") return <EmptyAdminSection title="Reports" />;
     return <EmptyAdminSection title={selectedSection?.[1] ?? "Section"} />;
@@ -2363,9 +2282,13 @@ export default function AdminDashboardPage() {
   const sidebarItems = settingsMode ? settingSections : visibleSections;
 
   return (
-    <section className={`admin-cms-shell sidebar-${sidebarMode} ${settingsMode ? "settings-mode" : ""}`}>
-      <aside className="admin-sidebar">
+    <section className={`admin-cms-shell sidebar-${sidebarMode} ${settingsMode ? "settings-mode" : ""} ${isMobileSidebarOpen ? "mobile-sidebar-open" : ""}`}>
+      <button type="button" className="dashboard-sidebar-overlay" aria-label="Close dashboard menu" onClick={() => setIsMobileSidebarOpen(false)} />
+      <aside className="admin-sidebar" id="dashboard-sidebar">
         <div className="admin-sidebar-title">
+          <button type="button" className="dashboard-drawer-close" aria-label="Close dashboard menu" onClick={() => setIsMobileSidebarOpen(false)}>
+            <X size={18} aria-hidden="true" />
+          </button>
           <strong>{settingsMode ? "Settings" : "Scouts Dashboard"}</strong>
           <span>{data.registrationImportSettings.scoutYear}</span>
         </div>
@@ -2392,6 +2315,7 @@ export default function AdminDashboardPage() {
                   setActiveSection(id);
                 } else {
                   openDashboardSection(id);
+                  setIsMobileSidebarOpen(false);
                 }
               }}
               key={id}
@@ -2406,6 +2330,10 @@ export default function AdminDashboardPage() {
       </aside>
       <main className="admin-main">
         <div className="dashboard-topbar">
+          <button type="button" className="dashboard-menu-button" aria-expanded={isMobileSidebarOpen} aria-controls="dashboard-sidebar" onClick={() => setIsMobileSidebarOpen(true)}>
+            <Menu size={18} aria-hidden="true" />
+            <span>Menu</span>
+          </button>
           <div>
             <strong>{user.name}</strong>
             <span>
