@@ -50,7 +50,7 @@ async function prepareAlbumData(album) {
 export async function getGallery() {
   const [albumRows, imageRows, revisionRows, batchRows] = await Promise.all([
     getSupabaseRows("gallery_albums", "select=*&order=event_date.desc"),
-    getSupabaseRows("gallery_images", "select=*&order=sort_order.asc").catch(() =>
+    getSupabaseRows("gallery_images", "select=id,album_id,upload_batch_id,title,public_url,storage_path,thumbnail_url,thumbnail_storage_path,original_file_name,optimized_width,optimized_height,optimized_file_size,thumbnail_file_size,status,reviewer_comment,submitted_by,created_at,sort_order&order=sort_order.asc").catch(() =>
       getSupabaseRows("gallery_photos", "select=*&order=sort_order.asc")
     ),
     getSupabaseRows("album_revisions", "select=*&order=updated_at.desc").catch(() => []),

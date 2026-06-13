@@ -14,12 +14,6 @@ export async function getActiveScoutYearId() {
   return activeYear?.id ?? null;
 }
 
-function currentScoutYearLabel(date = new Date()) {
-  const year = date.getFullYear();
-  const startsThisYear = date.getMonth() >= 8;
-  const startYear = startsThisYear ? year : year - 1;
-  return `${startYear}-${startYear + 1}`;
-}
 
 function base64ToBlob(base64Content, fileName) {
   const binary = window.atob(base64Content);
@@ -63,6 +57,16 @@ export async function getScoutData() {
   return {
     groups: groups.map(normalizeGroup),
     registeredScouts: activeScouts.map(normalizeScout),
+    scoutYears: years.map((year) => ({
+      id: year.id,
+      label: year.label,
+      startDate: year.start_date ?? "",
+      endDate: year.end_date ?? "",
+      isActive: Boolean(year.is_active),
+      status: year.is_active ? "active" : year.archived_at ? "archived" : "inactive",
+      createdAt: year.created_at ?? null
+    })),
+    activeScoutYearId: activeYear?.id ?? null,
     registrationImportSettings: {
       scoutYear: activeYear?.label ?? "Current year",
       sortBy: activeYear?.sort_by ?? "schoolGrade",
@@ -112,55 +116,48 @@ export async function createScout(scout) {
   });
 }
 
-export async function importRegistrationSheetToSupabase({ fileName, contentBase64, scouts }) {
+export async function importRegistrationSheetToSupabase({ fileName, contentBase64, scouts, scoutYearId, newScoutYear }) {
   const currentUserId = getCurrentSupabaseUserId();
-  const previousYears = await getSupabaseRows("scout_years", "select=id,label,is_active");
-  const label = currentScoutYearLabel();
-  const existingYear = previousYears.find((year) => year.label === label);
+  let targetYearId = scoutYearId;
+  let targetYearLabel = "Selected year";
 
-  await Promise.all(
-    previousYears
-      .filter((year) => year.is_active)
-      .map((year) =>
-        patchSupabaseRows("scout_years", `id=eq.${encodeURIComponent(year.id)}`, {
-          is_active: false,
-          archived_at: new Date().toISOString()
-        })
-      )
-  );
-
-  const [activeYear] = existingYear
-    ? await patchSupabaseRows("scout_years", `id=eq.${encodeURIComponent(existingYear.id)}`, {
-        is_active: true,
-        archived_at: null
-      })
-    : await insertSupabaseRow("scout_years", {
-        label,
-        sort_by: "schoolGrade",
-        assignment_mode: "schoolGrade",
-        is_active: true
-      });
-
-  if (!activeYear?.id) {
-    throw new Error("Could not create or activate scout year.");
+  if (newScoutYear?.label) {
+    const createdYear = await createScoutYear(newScoutYear);
+    targetYearId = createdYear.id;
+    targetYearLabel = createdYear.label;
   }
 
-  await patchSupabaseRows("scouts", `scout_year_id=eq.${encodeURIComponent(activeYear.id)}`, {
+  if (!targetYearId) {
+    targetYearId = await getActiveScoutYearId();
+  }
+
+  if (!targetYearId) {
+    throw new Error("Choose or create a scouting year before importing scouts.");
+  }
+
+  const [targetYear] = await getSupabaseRows("scout_years", `select=*&id=eq.${encodeURIComponent(targetYearId)}&limit=1`);
+  if (!targetYear?.id) {
+    throw new Error("Selected scouting year was not found.");
+  }
+
+  targetYearLabel = targetYear.label ?? targetYearLabel;
+
+  await patchSupabaseRows("scouts", `scout_year_id=eq.${encodeURIComponent(targetYear.id)}`, {
     status: "Archived"
   }).catch(() => null);
 
-  const storagePath = `registration/${activeYear.id}/${Date.now()}-${fileName}`;
+  const storagePath = `registration/${targetYear.id}/${Date.now()}-${fileName}`;
   await uploadSupabaseFile(storagePath, base64ToBlob(contentBase64, fileName));
 
   await insertSupabaseRow("registration_uploads", {
-    scout_year_id: activeYear.id,
+    scout_year_id: targetYear.id,
     file_name: fileName,
     storage_path: storagePath,
     uploaded_by: currentUserId
   });
 
   const rows = scouts.map((scout) => ({
-    scout_year_id: activeYear.id,
+    scout_year_id: targetYear.id,
     name: scout.name,
     school_grade: scout.schoolGrade,
     age: scout.age,
@@ -177,7 +174,7 @@ export async function importRegistrationSheetToSupabase({ fileName, contentBase6
     await insertSupabaseRows("scouts", rows.slice(index, index + 100));
   }
 
-  return { ok: true, count: rows.length, scoutYear: label };
+  return { ok: true, count: rows.length, scoutYear: targetYearLabel, scoutYearId: targetYear.id };
 }
 
 export async function saveGroupingRules({ rules, sortBy, assignmentMode }) {

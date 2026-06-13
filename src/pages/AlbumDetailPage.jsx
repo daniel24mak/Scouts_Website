@@ -8,6 +8,8 @@ import { useAuth } from "../auth/AuthProvider.jsx";
 import { canManageSystem, canPublishContent } from "../services/permissions.js";
 
 const acceptedImageTypes = ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif";
+const initialPhotoLimit = 30;
+const photoPageSize = 30;
 
 export default function AlbumDetailPage() {
   const { albumId } = useParams();
@@ -23,6 +25,7 @@ export default function AlbumDetailPage() {
   const [albumEdit, setAlbumEdit] = useState(null);
   const [message, setMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [visiblePhotoLimit, setVisiblePhotoLimit] = useState(initialPhotoLimit);
   const isAdmin = canManageSystem(user);
 
   if (!album) {
@@ -37,6 +40,8 @@ export default function AlbumDetailPage() {
     );
   }
 
+  const visiblePhotos = album.photos.slice(0, visiblePhotoLimit);
+  const hasMorePhotos = visiblePhotoLimit < album.photos.length;
   const activePhoto = activePhotoIndex === null ? null : album.photos[activePhotoIndex];
   const coverImage = album.thumbnailUrl ?? album.photos[0]?.thumbnailUrl ?? album.photos[0]?.url;
   const showPreviousPhoto = () => {
@@ -207,7 +212,7 @@ export default function AlbumDetailPage() {
         </div>
       )}
       <div className="gallery-grid">
-        {album.photos.map((photo, index) => (
+        {visiblePhotos.map((photo, index) => (
           <article className={`gallery-tile selectable-photo ${selectedPhotoIds.includes(photo.id) ? "selected" : ""}`} key={photo.id}>
             {isAdmin && (
               <label className="photo-select-checkbox">
@@ -215,7 +220,7 @@ export default function AlbumDetailPage() {
                 <span>Select photo</span>
               </label>
             )}
-            {photo.url ? (
+            {photo.thumbnailUrl || photo.url ? (
               <button
                 type="button"
                 className="gallery-photo-button"
@@ -263,7 +268,7 @@ export default function AlbumDetailPage() {
             <ChevronLeft size={34} aria-hidden="true" />
           </button>
           {activePhoto.url ? (
-            <img className="lightbox-image" src={activePhoto.url} alt="" />
+            <img className="lightbox-image" src={activePhoto.url} alt={activePhoto.title || "Selected album photo"} decoding="async" />
           ) : (
             <div className="lightbox-missing">Photo preview unavailable</div>
           )}

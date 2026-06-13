@@ -10,7 +10,7 @@ export default function GalleryPage() {
       <p className="eyebrow">Gallery</p>
       <h1>Photo albums from every event</h1>
       <div className="album-grid">
-        {data.galleryAlbums.map((album) => {
+        {data.galleryAlbums.map((album, albumIndex) => {
           const coverImage = album.thumbnailUrl ?? album.photos[0]?.thumbnailUrl ?? album.photos[0]?.url;
 
           return (
@@ -49,7 +49,7 @@ export default function GalleryPage() {
               <div className="photo-strip" aria-label={`${album.title} preview photos`}>
                 {album.photos.slice(0, 4).map((photo) => (
                   photo.thumbnailUrl || photo.url ? (
-                    <img key={photo.id} src={photo.thumbnailUrl ?? photo.url} alt={photo.title} loading="lazy" />
+                    <img key={photo.id} src={photo.thumbnailUrl ?? photo.url} alt={photo.title} loading="lazy" decoding="async" sizes="72px" />
                   ) : (
                     <span key={photo.id}>{photo.title}</span>
                   )

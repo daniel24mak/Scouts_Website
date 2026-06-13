@@ -63,6 +63,8 @@ export const fallbackData = {
   groups: scoutGroups,
   registeredScouts,
   registrationImportSettings,
+  scoutYears: [],
+  activeScoutYearId: null,
   groupingRulesStore,
   attendanceMeetings,
   attendanceSheets,
@@ -131,6 +133,8 @@ export async function getBootstrap() {
       groups: scoutGroups,
       registeredScouts: [],
       registrationImportSettings,
+  scoutYears: [],
+  activeScoutYearId: null,
       groupingRulesStore
     });
     const attendanceData = valueAt(2, {
@@ -318,6 +322,22 @@ export function saveAdminRules(payload) {
   return request("/admin/rules", { method: "PUT", body: JSON.stringify(payload) });
 }
 
+
+export function createScoutingYear(payload) {
+  if (isSupabaseConfigured) {
+    return createScoutYear(payload);
+  }
+
+  return Promise.resolve({ ...payload, id: crypto.randomUUID(), is_active: false });
+}
+
+export function activateScoutingYear(yearId) {
+  if (isSupabaseConfigured) {
+    return setActiveScoutYear(yearId);
+  }
+
+  return Promise.resolve({ id: yearId, is_active: true });
+}
 export function uploadRegistrationSheet(payload) {
   if (isSupabaseConfigured) {
     return request("/registration/parse", { method: "POST", body: JSON.stringify(payload) }).then(

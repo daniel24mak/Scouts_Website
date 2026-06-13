@@ -4456,6 +4456,126 @@ body.dashboard-drawer-open {
     font-size: 0.62rem;
   }
 }
+
+/* Sidebar control and gallery/year management refinements. */
+.admin-sidebar-title {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: start;
+}
+
+.sidebar-brand-text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sidebar-desktop-toggle {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid #dfe6d8;
+  border-radius: 8px;
+  color: #17392b;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.sidebar-desktop-toggle:hover,
+.sidebar-desktop-toggle:focus-visible {
+  background: #f3f6ef;
+}
+
+.sidebar-website-button {
+  position: relative;
+}
+
+.admin-cms-shell.sidebar-collapsed .sidebar-website-button::after,
+.admin-cms-shell.sidebar-collapsed .sidebar-logout-button::after {
+  position: absolute;
+  left: calc(100% + 10px);
+  z-index: 60;
+  display: none;
+  min-width: max-content;
+  border: 1px solid #dfe6d8;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #17392b;
+  background: #ffffff;
+  box-shadow: 0 14px 30px rgb(24 42 33 / 0.14);
+  font-size: 0.82rem;
+  font-weight: 900;
+  white-space: nowrap;
+  content: attr(aria-label);
+}
+
+.admin-cms-shell.sidebar-collapsed .sidebar-logout-button::after {
+  content: attr(title);
+}
+
+.admin-cms-shell.sidebar-collapsed .sidebar-website-button:hover::after,
+.admin-cms-shell.sidebar-collapsed .sidebar-website-button:focus-visible::after,
+.admin-cms-shell.sidebar-collapsed .sidebar-logout-button:hover::after,
+.admin-cms-shell.sidebar-collapsed .sidebar-logout-button:focus-visible::after {
+  display: block;
+}
+
+.load-more-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 22px;
+  color: #596a61;
+  font-weight: 800;
+}
+
+.year-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 18px 22px 22px;
+}
+
+.year-status-grid .stat-card small {
+  color: #66756e;
+  font-weight: 800;
+}
+
+.year-create-form .inline-editor-grid,
+.dashboard-upload-panel .inline-editor-grid {
+  margin: 10px 0;
+}
+
+.registration-target-control {
+  width: min(420px, 100%);
+  margin-bottom: 14px;
+}
+
+@media (max-width: 768px) {
+  .sidebar-desktop-toggle {
+    display: none;
+  }
+
+  .admin-sidebar-title {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .admin-cms-shell.sidebar-collapsed .sidebar-website-button::after,
+  .admin-cms-shell.sidebar-collapsed .sidebar-logout-button::after {
+    display: none;
+  }
+
+  .year-status-grid {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .load-more-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

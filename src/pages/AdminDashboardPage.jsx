@@ -391,6 +391,9 @@ export default function AdminDashboardPage() {
   const [selectedGroupId, setSelectedGroupId] = useState(user?.groupId ?? data.groups[0]?.id ?? "");
   const [saveMessage, setSaveMessage] = useState("");
   const [uploadStatus, setUploadStatus] = useState(null);
+  const [registrationTargetMode, setRegistrationTargetMode] = useState("existing");
+  const [registrationYearId, setRegistrationYearId] = useState(data.activeScoutYearId ?? data.scoutYears?.[0]?.id ?? "");
+  const [newScoutYear, setNewScoutYear] = useState({ label: "", startDate: "", endDate: "" });
 
   const visibleSections = sections.filter((section) => isSectionAllowed(section, user));
   const isAdmin = canManageSystem(user);
@@ -569,8 +572,55 @@ export default function AdminDashboardPage() {
       );
       await refresh();
       event.target.value = "";
+      if (registrationTargetMode === "new") {
+        setNewScoutYear({ label: "", startDate: "", endDate: "" });
+        setRegistrationTargetMode("existing");
+      }
     } catch (error) {
       setSaveMessage(`Registration upload failed: ${error.message}`);
+    }
+  };
+  const createNewScoutYearOnly = async (event) => {
+    event.preventDefault();
+
+    try {
+      setUploadStatus("Creating scouting year...");
+      const created = await createScoutingYear(newScoutYear);
+      setSaveMessage(`Scouting year ${created.label ?? newScoutYear.label} was created successfully. It is currently inactive.`);
+      setNewScoutYear({ label: "", startDate: "", endDate: "" });
+      await refresh();
+    } catch (error) {
+      setSaveMessage(`Scouting year creation failed: ${error.message}`);
+    } finally {
+      setUploadStatus(null);
+    }
+  };
+  const changeActiveScoutYear = async (yearId) => {
+    const targetYear = data.scoutYears?.find((year) => year.id === yearId);
+    const currentYear = data.scoutYears?.find((year) => year.isActive);
+
+    if (!targetYear || targetYear.isActive) {
+      return;
+    }
+
+    const confirmed = window.confirm(`Change the active scouting year from ${currentYear?.label ?? "the current year"} to ${targetYear.label}?\n\nThis changes the default year used across the dashboard, attendance, scouts, and reports.`);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setUploadStatus("Setting active scouting year...");
+      await activateScoutingYear(yearId);
+      setSaveMessage(`Active scouting year changed to ${targetYear.label}.`);
+      await logAuditEvent("active_scout_year_changed", "ScoutYear", yearId, {
+        previousYear: currentYear?.label ?? null,
+        nextYear: targetYear.label
+      });
+      await refresh();
+    } catch (error) {
+      setSaveMessage(`Unable to change the active scouting year: ${error.message}`);
+    } finally {
+      setUploadStatus(null);
     }
   };
   const saveScout = async (scoutId) => {
@@ -1572,19 +1622,102 @@ export default function AdminDashboardPage() {
     );
   };
 
-  const renderUpload = () => (
-    <article className="admin-panel dashboard-upload-panel">
-      <h2>Registered Scout Upload</h2>
-      <p>
-        Uploads support Excel and CSV files, Arabic names, accented characters, gender sorting, and
-        manual corrections after import.
-      </p>
-      <label className="compact-field">
-        Excel or CSV file
-        <input type="file" accept=".xlsx,.xls,.xml,.csv,.tsv,.html" onChange={handleRegistrationUpload} />
-      </label>
-    </article>
-  );
+  const renderUpload = () => {
+    const activeYear = data.scoutYears?.find((year) => year.isActive);
+    const selectedUploadYear = data.scoutYears?.find((year) => year.id === registrationYearId);
+
+    return (
+      <div className="cms-panel-stack">
+        <article className="admin-panel dashboard-upload-panel year-management-panel">
+          <div className="panel-heading compact-heading">
+            <div>
+              <h2>Registered Scouts and Scouting Years</h2>
+              <p>Active year is stored centrally in Supabase and remains locked until an admin changes it.</p>
+            </div>
+            <span>{activeYear?.label ?? data.registrationImportSettings.scoutYear}</span>
+          </div>
+          <div className="year-status-grid">
+            <article className="stat-card">
+              <span>Active Scouting Year</span>
+              <strong>{activeYear?.label ?? data.registrationImportSettings.scoutYear}</strong>
+              <small>Status: Locked</small>
+            </article>
+            <article className="stat-card">
+              <span>Current Import</span>
+              <strong>{data.registrationImportSettings.excelFileName}</strong>
+              <small>{data.registeredScouts.length} active scouts</small>
+            </article>
+          </div>
+        </article>
+
+        <article className="table-panel">
+          <div className="panel-heading compact-heading">
+            <div>
+              <h2>Scouting Years</h2>
+              <p>Create years manually. Creating or uploading to a year does not automatically activate it.</p>
+            </div>
+          </div>
+          <table className="editable-table">
+            <thead><tr><th>Year</th><th>Dates</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              {(data.scoutYears ?? []).length ? data.scoutYears.map((year) => (
+                <tr key={year.id}>
+                  <td><strong>{year.label}</strong></td>
+                  <td>{[year.startDate, year.endDate].filter(Boolean).join(" to ") || "Not set"}</td>
+                  <td><StatusBadge status={year.status} /></td>
+                  <td className="table-actions">
+                    <button type="button" className="inline-action" disabled={year.isActive || year.status === "archived" || Boolean(uploadStatus)} onClick={() => changeActiveScoutYear(year.id)}>
+                      {year.isActive ? "Active" : "Set active"}
+                    </button>
+                  </td>
+                </tr>
+              )) : <tr><td colSpan="4">No scouting years found.</td></tr>}
+            </tbody>
+          </table>
+        </article>
+
+        <form className="admin-panel dashboard-upload-panel year-create-form" onSubmit={createNewScoutYearOnly}>
+          <h2>Create New Scouting Year</h2>
+          <div className="inline-editor-grid">
+            <label>Year name<input required placeholder="2026-2027" value={newScoutYear.label} onChange={(event) => setNewScoutYear((current) => ({ ...current, label: event.target.value }))} /></label>
+            <label>Start date<input type="date" required value={newScoutYear.startDate} onChange={(event) => setNewScoutYear((current) => ({ ...current, startDate: event.target.value }))} /></label>
+            <label>End date<input type="date" required value={newScoutYear.endDate} onChange={(event) => setNewScoutYear((current) => ({ ...current, endDate: event.target.value }))} /></label>
+          </div>
+          <button type="submit" className="primary-action" disabled={Boolean(uploadStatus)}>Create New Scouting Year</button>
+        </form>
+
+        <article className="admin-panel dashboard-upload-panel">
+          <h2>Upload Registration List</h2>
+          <p>Choose the target scouting year first. Uploading a list does not change the active year.</p>
+          <div className="segmented-control registration-target-control">
+            <button type="button" className={registrationTargetMode === "existing" ? "active" : ""} onClick={() => setRegistrationTargetMode("existing")}>Existing year</button>
+            <button type="button" className={registrationTargetMode === "new" ? "active" : ""} onClick={() => setRegistrationTargetMode("new")}>Create new year</button>
+          </div>
+          {registrationTargetMode === "existing" ? (
+            <label className="compact-field">
+              Select scouting year
+              <select required value={registrationYearId} onChange={(event) => setRegistrationYearId(event.target.value)}>
+                {(data.scoutYears ?? []).map((year) => <option key={year.id} value={year.id}>{year.label} - {year.status}</option>)}
+              </select>
+            </label>
+          ) : (
+            <div className="inline-editor-grid">
+              <label>Year name<input required placeholder="2027-2028" value={newScoutYear.label} onChange={(event) => setNewScoutYear((current) => ({ ...current, label: event.target.value }))} /></label>
+              <label>Start date<input type="date" required value={newScoutYear.startDate} onChange={(event) => setNewScoutYear((current) => ({ ...current, startDate: event.target.value }))} /></label>
+              <label>End date<input type="date" required value={newScoutYear.endDate} onChange={(event) => setNewScoutYear((current) => ({ ...current, endDate: event.target.value }))} /></label>
+            </div>
+          )}
+          <p className="helper-text">
+            Target: {registrationTargetMode === "existing" ? selectedUploadYear?.label ?? "Choose a year" : newScoutYear.label || "New inactive scouting year"}. Review the import carefully because existing scouts in that target year are archived before new rows are imported.
+          </p>
+          <label className="compact-field">
+            Excel or CSV file
+            <input type="file" accept=".xlsx,.xls,.xml,.csv,.tsv,.html" onChange={handleRegistrationUpload} disabled={Boolean(uploadStatus)} />
+          </label>
+        </article>
+      </div>
+    );
+  };
 
   const renderRules = () => (
     <div className="cms-panel-stack">
@@ -2024,6 +2157,10 @@ export default function AdminDashboardPage() {
           <input type="file" accept={acceptedImageTypes} multiple onChange={(event) => {
             appendPhotoFiles(event.target.files);
             event.target.value = "";
+      if (registrationTargetMode === "new") {
+        setNewScoutYear({ label: "", startDate: "", endDate: "" });
+        setRegistrationTargetMode("existing");
+      }
           }} />
         </label>
         <div className="upload-preview image-upload-list">
