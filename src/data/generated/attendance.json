@@ -1,0 +1,39 @@
+{
+  "attendanceMeetings": [
+    {
+      "id": "louvetoux-2026-05-22",
+      "groupId": "louvetoux",
+      "date": "2026-05-22",
+      "topic": "Compass basics",
+      "records": { "1": "Present", "2": "Present", "3": "Excused" }
+    },
+    {
+      "id": "scout-guide-2026-05-23",
+      "groupId": "scout-guide",
+      "date": "2026-05-23",
+      "topic": "First aid review",
+      "records": { "4": "Present", "5": "Absent", "6": "Present" }
+    }
+  ],
+  "attendanceSheets": [
+    { "groupId": "louvetoux", "fileName": "attendance-louvetoux-2026-2027.xlsx", "savedRows": 6, "lastSaved": "2026-05-22" },
+    { "groupId": "jeanettes", "fileName": "attendance-jeanettes-2026-2027.xlsx", "savedRows": 0, "lastSaved": null },
+    { "groupId": "scout-guide", "fileName": "attendance-scout-guide-2026-2027.xlsx", "savedRows": 6, "lastSaved": "2026-05-23" },
+    { "groupId": "pioneer", "fileName": "attendance-pioneer-2026-2027.xlsx", "savedRows": 0, "lastSaved": null },
+    { "groupId": "routier", "fileName": "attendance-routier-2026-2027.xlsx", "savedRows": 0, "lastSaved": null },
+    { "groupId": "patrols", "fileName": "attendance-patrols-2026-2027.xlsx", "savedRows": 0, "lastSaved": null }
+  ],
+  "chiefAttendanceMeetings": [
+    {
+      "id": "chiefs-2026-05-24",
+      "date": "2026-05-24",
+      "topic": "Monthly chiefs meeting",
+      "records": { "chief-north": "Present", "chief-east": "Late" }
+    }
+  ],
+  "chiefAttendanceSheet": {
+    "fileName": "attendance-chiefs-2026-2027.xlsx",
+    "savedRows": 2,
+    "lastSaved": "2026-05-24"
+  }
+}

@@ -1,0 +1,59 @@
+[
+  {
+    "id": "community-camp-2026",
+    "title": "Community Camp",
+    "date": "2026-06-20",
+    "type": "event",
+    "status": "planned",
+    "visibility": "public",
+    "visibleGroupIds": [],
+    "location": "Mountain Camp",
+    "description": "Weekend camp for all scout groups."
+  },
+  {
+    "id": "badge-night-2026",
+    "title": "Badge Night",
+    "date": "2026-05-28",
+    "type": "event",
+    "status": "passed",
+    "visibility": "public",
+    "visibleGroupIds": [],
+    "location": "Main Hall",
+    "description": "Group ceremony for badges and patrol awards."
+  },
+  {
+    "id": "louvetoux-meeting-2026-06-07",
+    "title": "Louvetoux Weekly Meeting",
+    "date": "2026-06-07",
+    "type": "meeting",
+    "status": "planned",
+    "visibility": "group",
+    "groupId": "louvetoux",
+    "visibleGroupIds": ["louvetoux"],
+    "location": "Scout Hall Room A",
+    "description": "Scheduled meeting visible only to logged-in Louvetoux chiefs."
+  },
+  {
+    "id": "scout-guide-meeting-2026-06-08",
+    "title": "Scout and Guide Weekly Meeting",
+    "date": "2026-06-08",
+    "type": "meeting",
+    "status": "planned",
+    "visibility": "group",
+    "groupId": "scout-guide",
+    "visibleGroupIds": ["scout-guide"],
+    "location": "Scout Hall Room B",
+    "description": "Scheduled meeting visible only to logged-in Scout and Guide chiefs."
+  },
+  {
+    "id": "leaders-briefing-2026-06-14",
+    "title": "Leaders Briefing",
+    "date": "2026-06-14",
+    "type": "event",
+    "status": "planned",
+    "visibility": "logged-in",
+    "visibleGroupIds": [],
+    "location": "Scout Hall",
+    "description": "Logged-in members can view this planning briefing."
+  }
+]

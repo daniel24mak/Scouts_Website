@@ -1,0 +1,21 @@
+{
+  "registrationImportSettings": {
+    "scoutYear": "2026-2027",
+    "sortBy": "schoolGrade",
+    "assignmentMode": "schoolGrade",
+    "excelFileName": "registered-scouts.xls"
+  },
+  "groupingRulesStore": {
+    "storageKey": "scout-grouping-rules-2026-2027",
+    "lastUpdated": "2026-06-03",
+    "updatedBy": "Group Admin",
+    "rules": [
+      { "groupId": "louvetoux", "assignmentBasis": "schoolGrade", "gradeStart": 4, "gradeEnd": 6, "ageStart": 9, "ageEnd": 11, "genderFilter": "male" },
+      { "groupId": "jeanettes", "assignmentBasis": "schoolGrade", "gradeStart": 4, "gradeEnd": 6, "ageStart": 9, "ageEnd": 11, "genderFilter": "female" },
+      { "groupId": "scout-guide", "assignmentBasis": "schoolGrade", "gradeStart": 7, "gradeEnd": 8, "ageStart": 12, "ageEnd": 13, "genderFilter": "mixed" },
+      { "groupId": "pioneer", "assignmentBasis": "schoolGrade", "gradeStart": 9, "gradeEnd": 10, "ageStart": 14, "ageEnd": 15, "genderFilter": "mixed" },
+      { "groupId": "routier", "assignmentBasis": "schoolGrade", "gradeStart": 11, "gradeEnd": 11, "ageStart": 16, "ageEnd": 16, "genderFilter": "mixed" },
+      { "groupId": "patrols", "assignmentBasis": "schoolGrade", "gradeStart": 12, "gradeEnd": 12, "ageStart": 17, "ageEnd": 17, "genderFilter": "mixed" }
+    ]
+  }
+}

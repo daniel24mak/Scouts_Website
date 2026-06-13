@@ -1,0 +1,25 @@
+[
+  {
+    "id": "chief-north",
+    "name": "Chief Layla",
+    "role": "chief",
+    "groupId": "louvetoux",
+    "chiefLevel": "head",
+    "permissions": { "canPublish": true, "canCreateGroupMeetings": true, "canEditScouts": true }
+  },
+  {
+    "id": "chief-east",
+    "name": "Chief Omar",
+    "role": "chief",
+    "groupId": "scout-guide",
+    "chiefLevel": "vice",
+    "permissions": { "canPublish": true, "canCreateGroupMeetings": true, "canEditScouts": false }
+  },
+  {
+    "id": "admin",
+    "name": "Group Admin",
+    "role": "admin",
+    "groupId": null,
+    "permissions": { "canPublish": true, "canCreateGroupMeetings": false, "canEditScouts": true }
+  }
+]

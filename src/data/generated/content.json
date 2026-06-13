@@ -1,0 +1,88 @@
+{
+  "blogPosts": [
+    {
+      "id": 1,
+      "slug": "campfire-skills-weekend",
+      "title": "Campfire skills weekend",
+      "date": "2026-05-14",
+      "author": "Chief Layla",
+      "thumbnailColor": "#2f7d6d",
+      "albumId": "campfire-skills",
+      "excerpt": "Scouts practiced fire safety, camp cooking, and evening reflection circles.",
+      "body": "The weekend focused on practical campfire safety, simple outdoor cooking routines, and patrol reflection. Scouts rotated through skill stations and closed the event with a group circle."
+    },
+    {
+      "id": 2,
+      "slug": "community-clean-up-report",
+      "title": "Community clean-up report",
+      "date": "2026-04-29",
+      "author": "Chief Omar",
+      "thumbnailColor": "#b86f32",
+      "albumId": "community-cleanup",
+      "excerpt": "Our patrols worked with neighbors to clean the park trail and sort recyclables.",
+      "body": "Patrols divided the park into zones, collected litter, sorted recyclable materials, and logged the work completed for the service record."
+    }
+  ],
+  "galleryAlbums": [
+    {
+      "id": "campfire-skills",
+      "title": "Campfire Skills Weekend",
+      "eventDate": "2026-05-14",
+      "location": "Mountain Camp",
+      "category": "Camps",
+      "color": "#2f7d6d",
+      "photoCount": 24,
+      "coverLabel": "Fire safety",
+      "photos": [
+        { "id": 1, "title": "Camp setup" },
+        { "id": 2, "title": "Cooking practice" },
+        { "id": 3, "title": "Evening circle" }
+      ]
+    },
+    {
+      "id": "community-cleanup",
+      "title": "Community Clean-up",
+      "eventDate": "2026-04-29",
+      "location": "Neighborhood Park",
+      "category": "Service",
+      "color": "#b86f32",
+      "photoCount": 18,
+      "coverLabel": "Service day",
+      "photos": [
+        { "id": 4, "title": "Trail team" },
+        { "id": 5, "title": "Sorting station" },
+        { "id": 6, "title": "Final group photo" }
+      ]
+    },
+    {
+      "id": "first-aid-training",
+      "title": "First Aid Training",
+      "eventDate": "2026-03-18",
+      "location": "Scout Hall",
+      "category": "Training",
+      "color": "#4f6fa8",
+      "photoCount": 15,
+      "coverLabel": "Skills station",
+      "photos": [
+        { "id": 7, "title": "Bandage drill" },
+        { "id": 8, "title": "Emergency call practice" },
+        { "id": 9, "title": "Team review" }
+      ]
+    },
+    {
+      "id": "badge-ceremony",
+      "title": "Badge Ceremony",
+      "eventDate": "2026-02-22",
+      "location": "Main Hall",
+      "category": "Awards",
+      "color": "#7a5c99",
+      "photoCount": 31,
+      "coverLabel": "Awards night",
+      "photos": [
+        { "id": 10, "title": "Opening flag" },
+        { "id": 11, "title": "Badge awards" },
+        { "id": 12, "title": "Chief remarks" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+[
+  {
+    "id": "louvetoux",
+    "name": "Louvetoux",
+    "assignmentBasis": "schoolGrade",
+    "gradeRange": "Grade 4 to Grade 6",
+    "ageRange": "Age 9 to 11",
+    "scouts": [
+      { "id": 1, "name": "Adam N.", "patrol": "Falcons", "attendance": "92%" },
+      { "id": 2, "name": "Sara M.", "patrol": "Falcons", "attendance": "88%" },
+      { "id": 3, "name": "Yousef A.", "patrol": "Wolves", "attendance": "95%" }
+    ]
+  },
+  {
+    "id": "jeanettes",
+    "name": "Jeanettes",
+    "assignmentBasis": "schoolGrade",
+    "gradeRange": "Grade 4 to Grade 6",
+    "ageRange": "Age 9 to 11",
+    "scouts": []
+  },
+  {
+    "id": "scout-guide",
+    "name": "Scout and Guide",
+    "assignmentBasis": "schoolGrade",
+    "gradeRange": "Grade 7 to Grade 8",
+    "ageRange": "Age 12 to 13",
+    "scouts": [
+      { "id": 4, "name": "Mariam S.", "patrol": "Trailblazers", "attendance": "90%" },
+      { "id": 5, "name": "Khalid R.", "patrol": "Trailblazers", "attendance": "84%" },
+      { "id": 6, "name": "Nora H.", "patrol": "Rangers", "attendance": "97%" }
+    ]
+  },
+  {
+    "id": "pioneer",
+    "name": "Pioneer",
+    "assignmentBasis": "schoolGrade",
+    "gradeRange": "Grade 9 to Grade 10",
+    "ageRange": "Age 14 to 15",
+    "scouts": []
+  },
+  {
+    "id": "routier",
+    "name": "Routier",
+    "assignmentBasis": "schoolGrade",
+    "gradeRange": "Grade 11",
+    "ageRange": "Age 16",
+    "scouts": []
+  },
+  {
+    "id": "patrols",
+    "name": "Patrols",
+    "assignmentBasis": "schoolGrade",
+    "gradeRange": "Grade 12",
+    "ageRange": "Age 17",
+    "scouts": []
+  }
+]
