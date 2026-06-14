@@ -386,6 +386,7 @@ export default function AdminDashboardPage() {
   const [lastDashboardSection, setLastDashboardSection] = useState("overview");
   const [sidebarMode, setSidebarMode] = useState(() => window.localStorage.getItem(sidebarModeKey) ?? "expanded");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [showMobileMenuBar, setShowMobileMenuBar] = useState(false);
   const [contentPreviewMode, setContentPreviewMode] = useState("web");
   const [selectedApproval, setSelectedApproval] = useState(null);
   const [selectedApprovalPhotoIds, setSelectedApprovalPhotoIds] = useState([]);
@@ -469,6 +470,35 @@ export default function AdminDashboardPage() {
     return () => {
       document.body.classList.remove("dashboard-drawer-open");
       window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isMobileSidebarOpen]);
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+
+    const handleDashboardScroll = () => {
+      const currentScrollY = window.scrollY;
+      const isMobile = window.matchMedia("(max-width: 768px)").matches;
+      const isScrollingUp = currentScrollY < lastScrollY - 8;
+      const isScrollingDown = currentScrollY > lastScrollY + 8;
+
+      if (!isMobile || currentScrollY < 180 || isMobileSidebarOpen) {
+        setShowMobileMenuBar(false);
+      } else if (isScrollingUp) {
+        setShowMobileMenuBar(true);
+      } else if (isScrollingDown) {
+        setShowMobileMenuBar(false);
+      }
+
+      lastScrollY = currentScrollY;
+    };
+
+    handleDashboardScroll();
+    window.addEventListener("scroll", handleDashboardScroll, { passive: true });
+    window.addEventListener("resize", handleDashboardScroll);
+
+    return () => {
+      window.removeEventListener("scroll", handleDashboardScroll);
+      window.removeEventListener("resize", handleDashboardScroll);
     };
   }, [isMobileSidebarOpen]);
   useEffect(() => {
@@ -2444,7 +2474,14 @@ export default function AdminDashboardPage() {
   const sidebarItems = settingsMode ? settingSections : visibleSections;
 
   return (
-    <section className={`admin-cms-shell sidebar-${sidebarMode} ${settingsMode ? "settings-mode" : ""} ${isMobileSidebarOpen ? "mobile-sidebar-open" : ""}`}>
+    <section className={`admin-cms-shell sidebar-${sidebarMode} ${settingsMode ? "settings-mode" : ""} ${isMobileSidebarOpen ? "mobile-sidebar-open" : ""} ${showMobileMenuBar ? "mobile-menu-bar-visible" : ""}`}>
+      <div className="dashboard-mobile-reveal-bar" aria-hidden={!showMobileMenuBar}>
+        <button type="button" className="dashboard-menu-button" aria-expanded={isMobileSidebarOpen} aria-controls="dashboard-sidebar" onClick={() => setIsMobileSidebarOpen(true)}>
+          <Menu size={18} aria-hidden="true" />
+          <span>Menu</span>
+        </button>
+        <span>{activeTitle}</span>
+      </div>
       <button type="button" className="dashboard-sidebar-overlay" aria-label="Close dashboard menu" onClick={() => setIsMobileSidebarOpen(false)} />
       <aside className="admin-sidebar" id="dashboard-sidebar">
         <div className="admin-sidebar-title">
