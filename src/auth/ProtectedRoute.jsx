@@ -1,17 +1,13 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthProvider.jsx";
+import BrandedLoader from "../components/BrandedLoader.jsx";
 
 export default function ProtectedRoute({ allowedRoles, children, requirePublisher = false }) {
   const { user, isAuthLoading } = useAuth();
   const location = useLocation();
 
   if (isAuthLoading) {
-    return (
-      <section className="page-section narrow">
-        <p className="eyebrow">Loading</p>
-        <h1>Checking your session</h1>
-      </section>
-    );
+    return <BrandedLoader label="Checking your session" />;
   }
 
   if (!user) {

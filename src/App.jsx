@@ -1,9 +1,10 @@
-﻿import { lazy, Suspense } from "react";
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthProvider.jsx";
 import ProtectedRoute from "./auth/ProtectedRoute.jsx";
 import Layout from "./components/Layout.jsx";
 import ScrollToTop from "./components/ScrollToTop.jsx";
+import BrandedLoader from "./components/BrandedLoader.jsx";
 
 const AboutPage = lazy(() => import("./pages/AboutPage.jsx"));
 const AdminChiefAttendancePage = lazy(() => import("./pages/AdminChiefAttendancePage.jsx"));
@@ -20,12 +21,7 @@ const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage.jsx"));
 
 function RouteFallback() {
-  return (
-    <section className="page-section narrow" role="status" aria-live="polite">
-      <p className="eyebrow">Loading</p>
-      <h1>Preparing page...</h1>
-    </section>
-  );
+  return <BrandedLoader label="Preparing page" />;
 }
 
 export default function App() {

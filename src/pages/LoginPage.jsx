@@ -2,6 +2,7 @@ import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { useState } from "react";
 import { useAuth } from "../auth/AuthProvider.jsx";
+import BrandedLoader from "../components/BrandedLoader.jsx";
 import { isSupabaseConfigured } from "../services/supabaseClient.js";
 
 export default function LoginPage() {
@@ -17,12 +18,7 @@ export default function LoginPage() {
   }, [refreshUsers]);
 
   if (isAuthLoading) {
-    return (
-      <section className="page-section narrow">
-        <p className="eyebrow">Login</p>
-        <h1>Checking your session</h1>
-      </section>
-    );
+    return <BrandedLoader label="Checking your session" />;
   }
 
   if (user) {
