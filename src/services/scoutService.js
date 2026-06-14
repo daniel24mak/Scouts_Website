@@ -14,6 +14,78 @@ export async function getActiveScoutYearId() {
   return activeYear?.id ?? null;
 }
 
+export async function createScoutYear(name) {
+  const label = String(typeof name === "string" ? name : name?.label ?? "").trim();
+
+  if (!label) {
+    throw new Error("Please enter a scouting year name.");
+  }
+
+  const existingYears = await getSupabaseRows(
+    "scout_years",
+    `select=id,label&label=eq.${encodeURIComponent(label)}&limit=1`
+  );
+
+  if (existingYears.length) {
+    throw new Error("A scouting year with this name already exists.");
+  }
+
+  try {
+    const [createdYear] = await insertSupabaseRow("scout_years", {
+      label,
+      sort_by: "schoolGrade",
+      assignment_mode: "schoolGrade",
+      is_active: false
+    });
+
+    return createdYear;
+  } catch (error) {
+    if (/duplicate|unique|409/i.test(error.message)) {
+      throw new Error("A scouting year with this name already exists.");
+    }
+
+    console.error("Unable to create scouting year", error);
+    throw new Error("Unable to create the scouting year.");
+  }
+}
+
+export async function setActiveScoutYear(yearId) {
+  if (!yearId) {
+    throw new Error("Choose a valid scouting year.");
+  }
+
+  const [targetYear] = await getSupabaseRows(
+    "scout_years",
+    `select=*&id=eq.${encodeURIComponent(yearId)}&limit=1`
+  );
+
+  if (!targetYear?.id) {
+    throw new Error("Choose a valid scouting year.");
+  }
+
+  if (targetYear.archived_at) {
+    throw new Error("Archived years cannot be made active until they are reopened.");
+  }
+
+  const years = await getSupabaseRows("scout_years", "select=id,is_active");
+  await Promise.all(
+    years
+      .filter((year) => year.id !== targetYear.id && year.is_active)
+      .map((year) =>
+        patchSupabaseRows("scout_years", `id=eq.${encodeURIComponent(year.id)}`, { is_active: false })
+      )
+  );
+
+  const [activeYear] = await patchSupabaseRows(
+    "scout_years",
+    `id=eq.${encodeURIComponent(targetYear.id)}`,
+    { is_active: true, archived_at: null }
+  );
+
+  return activeYear;
+}
+
+
 
 function base64ToBlob(base64Content, fileName) {
   const binary = window.atob(base64Content);
@@ -47,7 +119,7 @@ export async function getScoutData() {
     ).catch(() => [])
   ]);
 
-  const activeYear = years.find((year) => year.is_active) ?? years[0];
+  const activeYear = years.find((year) => year.is_active) ?? null;
   const activeScouts = activeYear
     ? scouts.filter((scout) => scout.scout_year_id === activeYear.id && scout.status !== "Archived")
     : scouts;
@@ -122,9 +194,16 @@ export async function importRegistrationSheetToSupabase({ fileName, contentBase6
   let targetYearLabel = "Selected year";
 
   if (newScoutYear?.label) {
-    const createdYear = await createScoutYear(newScoutYear);
-    targetYearId = createdYear.id;
-    targetYearLabel = createdYear.label;
+    const label = String(newScoutYear.label).trim();
+    const existingYears = newScoutYear.useExistingIfPresent
+      ? await getSupabaseRows(
+          "scout_years",
+          `select=*&label=eq.${encodeURIComponent(label)}&limit=1`
+        )
+      : [];
+    const targetYear = existingYears[0] ?? await createScoutYear(label);
+    targetYearId = targetYear.id;
+    targetYearLabel = targetYear.label;
   }
 
   if (!targetYearId) {

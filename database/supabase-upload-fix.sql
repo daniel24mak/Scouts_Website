@@ -40,6 +40,30 @@ EXCEPTION
 END $$;
 
 ALTER TABLE scout_years ENABLE ROW LEVEL SECURITY;
+
+-- Scouting years are created with only a label/name. These date columns are optional
+-- in older databases where they may already exist.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'scout_years' AND column_name = 'start_date'
+  ) THEN
+    ALTER TABLE public.scout_years ALTER COLUMN start_date DROP NOT NULL;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'scout_years' AND column_name = 'end_date'
+  ) THEN
+    ALTER TABLE public.scout_years ALTER COLUMN end_date DROP NOT NULL;
+  END IF;
+END $$;
+
+ALTER TABLE scout_years
+ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
+CREATE UNIQUE INDEX IF NOT EXISTS one_active_scout_year ON scout_years (is_active) WHERE is_active;
 ALTER TABLE registration_uploads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scouts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE groups ENABLE ROW LEVEL SECURITY;

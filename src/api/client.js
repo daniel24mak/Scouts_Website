@@ -32,8 +32,10 @@ import {
 import {
   getScoutData,
   createScout,
+  createScoutYear,
   importRegistrationSheetToSupabase,
   saveGroupingRules,
+  setActiveScoutYear,
   updateScout
 } from "../services/scoutService.js";
 import {
@@ -323,12 +325,14 @@ export function saveAdminRules(payload) {
 }
 
 
-export function createScoutingYear(payload) {
+export function createScoutingYear(name) {
+  const label = String(typeof name === "string" ? name : name?.label ?? "").trim();
+
   if (isSupabaseConfigured) {
-    return createScoutYear(payload);
+    return createScoutYear(label);
   }
 
-  return Promise.resolve({ ...payload, id: crypto.randomUUID(), is_active: false });
+  return Promise.resolve({ id: crypto.randomUUID(), label, is_active: false });
 }
 
 export function activateScoutingYear(yearId) {
@@ -345,7 +349,9 @@ export function uploadRegistrationSheet(payload) {
         importRegistrationSheetToSupabase({
           fileName: payload.fileName ?? "registered-scouts.xlsx",
           contentBase64: payload.contentBase64,
-          scouts: parsed.scouts ?? []
+          scouts: parsed.scouts ?? [],
+          scoutYearId: payload.scoutYearId,
+          newScoutYear: payload.newScoutYear
         })
     );
   }

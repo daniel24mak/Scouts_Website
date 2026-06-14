@@ -4590,3 +4590,271 @@ body.dashboard-drawer-open {
     transform: none;
   }
 }
+
+
+/* Final dashboard sidebar collapse behavior. */
+.admin-sidebar {
+  display: flex;
+  flex-direction: column;
+  overflow-x: visible;
+  overflow-y: auto;
+}
+
+.admin-sidebar-title {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 0 6px 14px;
+}
+
+.sidebar-brand {
+  min-width: 0;
+  align-items: center;
+}
+
+.sidebar-brand-expanded {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 4px;
+}
+
+.sidebar-brand-compact {
+  display: none;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--color-blue);
+  background: #edf4ff;
+  font-size: 0.74rem;
+  font-weight: 950;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.sidebar-desktop-toggle {
+  flex: 0 0 auto;
+}
+
+.admin-cms-shell.sidebar-collapsed .admin-sidebar {
+  overflow-x: visible;
+}
+
+.admin-cms-shell.sidebar-collapsed .admin-sidebar-title {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.admin-cms-shell.sidebar-collapsed .sidebar-brand-expanded {
+  display: none;
+}
+
+.admin-cms-shell.sidebar-collapsed .sidebar-brand-compact {
+  display: grid;
+}
+
+.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-brand-expanded,
+.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-brand-expanded {
+  display: grid;
+}
+
+.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-brand-compact,
+.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-brand-compact {
+  display: none;
+}
+
+.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .admin-sidebar-title,
+.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .admin-sidebar-title {
+  justify-content: space-between;
+  padding-inline: 6px;
+}
+
+.admin-cms-shell.sidebar-collapsed .sidebar-control-button,
+.admin-cms-shell.sidebar-collapsed .sidebar-logout-button {
+  position: relative;
+}
+
+.admin-cms-shell.sidebar-collapsed .sidebar-control-button::after,
+.admin-cms-shell.sidebar-collapsed .sidebar-logout-button::after {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 10px);
+  z-index: 80;
+  display: none;
+  min-width: max-content;
+  transform: translateY(-50%);
+  border: 1px solid #dfe6d8;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #17392b;
+  background: #ffffff;
+  box-shadow: 0 14px 30px rgb(24 42 33 / 0.14);
+  font-size: 0.82rem;
+  font-weight: 900;
+  white-space: nowrap;
+  content: attr(aria-label);
+}
+
+.admin-cms-shell.sidebar-collapsed .sidebar-control-button:hover::after,
+.admin-cms-shell.sidebar-collapsed .sidebar-control-button:focus-visible::after,
+.admin-cms-shell.sidebar-collapsed .sidebar-logout-button:hover::after,
+.admin-cms-shell.sidebar-collapsed .sidebar-logout-button:focus-visible::after {
+  display: block;
+}
+
+.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-control-button::after,
+.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-control-button::after,
+.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-logout-button::after,
+.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-logout-button::after {
+  display: none;
+}
+
+.sidebar-navigation {
+  overflow-y: auto;
+  overflow-x: visible;
+}
+
+.sidebar-account {
+  margin-top: auto;
+}
+
+.year-name-grid {
+  grid-template-columns: minmax(240px, 420px);
+}
+
+@media (max-width: 768px) {
+  .admin-sidebar {
+    overflow: auto;
+  }
+
+  .sidebar-desktop-toggle,
+  .admin-cms-shell.sidebar-collapsed .sidebar-desktop-toggle {
+    display: none;
+  }
+
+  .admin-cms-shell.sidebar-collapsed .sidebar-brand-expanded,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-brand-expanded,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-brand-expanded {
+    display: grid;
+  }
+
+  .admin-cms-shell.sidebar-collapsed .sidebar-brand-compact,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-brand-compact,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-brand-compact {
+    display: none;
+  }
+
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar-title,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .admin-sidebar-title,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .admin-sidebar-title {
+    justify-content: space-between;
+    padding-inline: 6px;
+  }
+
+  .admin-cms-shell.sidebar-collapsed .sidebar-control-button::after,
+  .admin-cms-shell.sidebar-collapsed .sidebar-logout-button::after {
+    display: none;
+  }
+
+  .year-name-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* Keep the desktop dashboard sidebar pinned when collapsed. */
+@media (min-width: 769px) {
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within,
+  .dashboard-shell .admin-cms-shell.sidebar-collapsed .admin-sidebar,
+  .dashboard-shell .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover,
+  .dashboard-shell .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within {
+    width: 76px !important;
+    max-width: 76px !important;
+    box-shadow: none !important;
+    overflow-x: visible;
+  }
+
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar-title,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .admin-sidebar-title,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .admin-sidebar-title {
+    justify-content: center !important;
+    padding-inline: 0 !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed .sidebar-brand-expanded,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-brand-expanded,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-brand-expanded {
+    display: none !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed .sidebar-brand-compact,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-brand-compact,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-brand-compact {
+    display: grid !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar button,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover button,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within button,
+  .admin-cms-shell.sidebar-collapsed .sidebar-control-button,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-control-button,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-control-button {
+    justify-content: center !important;
+    padding-inline: 8px !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar button span,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover button span,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within button span,
+  .admin-cms-shell.sidebar-collapsed .sidebar-control-button span,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-control-button span,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-control-button span,
+  .admin-cms-shell.sidebar-collapsed .sidebar-account-summary,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-account-summary,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-account-summary,
+  .admin-cms-shell.sidebar-collapsed .sidebar-badge,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-badge,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-badge {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed .sidebar-control-button::after,
+  .admin-cms-shell.sidebar-collapsed .sidebar-website-button::after,
+  .admin-cms-shell.sidebar-collapsed .sidebar-logout-button::after,
+  .admin-cms-shell.sidebar-collapsed .sidebar-control-button:hover::after,
+  .admin-cms-shell.sidebar-collapsed .sidebar-control-button:focus-visible::after,
+  .admin-cms-shell.sidebar-collapsed .sidebar-website-button:hover::after,
+  .admin-cms-shell.sidebar-collapsed .sidebar-website-button:focus-visible::after,
+  .admin-cms-shell.sidebar-collapsed .sidebar-logout-button:hover::after,
+  .admin-cms-shell.sidebar-collapsed .sidebar-logout-button:focus-visible::after {
+    display: none !important;
+  }
+}
+
+
+/* Collapsed sidebar header uses only the expand/collapse button. */
+.sidebar-brand-compact,
+.admin-cms-shell.sidebar-collapsed .sidebar-brand-compact,
+.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-brand-compact,
+.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-brand-compact {
+  display: none !important;
+}
+
+@media (min-width: 769px) {
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar-title,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .admin-sidebar-title,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .admin-sidebar-title {
+    justify-content: center !important;
+  }
+}

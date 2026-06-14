@@ -48,6 +48,8 @@ import {
   removeContactMessage,
   removeFaq,
   removeLeader,
+  activateScoutingYear,
+  createScoutingYear,
   updateAlbum,
   updateBlog,
   updateCalendarEvent,
@@ -393,7 +395,7 @@ export default function AdminDashboardPage() {
   const [uploadStatus, setUploadStatus] = useState(null);
   const [registrationTargetMode, setRegistrationTargetMode] = useState("existing");
   const [registrationYearId, setRegistrationYearId] = useState(data.activeScoutYearId ?? data.scoutYears?.[0]?.id ?? "");
-  const [newScoutYear, setNewScoutYear] = useState({ label: "", startDate: "", endDate: "" });
+  const [newScoutYearName, setNewScoutYearName] = useState("");
 
   const visibleSections = sections.filter((section) => isSectionAllowed(section, user));
   const isAdmin = canManageSystem(user);
@@ -561,9 +563,25 @@ export default function AdminDashboardPage() {
     }
 
     try {
+      const cleanedYearName = newScoutYearName.trim();
+
+      if (registrationTargetMode === "existing" && !registrationYearId) {
+        setSaveMessage("Choose a scouting year before uploading the registration list.");
+        event.target.value = "";
+        return;
+      }
+
+      if (registrationTargetMode === "new" && !cleanedYearName) {
+        setSaveMessage("Please enter a scouting year name.");
+        event.target.value = "";
+        return;
+      }
+
       const result = await uploadRegistrationSheet({
         fileName: file.name,
-        contentBase64: arrayBufferToBase64(await file.arrayBuffer())
+        contentBase64: arrayBufferToBase64(await file.arrayBuffer()),
+        scoutYearId: registrationTargetMode === "existing" ? registrationYearId : undefined,
+        newScoutYear: registrationTargetMode === "new" ? { label: cleanedYearName, useExistingIfPresent: true } : undefined
       });
       setSaveMessage(
         `Registration sheet uploaded. ${result.count} scouts loaded${
@@ -573,7 +591,7 @@ export default function AdminDashboardPage() {
       await refresh();
       event.target.value = "";
       if (registrationTargetMode === "new") {
-        setNewScoutYear({ label: "", startDate: "", endDate: "" });
+        setNewScoutYearName("");
         setRegistrationTargetMode("existing");
       }
     } catch (error) {
@@ -583,11 +601,19 @@ export default function AdminDashboardPage() {
   const createNewScoutYearOnly = async (event) => {
     event.preventDefault();
 
+    const cleanedYearName = newScoutYearName.trim();
+
+    if (!cleanedYearName) {
+      setSaveMessage("Please enter a scouting year name.");
+      return;
+    }
+
     try {
       setUploadStatus("Creating scouting year...");
-      const created = await createScoutingYear(newScoutYear);
-      setSaveMessage(`Scouting year ${created.label ?? newScoutYear.label} was created successfully. It is currently inactive.`);
-      setNewScoutYear({ label: "", startDate: "", endDate: "" });
+      const created = await createScoutingYear(cleanedYearName);
+      setSaveMessage("Scouting year created successfully.");
+      setNewScoutYearName("");
+      setRegistrationYearId(created.id);
       await refresh();
     } catch (error) {
       setSaveMessage(`Scouting year creation failed: ${error.message}`);
@@ -1658,12 +1684,11 @@ export default function AdminDashboardPage() {
             </div>
           </div>
           <table className="editable-table">
-            <thead><tr><th>Year</th><th>Dates</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Year</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
               {(data.scoutYears ?? []).length ? data.scoutYears.map((year) => (
                 <tr key={year.id}>
                   <td><strong>{year.label}</strong></td>
-                  <td>{[year.startDate, year.endDate].filter(Boolean).join(" to ") || "Not set"}</td>
                   <td><StatusBadge status={year.status} /></td>
                   <td className="table-actions">
                     <button type="button" className="inline-action" disabled={year.isActive || year.status === "archived" || Boolean(uploadStatus)} onClick={() => changeActiveScoutYear(year.id)}>
@@ -1671,17 +1696,15 @@ export default function AdminDashboardPage() {
                     </button>
                   </td>
                 </tr>
-              )) : <tr><td colSpan="4">No scouting years found.</td></tr>}
+              )) : <tr><td colSpan="3">No scouting years found.</td></tr>}
             </tbody>
           </table>
         </article>
 
         <form className="admin-panel dashboard-upload-panel year-create-form" onSubmit={createNewScoutYearOnly}>
           <h2>Create New Scouting Year</h2>
-          <div className="inline-editor-grid">
-            <label>Year name<input required placeholder="2026-2027" value={newScoutYear.label} onChange={(event) => setNewScoutYear((current) => ({ ...current, label: event.target.value }))} /></label>
-            <label>Start date<input type="date" required value={newScoutYear.startDate} onChange={(event) => setNewScoutYear((current) => ({ ...current, startDate: event.target.value }))} /></label>
-            <label>End date<input type="date" required value={newScoutYear.endDate} onChange={(event) => setNewScoutYear((current) => ({ ...current, endDate: event.target.value }))} /></label>
+          <div className="inline-editor-grid year-name-grid">
+            <label>Scouting Year Name *<input required placeholder="2026-2027" value={newScoutYearName} onChange={(event) => setNewScoutYearName(event.target.value)} /></label>
           </div>
           <button type="submit" className="primary-action" disabled={Boolean(uploadStatus)}>Create New Scouting Year</button>
         </form>
@@ -1701,14 +1724,12 @@ export default function AdminDashboardPage() {
               </select>
             </label>
           ) : (
-            <div className="inline-editor-grid">
-              <label>Year name<input required placeholder="2027-2028" value={newScoutYear.label} onChange={(event) => setNewScoutYear((current) => ({ ...current, label: event.target.value }))} /></label>
-              <label>Start date<input type="date" required value={newScoutYear.startDate} onChange={(event) => setNewScoutYear((current) => ({ ...current, startDate: event.target.value }))} /></label>
-              <label>End date<input type="date" required value={newScoutYear.endDate} onChange={(event) => setNewScoutYear((current) => ({ ...current, endDate: event.target.value }))} /></label>
+            <div className="inline-editor-grid year-name-grid">
+              <label>Scouting Year Name *<input required placeholder="2027-2028" value={newScoutYearName} onChange={(event) => setNewScoutYearName(event.target.value)} /></label>
             </div>
           )}
           <p className="helper-text">
-            Target: {registrationTargetMode === "existing" ? selectedUploadYear?.label ?? "Choose a year" : newScoutYear.label || "New inactive scouting year"}. Review the import carefully because existing scouts in that target year are archived before new rows are imported.
+            Target: {registrationTargetMode === "existing" ? selectedUploadYear?.label ?? "Choose a year" : newScoutYearName.trim() || "New inactive scouting year"}. Review the import carefully because existing scouts in that target year are archived before new rows are imported.
           </p>
           <label className="compact-field">
             Excel or CSV file
@@ -2157,10 +2178,6 @@ export default function AdminDashboardPage() {
           <input type="file" accept={acceptedImageTypes} multiple onChange={(event) => {
             appendPhotoFiles(event.target.files);
             event.target.value = "";
-      if (registrationTargetMode === "new") {
-        setNewScoutYear({ label: "", startDate: "", endDate: "" });
-        setRegistrationTargetMode("existing");
-      }
           }} />
         </label>
         <div className="upload-preview image-upload-list">
@@ -2423,27 +2440,28 @@ export default function AdminDashboardPage() {
       <button type="button" className="dashboard-sidebar-overlay" aria-label="Close dashboard menu" onClick={() => setIsMobileSidebarOpen(false)} />
       <aside className="admin-sidebar" id="dashboard-sidebar">
         <div className="admin-sidebar-title">
+          <div className="sidebar-brand sidebar-brand-expanded">
+            <strong>{settingsMode ? "Settings" : "Scouts Dashboard"}</strong>
+            <span>{data.registrationImportSettings.scoutYear}</span>
+          </div>
+          <button type="button" className="sidebar-desktop-toggle" onClick={toggleSidebarMode} title={sidebarMode === "expanded" ? "Collapse sidebar" : "Expand sidebar"} aria-label={sidebarMode === "expanded" ? "Collapse sidebar" : "Expand sidebar"}>
+            {sidebarMode === "expanded" ? <PanelLeftClose size={18} aria-hidden="true" /> : <PanelLeftOpen size={18} aria-hidden="true" />}
+          </button>
           <button type="button" className="dashboard-drawer-close" aria-label="Close dashboard menu" onClick={() => setIsMobileSidebarOpen(false)}>
             <X size={18} aria-hidden="true" />
           </button>
-          <strong>{settingsMode ? "Settings" : "Scouts Dashboard"}</strong>
-          <span>{data.registrationImportSettings.scoutYear}</span>
         </div>
         <div className="sidebar-control-stack">
           {settingsMode && (
-            <button type="button" className="sidebar-control-button" onClick={backToDashboard} title="Back to Dashboard">
+            <button type="button" className="sidebar-control-button" onClick={backToDashboard} title="Back to Dashboard" aria-label="Back to Dashboard">
               <ArrowLeft size={17} aria-hidden="true" />
               <span>Back to Dashboard</span>
             </button>
           )}
-          <Link className="sidebar-control-button" to="/" onClick={() => setIsMobileSidebarOpen(false)} title="Back to Website">
+          <Link className="sidebar-control-button sidebar-website-button" to="/" onClick={() => setIsMobileSidebarOpen(false)} title="Back to Website" aria-label="Back to Website">
             <ArrowLeft size={17} aria-hidden="true" />
             <span>Back to Website</span>
           </Link>
-          <button type="button" className="sidebar-control-button" onClick={toggleSidebarMode} title={sidebarMode === "expanded" ? "Auto Collapse" : "Keep Open"}>
-            {sidebarMode === "expanded" ? <PanelLeftClose size={17} aria-hidden="true" /> : <PanelLeftOpen size={17} aria-hidden="true" />}
-            <span>{sidebarMode === "expanded" ? "Auto Collapse" : "Keep Open"}</span>
-          </button>
         </div>
         <nav className="sidebar-navigation">
           {sidebarItems.map(([id, label, Icon]) => (
