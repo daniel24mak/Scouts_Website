@@ -1,10 +1,11 @@
 import { Images } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { updateBlog } from "../api/client.js";
 import { getPublicBlogDetailPage } from "../api/publicClient.js";
 import { usePublicData } from "../api/usePublicData.js";
 import { useAuth } from "../auth/AuthProvider.jsx";
+import { useToast } from "../components/ToastProvider.jsx";
 import FormattedText from "../components/FormattedText.jsx";
 import { canManageSystem, canPublishContent } from "../services/permissions.js";
 
@@ -19,6 +20,7 @@ export default function BlogDetailPage() {
     ["blog-detail", slug]
   );
   const { user } = useAuth();
+  const { showToast } = useToast();
   const post = data?.post ?? null;
   const linkedAlbum = data?.linkedAlbum ?? null;
   const [isEditing, setIsEditing] = useState(false);
@@ -26,7 +28,12 @@ export default function BlogDetailPage() {
   const [message, setMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  if (isLoading) {
+  useEffect(() => {
+    if (message) {
+      showToast(message);
+    }
+  }, [message, showToast]);
+if (isLoading) {
     return (
       <section className="page-section narrow">
         <p className="eyebrow">Blog</p>
@@ -34,8 +41,7 @@ export default function BlogDetailPage() {
       </section>
     );
   }
-
-  if (!post) {
+if (!post) {
     return (
       <section className="page-section narrow">
         <p className="eyebrow">Blog</p>

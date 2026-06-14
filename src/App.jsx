@@ -5,6 +5,7 @@ import ProtectedRoute from "./auth/ProtectedRoute.jsx";
 import Layout from "./components/Layout.jsx";
 import ScrollToTop from "./components/ScrollToTop.jsx";
 import BrandedLoader from "./components/BrandedLoader.jsx";
+import { ToastProvider } from "./components/ToastProvider.jsx";
 
 const AboutPage = lazy(() => import("./pages/AboutPage.jsx"));
 const AdminChiefAttendancePage = lazy(() => import("./pages/AdminChiefAttendancePage.jsx"));
@@ -27,7 +28,8 @@ function RouteFallback() {
 export default function App() {
   return (
     <AuthProvider>
-      <ScrollToTop />
+      <ToastProvider>
+        <ScrollToTop />
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route element={<Layout />}>
@@ -83,6 +85,7 @@ export default function App() {
           </Route>
         </Routes>
       </Suspense>
+      </ToastProvider>
     </AuthProvider>
   );
 }

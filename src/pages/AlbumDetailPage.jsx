@@ -1,9 +1,10 @@
-﻿import { CalendarDays, ChevronLeft, ChevronRight, Images, MapPin, X } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Images, MapPin, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { deletePhotos, updateAlbum } from "../api/client.js";
 import { getPublicAlbumPage } from "../api/publicClient.js";
 import { useAuth } from "../auth/AuthProvider.jsx";
+import { useToast } from "../components/ToastProvider.jsx";
 import { canManageSystem, canPublishContent } from "../services/permissions.js";
 
 const acceptedImageTypes = ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif";
@@ -12,6 +13,7 @@ const PHOTOS_PER_PAGE = 30;
 export default function AlbumDetailPage() {
   const { albumId } = useParams();
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [album, setAlbum] = useState(null);
   const [photos, setPhotos] = useState([]);
   const [photoOffset, setPhotoOffset] = useState(0);
@@ -26,6 +28,12 @@ export default function AlbumDetailPage() {
   const [message, setMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const isAdmin = canManageSystem(user);
+
+  useEffect(() => {
+    if (message) {
+      showToast(message);
+    }
+  }, [message, showToast]);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,15 +51,15 @@ export default function AlbumDetailPage() {
 
       try {
         const page = await getPublicAlbumPage(albumId, { limit: PHOTOS_PER_PAGE, offset: 0 });
-        if (cancelled) return;
+if (cancelled) return;
         setAlbum(page.album);
         setPhotos(page.photos);
         setPhotoOffset(page.photos.length);
         setHasMorePhotos(page.hasMore);
       } catch (error) {
-        if (!cancelled) setLoadError(error);
+if (!cancelled) setLoadError(error);
       } finally {
-        if (!cancelled) {
+if (!cancelled) {
           setIsLoadingAlbum(false);
           setIsLoadingPhotos(false);
         }
@@ -74,7 +82,7 @@ export default function AlbumDetailPage() {
   };
 
   const loadMorePhotos = async () => {
-    if (isLoadingPhotos || !hasMorePhotos) return;
+if (isLoadingPhotos || !hasMorePhotos) return;
 
     try {
       setIsLoadingPhotos(true);
@@ -91,8 +99,7 @@ export default function AlbumDetailPage() {
       setIsLoadingPhotos(false);
     }
   };
-
-  if (isLoadingAlbum) {
+if (isLoadingAlbum) {
     return (
       <section className="page-section narrow">
         <p className="eyebrow">Album</p>
@@ -100,8 +107,7 @@ export default function AlbumDetailPage() {
       </section>
     );
   }
-
-  if (loadError) {
+if (loadError) {
     return (
       <section className="page-section narrow">
         <p className="eyebrow">Album</p>
@@ -111,8 +117,7 @@ export default function AlbumDetailPage() {
       </section>
     );
   }
-
-  if (!album) {
+if (!album) {
     return (
       <section className="page-section narrow">
         <p className="eyebrow">Album</p>

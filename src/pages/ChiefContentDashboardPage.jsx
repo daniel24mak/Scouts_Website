@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { addAlbumPhotos, createAlbum, createBlog } from "../api/client.js";
 import { useBootstrap } from "../api/useBootstrap.js";
 import { useAuth } from "../auth/AuthProvider.jsx";
+import { useToast } from "../components/ToastProvider.jsx";
 
 const acceptedImageTypes = ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif";
 
 export default function ChiefContentDashboardPage() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const { data, refresh } = useBootstrap();
   const availableAlbums = data.allGalleryAlbums ?? data.galleryAlbums;
   const [message, setMessage] = useState("");
@@ -23,6 +25,12 @@ export default function ChiefContentDashboardPage() {
   const [photoFiles, setPhotoFiles] = useState([]);
   const [photoUploadProgress, setPhotoUploadProgress] = useState({ completed: 0, total: 0, percent: 0 });
   const [uploadStatus, setUploadStatus] = useState(null);
+
+  useEffect(() => {
+    if (message) {
+      showToast(message);
+    }
+  }, [message, showToast]);
 
   useEffect(() => {
     if (!photoAlbumId && availableAlbums[0]?.id) {
@@ -71,11 +79,11 @@ export default function ChiefContentDashboardPage() {
   const handleAlbumSubmit = async (event) => {
     event.preventDefault();
     try {
-      if (!albumThumbnailFile) {
+    if (!albumThumbnailFile) {
         setMessage("Please upload an album thumbnail.");
         return;
       }
-      if (!photoFiles.length) {
+    if (!photoFiles.length) {
         setMessage("Please upload at least one photo.");
         return;
       }

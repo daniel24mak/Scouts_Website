@@ -64,6 +64,7 @@ import ScoutAttendanceManager from "../features/attendance/ScoutAttendanceManage
 import ChiefAttendanceManager from "../features/attendance/ChiefAttendanceManager.jsx";
 import CalendarManagement from "../features/calendar/CalendarManagement.jsx";
 import { useAuth } from "../auth/AuthProvider.jsx";
+import { useToast } from "../components/ToastProvider.jsx";
 import { logAuditEvent } from "../services/auditService.js";
 import { signUpInternalUser } from "../services/authService.js";
 import {
@@ -220,11 +221,10 @@ function arrayBufferToBase64(buffer) {
 }
 
 function chiefDefaults(level) {
-  if (level === "head") {
+    if (level === "head") {
     return { canPublish: true, canCreateGroupMeetings: true, canEditScouts: true };
   }
-
-  if (level === "vice") {
+    if (level === "vice") {
     return { canPublish: true, canCreateGroupMeetings: true, canEditScouts: false };
   }
 
@@ -247,7 +247,7 @@ function toChiefForm(user) {
 
 function filterBySearch(items, search, fields) {
   const term = search.trim().toLowerCase();
-  if (!term) {
+    if (!term) {
     return items;
   }
 
@@ -263,8 +263,7 @@ function sortScouts(scouts, sortBy) {
 function getSchoolGrade(scout) {
   const grade = String(scout?.schoolGrade ?? "").trim();
   const school = String(scout?.school ?? "").trim();
-
-  if (grade && school && grade.toLowerCase() === school.toLowerCase()) {
+    if (grade && school && grade.toLowerCase() === school.toLowerCase()) {
     return grade;
   }
 
@@ -289,40 +288,31 @@ function canManageEquipesForGroup(user, groupId) {
 
 function isSectionAllowed(section, user) {
   const [id, , , access] = section;
-
-  if (!user || user.accountStatus === "disabled") {
+    if (!user || user.accountStatus === "disabled") {
     return false;
   }
-
-  if (canManageSystem(user)) {
+    if (canManageSystem(user)) {
     return access !== "settings";
   }
-
-  if (id === "equipes") {
+    if (id === "equipes") {
     return ["head", "vice"].includes(user?.chiefLevel);
   }
-
-  if (access === "settings" || access === "admin") {
+    if (access === "settings" || access === "admin") {
     return false;
   }
-
-  if (access === "all") {
+    if (access === "all") {
     return true;
   }
-
-  if (access === "chief") {
+    if (access === "chief") {
     return hasChiefAccess(user);
   }
-
-  if (access === "attendance") {
+    if (access === "attendance") {
     return canTakeAttendance(user);
   }
-
-  if (access === "publish") {
+    if (access === "publish") {
     return canPublishContent(user);
   }
-
-  if (access === "scouts") {
+    if (access === "scouts") {
     return canEditScouts(user);
   }
 
@@ -331,12 +321,10 @@ function isSectionAllowed(section, user) {
 
 function canOpenSection(sectionId, user) {
   const section = sections.find(([id]) => id === sectionId);
-
-  if (!section) {
+    if (!section) {
     return false;
   }
-
-  if (section[3] === "settings") {
+    if (section[3] === "settings") {
     return canManageSystem(user);
   }
 
@@ -345,6 +333,7 @@ function canOpenSection(sectionId, user) {
 
 export default function AdminDashboardPage() {
   const { user, logout } = useAuth();
+  const { showToast } = useToast();
   const { data, refresh } = useBootstrap();
   const [activeSection, setActiveSection] = useState("overview");
   const [search, setSearch] = useState("");
@@ -398,6 +387,12 @@ export default function AdminDashboardPage() {
   const [registrationTargetMode, setRegistrationTargetMode] = useState("existing");
   const [registrationYearId, setRegistrationYearId] = useState(data.activeScoutYearId ?? data.scoutYears?.[0]?.id ?? "");
   const [newScoutYearName, setNewScoutYearName] = useState("");
+
+  useEffect(() => {
+    if (saveMessage) {
+      showToast(saveMessage);
+    }
+  }, [saveMessage, showToast]);
 
   const visibleSections = sections.filter((section) => isSectionAllowed(section, user));
   const isAdmin = canManageSystem(user);
@@ -459,7 +454,7 @@ export default function AdminDashboardPage() {
   }, [activeSection, activeSetting, settingsMode]);
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") {
+    if (event.key === "Escape") {
         setIsMobileSidebarOpen(false);
       }
     };
@@ -480,8 +475,7 @@ export default function AdminDashboardPage() {
       const isMobile = window.matchMedia("(max-width: 768px)").matches;
       const isScrollingUp = currentScrollY < lastScrollY - 8;
       const isScrollingDown = currentScrollY > lastScrollY + 8;
-
-      if (!isMobile || currentScrollY < 180 || isMobileSidebarOpen) {
+    if (!isMobile || currentScrollY < 180 || isMobileSidebarOpen) {
         setShowMobileMenuBar(false);
       } else if (isScrollingUp) {
         setShowMobileMenuBar(true);
@@ -609,14 +603,12 @@ export default function AdminDashboardPage() {
 
     try {
       const cleanedYearName = newScoutYearName.trim();
-
-      if (registrationTargetMode === "existing" && !registrationYearId) {
+    if (registrationTargetMode === "existing" && !registrationYearId) {
         setSaveMessage("Choose a scouting year before uploading the registration list.");
         event.target.value = "";
         return;
       }
-
-      if (registrationTargetMode === "new" && !cleanedYearName) {
+    if (registrationTargetMode === "new" && !cleanedYearName) {
         setSaveMessage("Please enter a scouting year name.");
         event.target.value = "";
         return;
@@ -635,7 +627,7 @@ export default function AdminDashboardPage() {
       );
       await refresh();
       event.target.value = "";
-      if (registrationTargetMode === "new") {
+    if (registrationTargetMode === "new") {
         setNewScoutYearName("");
         setRegistrationTargetMode("existing");
       }
@@ -647,7 +639,6 @@ export default function AdminDashboardPage() {
     event.preventDefault();
 
     const cleanedYearName = newScoutYearName.trim();
-
     if (!cleanedYearName) {
       setSaveMessage("Please enter a scouting year name.");
       return;
@@ -669,7 +660,6 @@ export default function AdminDashboardPage() {
   const changeActiveScoutYear = async (yearId) => {
     const targetYear = data.scoutYears?.find((year) => year.id === yearId);
     const currentYear = data.scoutYears?.find((year) => year.isActive);
-
     if (!targetYear || targetYear.isActive) {
       return;
     }
@@ -708,7 +698,6 @@ export default function AdminDashboardPage() {
   };
   const createDashboardEquipe = async (event) => {
     event.preventDefault();
-
     if (!canManageEquipesForGroup(user, dashboardGroupId)) {
       setSaveMessage("Only admins, head chiefs, and vice head chiefs can manage equipes for this group.");
       return;
@@ -749,7 +738,6 @@ export default function AdminDashboardPage() {
   const buildRandomAssignmentPreview = () => {
     const availableScouts = data.registeredScouts.filter((scout) => scout.groupId === dashboardGroupId);
     const activeEquipes = groupEquipes;
-
     if (!activeEquipes.length || !availableScouts.length) {
       setSaveMessage("Create equipes and make sure this group has scouts before randomizing.");
       return;
@@ -773,7 +761,6 @@ export default function AdminDashboardPage() {
       autoAssignMode === "custom" && totalRequested > availableScouts.length
         ? "Custom equipe sizes exceed the number of available scouts."
         : "";
-
     if (warning) {
       setSaveMessage(warning);
       return;
@@ -813,7 +800,7 @@ export default function AdminDashboardPage() {
     const unassigned = availableScouts.filter((scout) => !assignedIds.has(scout.id));
     const genderWarning = genderBalance !== "auto" && Object.values(assignments).some((items) => {
       const gendered = items.filter((scout) => ["male", "female"].includes(String(scout.gender).toLowerCase()));
-      if (!gendered.length) return false;
+    if (!gendered.length) return false;
       const actual = gendered.filter((scout) => scout.gender === "male").length / gendered.length;
       return Math.abs(actual - maleRatio) > 0.2;
     });
@@ -859,11 +846,10 @@ export default function AdminDashboardPage() {
   const createChief = async (event) => {
     event.preventDefault();
     try {
-      if (isSupabaseConfigured && !newChief.id && !newChief.temporaryPassword) {
+    if (isSupabaseConfigured && !newChief.id && !newChief.temporaryPassword) {
         throw new Error("Enter a temporary password for a new Auth user, or paste an existing Auth user ID to create only the profile.");
       }
-
-      if (isSupabaseConfigured && newChief.email && newChief.temporaryPassword && !newChief.id) {
+    if (isSupabaseConfigured && newChief.email && newChief.temporaryPassword && !newChief.id) {
         const authUser = await signUpInternalUser({
           email: newChief.email,
           password: newChief.temporaryPassword,
@@ -947,35 +933,33 @@ export default function AdminDashboardPage() {
     event.preventDefault();
 
     try {
-      if (galleryUploadMode === "existing" && !photoAlbumId) {
+    if (galleryUploadMode === "existing" && !photoAlbumId) {
         setSaveMessage("Please choose an existing album.");
         return;
       }
-
-      if (galleryUploadMode === "new") {
-        if (!newAlbum.title.trim()) {
+    if (galleryUploadMode === "new") {
+    if (!newAlbum.title.trim()) {
           setSaveMessage("Please enter an album title.");
           return;
         }
-        if (!newAlbum.eventDate) {
+    if (!newAlbum.eventDate) {
           setSaveMessage("Please select an album date.");
           return;
         }
-        if (!newAlbum.location.trim()) {
+    if (!newAlbum.location.trim()) {
           setSaveMessage("Please enter the album location.");
           return;
         }
-        if (!albumThumbnailFile) {
+    if (!albumThumbnailFile) {
           setSaveMessage("Please upload an album thumbnail.");
           return;
         }
-        if (!newAlbum.category.trim()) {
+    if (!newAlbum.category.trim()) {
           setSaveMessage("Please select an album category.");
           return;
         }
       }
-
-      if (!photoFiles.length) {
+    if (!photoFiles.length) {
         setSaveMessage("Please upload at least one photo.");
         return;
       }
@@ -984,8 +968,7 @@ export default function AdminDashboardPage() {
       setPhotoUploadProgress({ completed: 0, total: photoFiles.length, percent: 0 });
       let targetAlbumId = photoAlbumId;
       const approvalStatus = isAdmin ? newAlbum.approvalStatus : "pending";
-
-      if (galleryUploadMode === "new") {
+    if (galleryUploadMode === "new") {
         const created = await createAlbum({
           ...newAlbum,
           thumbnailFile: albumThumbnailFile,
@@ -1153,7 +1136,7 @@ export default function AdminDashboardPage() {
   };
   const publishWebsiteContent = async () => {
     for (const [sectionName, contentKey, , fieldType] of websiteContentFields) {
-      if (siteContentEdits[contentKey] || siteImageFiles[contentKey]) {
+    if (siteContentEdits[contentKey] || siteImageFiles[contentKey]) {
         await saveContentField(sectionName, contentKey, fieldType);
       }
     }
@@ -1180,7 +1163,6 @@ export default function AdminDashboardPage() {
   };
   const saveManagedLeader = async (leaderId) => {
     const edit = leaderEdits[leaderId];
-
     if (!edit) {
       return;
     }
@@ -1926,7 +1908,6 @@ export default function AdminDashboardPage() {
     const isMixedGroup =
       dashboardGroup?.genderFilter === "mixed" ||
       (groupScouts.some((scout) => scout.gender === "male") && groupScouts.some((scout) => scout.gender === "female"));
-
     if (!canManageEquipes) {
       return (
         <AccessDenied message="Only admins, head chiefs, and vice head chiefs can manage equipes for this group." />
@@ -2446,7 +2427,6 @@ export default function AdminDashboardPage() {
     if (!canOpenSection(activeSection, user)) {
       return <AccessDenied />;
     }
-
     if (activeSection === "overview") return renderOverview();
     if (activeSection === "myGroup") return renderMyGroup();
     if (activeSection === "websiteContent") return renderWebsiteContent();
@@ -2514,7 +2494,7 @@ export default function AdminDashboardPage() {
               type="button"
               className={(settingsMode ? activeSetting === id : activeSection === id) ? "active" : ""}
               onClick={() => {
-                if (settingsMode) {
+    if (settingsMode) {
                   setActiveSetting(id);
                   setActiveSection(id);
                 } else {
