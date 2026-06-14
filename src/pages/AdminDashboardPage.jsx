@@ -375,6 +375,7 @@ export default function AdminDashboardPage() {
   const [photoUploadProgress, setPhotoUploadProgress] = useState({ completed: 0, total: 0, percent: 0 });
   const [siteContentEdits, setSiteContentEdits] = useState({});
   const [siteImageFiles, setSiteImageFiles] = useState({});
+  const [siteImagePreviews, setSiteImagePreviews] = useState({});
   const [leaderEdits, setLeaderEdits] = useState({});
   const [newLeader, setNewLeader] = useState(emptyLeader);
   const [faqEdits, setFaqEdits] = useState({});
@@ -416,6 +417,20 @@ export default function AdminDashboardPage() {
   ];
   const pendingItems = reviewItems.filter((item) => ["pending", "pending_update", "needs_changes"].includes(item.approvalStatus));
   const selectedSection = sections.find(([id]) => id === activeSection);
+
+  useEffect(() => {
+    const previews = Object.fromEntries(
+      Object.entries(siteImageFiles)
+        .filter(([, file]) => file instanceof File)
+        .map(([contentKey, file]) => [contentKey, URL.createObjectURL(file)])
+    );
+
+    setSiteImagePreviews(previews);
+
+    return () => {
+      Object.values(previews).forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [siteImageFiles]);
 
   useEffect(() => {
     if (!photoAlbumId && allAlbums[0]?.id) {
@@ -1117,15 +1132,7 @@ export default function AdminDashboardPage() {
   };
   const getContentText = (contentKey, fallback = "") =>
     siteContentEdits[contentKey]?.textValue ?? data.siteContent?.[contentKey]?.textValue ?? fallback;
-  const getContentImage = (contentKey) => {
-    const selectedFile = siteImageFiles[contentKey];
-
-    if (selectedFile) {
-      return URL.createObjectURL(selectedFile);
-    }
-
-    return data.siteContent?.[contentKey]?.imageUrl ?? null;
-  };
+  const getContentImage = (contentKey) => siteImagePreviews[contentKey] ?? data.siteContent?.[contentKey]?.imageUrl ?? null;
   const createManagedLeader = async (event) => {
     event.preventDefault();
 
@@ -2114,6 +2121,7 @@ export default function AdminDashboardPage() {
         <input required placeholder="Title" value={newPost.title} onChange={(event) => setNewPost((current) => ({ ...current, title: event.target.value }))} />
         <textarea rows="3" placeholder="Excerpt" value={newPost.excerpt} onChange={(event) => setNewPost((current) => ({ ...current, excerpt: event.target.value, body: event.target.value }))} />
         <textarea rows="6" placeholder="Full blog content" value={newPost.body} onChange={(event) => setNewPost((current) => ({ ...current, body: event.target.value }))} />
+        <small className="formatting-help">Formatting: **bold**, *italic*, `code`, - bullet lines, # headings, emojis, and [blog link](/blogs/post-slug).</small>
         <label className="file-picker">
           Thumbnail image
           <input type="file" accept={acceptedImageTypes} onChange={(event) => setNewPost((current) => ({ ...current, thumbnailFile: event.target.files?.[0] ?? null }))} />
@@ -2662,6 +2670,7 @@ function ContentTable({ items, edits, setEdits, onSave, onDelete, refresh, type,
                     <div className="blog-inline-editor">
                       <textarea rows="3" placeholder="Excerpt" value={edit.excerpt ?? ""} onChange={(event) => setEdit("excerpt", event.target.value)} />
                       <textarea rows="6" placeholder="Full blog content" value={edit.body ?? ""} onChange={(event) => setEdit("body", event.target.value)} />
+                      <small className="formatting-help">Formatting: **bold**, *italic*, `code`, - bullet lines, # headings, emojis, and [blog link](/blogs/post-slug).</small>
                     </div>
                   )}
                   {item.reviewerComment && <small className="review-note">Review note: {item.reviewerComment}</small>}
@@ -2732,3 +2741,5 @@ function AccessDenied({ message = "Your role, chief level, assigned group, and p
     </article>
   );
 }
+
+

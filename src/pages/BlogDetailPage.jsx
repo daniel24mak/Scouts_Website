@@ -2,24 +2,38 @@ import { Images } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { useState } from "react";
 import { updateBlog } from "../api/client.js";
-import { useBootstrap } from "../api/useBootstrap.js";
+import { getPublicBlogDetailPage } from "../api/publicClient.js";
+import { usePublicData } from "../api/usePublicData.js";
 import { useAuth } from "../auth/AuthProvider.jsx";
+import FormattedText from "../components/FormattedText.jsx";
 import { canManageSystem, canPublishContent } from "../services/permissions.js";
 
 const acceptedImageTypes = ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif";
 
 export default function BlogDetailPage() {
   const { slug } = useParams();
-  const { data, refresh } = useBootstrap();
+  const { data, isLoading, setData } = usePublicData(
+    () => getPublicBlogDetailPage(slug),
+    [slug],
+    { post: null, linkedAlbum: null },
+    ["blog-detail", slug]
+  );
   const { user } = useAuth();
-  const allPosts = data.allBlogPosts ?? data.blogPosts;
-  const post =
-    allPosts.find((item) => item.slug === slug && (item.approvalStatus === "approved" || item.submittedBy === user?.id || canManageSystem(user))) ??
-    data.blogPosts.find((item) => item.slug === slug);
+  const post = data?.post ?? null;
+  const linkedAlbum = data?.linkedAlbum ?? null;
   const [isEditing, setIsEditing] = useState(false);
   const [editPost, setEditPost] = useState(null);
   const [message, setMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  if (isLoading) {
+    return (
+      <section className="page-section narrow">
+        <p className="eyebrow">Blog</p>
+        <h1>Loading blog...</h1>
+      </section>
+    );
+  }
 
   if (!post) {
     return (
@@ -33,7 +47,7 @@ export default function BlogDetailPage() {
     );
   }
 
-  const linkedAlbum = data.galleryAlbums.find((album) => album.id === post.albumId);
+  const albumOptions = linkedAlbum ? [linkedAlbum] : [];
   const canEditPost = Boolean(user && (canManageSystem(user) || (canPublishContent(user) && post.submittedBy === user.id)));
   const beginEdit = () => {
     setEditPost({
@@ -70,7 +84,8 @@ export default function BlogDetailPage() {
       });
       setMessage(nextStatus === "draft" ? "Draft saved." : "Blog sent for approval.");
       setIsEditing(false);
-      await refresh();
+      const nextPage = await getPublicBlogDetailPage(slug).catch(() => data);
+      setData(nextPage);
     } catch (error) {
       setMessage(`Blog save failed: ${error.message}`);
     } finally {
@@ -90,7 +105,13 @@ export default function BlogDetailPage() {
       {message && <p className="helper-text">{message}</p>}
       {isSaving && <UploadLoadingState message={message || "Saving blog..."} />}
       {post.thumbnailUrl ? (
-        <img className="blog-hero-image" src={post.thumbnailUrl} alt={post.title} />
+        <img
+          className="blog-hero-image"
+          src={post.thumbnailUrl}
+          alt={post.title}
+          decoding="async"
+          sizes="(max-width: 768px) 100vw, 760px"
+        />
       ) : (
         <div className="blog-hero-thumb" style={{ "--tile-color": post.thumbnailColor }}>
           <span>{post.title}</span>
@@ -116,6 +137,7 @@ export default function BlogDetailPage() {
           <label>
             Full blog content
             <textarea rows="9" value={editPost.body} onChange={(event) => setEditPost((current) => ({ ...current, body: event.target.value }))} />
+            <small className="formatting-help">Formatting: **bold**, *italic*, `code`, - bullet lines, # headings, emojis, and [blog link](/blogs/post-slug).</small>
           </label>
           <label>
             Author
@@ -130,7 +152,7 @@ export default function BlogDetailPage() {
             Linked album
             <select value={editPost.albumId ?? ""} onChange={(event) => setEditPost((current) => ({ ...current, albumId: event.target.value }))}>
               <option value="">No linked album</option>
-              {(data.allGalleryAlbums ?? data.galleryAlbums).map((album) => (
+              {albumOptions.map((album) => (
                 <option value={album.id} key={album.id}>{album.title}</option>
               ))}
             </select>
@@ -152,7 +174,7 @@ export default function BlogDetailPage() {
           </div>
         </form>
       ) : (
-        <p className="detail-copy">{post.body}</p>
+        <FormattedText text={post.body} className="detail-copy formatted-text" />
       )}
       {linkedAlbum && (
         <Link className="linked-album" to={`/gallery/${linkedAlbum.id}`}>
@@ -179,3 +201,4 @@ function UploadLoadingState({ message }) {
 function StatusText({ status }) {
   return <span>{String(status).replace("_", " ")}</span>;
 }
+

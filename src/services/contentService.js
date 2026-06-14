@@ -1,4 +1,4 @@
-import { normalizePost, normalizePostRevision } from "./supabaseMappers.js";
+﻿import { normalizePost, normalizePostRevision } from "./supabaseMappers.js";
 import {
   deleteSupabaseFile,
   deleteSupabaseRows,
@@ -8,13 +8,34 @@ import {
   patchSupabaseRows,
   uploadSupabaseFile
 } from "./supabaseClient.js";
-import { optimizedImagePath, optimizeImageForUpload } from "./imageOptimizationService.js";
+import { IMAGE_CACHE_CONTROL, optimizedImagePath, optimizeImageForUpload } from "./imageOptimizationService.js";
 
 function slugify(value) {
   return String(value ?? "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "") || "post";
+}
+
+
+const publicPostSelect = "select=id,slug,title,author_name,thumbnail_color,thumbnail_url,thumbnail_path,linked_album_id,excerpt,body,status,published_at,created_at,updated_at";
+
+export async function getPublicPosts({ limit = 12, offset = 0 } = {}) {
+  const rows = await getSupabaseRows(
+    "posts",
+    `${publicPostSelect}&status=eq.approved&order=published_at.desc,created_at.desc&limit=${Number(limit)}&offset=${Number(offset)}`
+  );
+
+  return rows.map(normalizePost);
+}
+
+export async function getPublicPostBySlug(slug) {
+  const rows = await getSupabaseRows(
+    "posts",
+    `${publicPostSelect}&slug=eq.${encodeURIComponent(slug)}&status=eq.approved&limit=1`
+  );
+
+  return rows[0] ? normalizePost(rows[0]) : null;
 }
 
 async function createUniqueSlug(baseSlug, currentPostId = null) {
@@ -47,7 +68,7 @@ async function preparePostData(post, options = {}) {
   if (post.thumbnailFile instanceof File) {
     const optimized = await optimizeImageForUpload(post.thumbnailFile, "blog_thumbnail");
     thumbnailPath = optimizedImagePath("blog-thumbnails/optimized", post.thumbnailFile);
-    thumbnailUrl = await uploadSupabaseFile(thumbnailPath, optimized.file, "blog-thumbnails");
+    thumbnailUrl = await uploadSupabaseFile(thumbnailPath, optimized.file, "blog-thumbnails", { cacheControl: IMAGE_CACHE_CONTROL });
   }
 
   return {
@@ -181,3 +202,4 @@ export async function deletePost(postId) {
 
   return deleted;
 }
+

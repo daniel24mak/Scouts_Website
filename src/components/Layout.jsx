@@ -1,4 +1,4 @@
-import { Camera, FileText, Home, Info, Instagram, Menu, Users, X } from "lucide-react";
+import { CalendarDays, Camera, FileText, Home, Info, Instagram, Menu, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider.jsx";
@@ -7,6 +7,7 @@ import scoutLogo from "../assets/smscouts_logo.png";
 const navItems = [
   { to: "/", label: "Home", icon: Home },
   { to: "/about", label: "About Us", icon: Info },
+  { to: "/calendar", label: "Calendar", icon: CalendarDays },
   { to: "/blogs", label: "Blogs / News", icon: FileText },
   { to: "/gallery", label: "Gallery", icon: Camera }
 ];
@@ -123,6 +124,7 @@ export default function Layout() {
           <strong>Quick links</strong>
           <Link to="/">Home</Link>
           <Link to="/about">About Us</Link>
+          <Link to="/calendar">Calendar</Link>
           <Link to="/blogs">Blogs / News</Link>
           <Link to="/gallery">Gallery</Link>
           <Link to="/login">Login</Link>
@@ -133,3 +135,4 @@ export default function Layout() {
     </div>
   );
 }
+

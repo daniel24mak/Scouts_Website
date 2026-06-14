@@ -1,5 +1,6 @@
-import { HeartHandshake, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
-import { useBootstrap } from "../api/useBootstrap.js";
+﻿import { HeartHandshake, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
+import { getPublicAboutData } from "../api/publicClient.js";
+import { usePublicData } from "../api/usePublicData.js";
 import { contentImage, contentText } from "../services/siteContentService.js";
 
 const goals = [
@@ -42,12 +43,13 @@ function initials(name) {
 }
 
 export default function AboutPage() {
-  const { data } = useBootstrap();
-  const siteContent = data.siteContent ?? {};
-  const managedLeaders = data.leaders ?? [];
+  const { data } = usePublicData(getPublicAboutData, [], { siteContent: {}, leaders: [], users: [] }, ["about"]);
+  const siteContent = data?.siteContent ?? {};
+  const managedLeaders = data?.leaders ?? [];
+  const users = data?.users ?? [];
   const leaders = managedLeaders.length
     ? managedLeaders
-    : data.users
+    : users
         .filter((user) => user.role === "admin" || user.role === "chief" || user.groupId)
         .slice(0, 12);
   const aboutIntro = contentText(
@@ -81,7 +83,13 @@ export default function AboutPage() {
         </div>
         {aboutImage ? (
           <div className="public-image-card">
-            <img src={aboutImage} alt="St. Mary's Scouts Dubai community activity" loading="lazy" />
+            <img
+              src={aboutImage}
+              alt="St. Mary's Scouts Dubai community activity"
+              loading="lazy"
+              decoding="async"
+              sizes="(max-width: 768px) 100vw, 50vw"
+            />
           </div>
         ) : (
           <div className="about-intro-panel">
@@ -104,7 +112,13 @@ export default function AboutPage() {
           {leaders.map((leader) => (
             <article className="leader-card" key={leader.id}>
               {leader.photoUrl ? (
-                <img src={leader.photoUrl} alt={`${leader.name}, ${leader.title ?? titleForLeader(leader)}`} loading="lazy" />
+                <img
+                  src={leader.photoUrl}
+                  alt={`${leader.name}, ${leader.title ?? titleForLeader(leader)}`}
+                  loading="lazy"
+                  decoding="async"
+                  sizes="(max-width: 768px) 50vw, 220px"
+                />
               ) : (
                 <div className="leader-avatar">{initials(leader.name)}</div>
               )}
@@ -167,3 +181,5 @@ export default function AboutPage() {
     </>
   );
 }
+
+

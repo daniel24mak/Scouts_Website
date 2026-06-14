@@ -1,4 +1,4 @@
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+﻿const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabasePublishableKey =
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
 const storageBucket = import.meta.env.VITE_SUPABASE_STORAGE_BUCKET ?? "scouts-files";
@@ -138,7 +138,7 @@ export function callSupabaseAuth(path, payload, options = {}) {
   });
 }
 
-export async function uploadSupabaseFile(path, file, bucket = storageBucket) {
+export async function uploadSupabaseFile(path, file, bucket = storageBucket, options = {}) {
   if (!isSupabaseConfigured) {
     throw new Error("Supabase is not configured.");
   }
@@ -153,7 +153,9 @@ export async function uploadSupabaseFile(path, file, bucket = storageBucket) {
       headers: {
         apikey: supabasePublishableKey,
         Authorization: `Bearer ${authToken}`,
-        "Content-Type": file.type || "application/octet-stream"
+        "Content-Type": file.type || "application/octet-stream",
+        ...(options.cacheControl ? { "Cache-Control": options.cacheControl } : {}),
+        ...(options.upsert ? { "x-upsert": "true" } : {})
       },
       body: file
     }
@@ -208,3 +210,4 @@ export function getSupabasePublicFileUrl(path, bucket = storageBucket) {
   const encodedPath = path.split("/").map(encodeURIComponent).join("/");
   return `${supabaseUrl}/storage/v1/object/public/${bucket}/${encodedPath}`;
 }
+

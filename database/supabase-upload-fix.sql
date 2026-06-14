@@ -230,7 +230,9 @@ ADD COLUMN IF NOT EXISTS end_time time,
 ADD COLUMN IF NOT EXISTS image_url text,
 ADD COLUMN IF NOT EXISTS storage_path text,
 ADD COLUMN IF NOT EXISTS created_by uuid REFERENCES user_profiles(id),
-ADD COLUMN IF NOT EXISTS reviewer_comment text;
+ADD COLUMN IF NOT EXISTS reviewer_comment text,
+ADD COLUMN IF NOT EXISTS linked_blog_id uuid REFERENCES posts(id) ON DELETE SET NULL,
+ADD COLUMN IF NOT EXISTS linked_album_id uuid REFERENCES gallery_albums(id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS site_content (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

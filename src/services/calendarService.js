@@ -8,7 +8,7 @@ import {
   patchSupabaseRows,
   uploadSupabaseFile
 } from "./supabaseClient.js";
-import { optimizedImagePath, optimizeImageForUpload } from "./imageOptimizationService.js";
+import { IMAGE_CACHE_CONTROL, optimizedImagePath, optimizeImageForUpload } from "./imageOptimizationService.js";
 
 async function prepareEventImage(event) {
   if (!(event.imageFile instanceof File)) {
@@ -20,7 +20,7 @@ async function prepareEventImage(event) {
 
   const optimized = await optimizeImageForUpload(event.imageFile, "event");
   const storagePath = optimizedImagePath("event-images/optimized", event.imageFile);
-  const imageUrl = await uploadSupabaseFile(storagePath, optimized.file, "event-images");
+  const imageUrl = await uploadSupabaseFile(storagePath, optimized.file, "event-images", { cacheControl: IMAGE_CACHE_CONTROL });
 
   return {
     image_url: imageUrl,
@@ -30,6 +30,16 @@ async function prepareEventImage(event) {
 
 export async function getCalendarEvents() {
   const rows = await getSupabaseRows("calendar_events", "select=*&order=event_date.asc");
+  return rows.map(normalizeEvent);
+}
+
+export async function getPublicCalendarEvents({ limit = 3 } = {}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const rows = await getSupabaseRows(
+    "calendar_events",
+    `select=id,title,event_date,date_from,date_to,start_time,end_time,event_type,visibility,location,description,image_url,storage_path,status,linked_blog_id,linked_album_id&status=eq.approved&visibility=eq.public&event_date=gte.${today}&order=event_date.asc&limit=${Number(limit)}`
+  );
+
   return rows.map(normalizeEvent);
 }
 
@@ -48,6 +58,8 @@ export async function createSupabaseCalendarEvent(event) {
     visibility: event.visibility ?? "public",
     group_id: event.groupId || null,
     visible_group_ids: event.visibleGroupIds ?? [],
+    linked_blog_id: event.linkedBlogId || null,
+    linked_album_id: event.linkedAlbumId || null,
     location: event.location ?? "Scout Hall",
     description: event.description ?? "",
     ...eventImage,
@@ -84,6 +96,8 @@ export async function updateSupabaseCalendarEvent(eventId, event) {
     visibility: event.visibility ?? "public",
     group_id: event.groupId || null,
     visible_group_ids: event.visibleGroupIds ?? [],
+    linked_blog_id: event.linkedBlogId || null,
+    linked_album_id: event.linkedAlbumId || null,
     location: event.location ?? "",
     description: event.description ?? "",
     ...eventImage,
@@ -100,3 +114,4 @@ export async function updateSupabaseCalendarEvent(eventId, event) {
 
   return saved;
 }
+

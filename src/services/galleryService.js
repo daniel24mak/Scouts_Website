@@ -1,4 +1,4 @@
-import {
+﻿import {
   normalizeAlbum,
   normalizeAlbumRevision,
   normalizePhoto,
@@ -15,13 +15,49 @@ import {
   patchSupabaseRows,
   uploadSupabaseFile
 } from "./supabaseClient.js";
-import { optimizedImagePath, optimizeImageForUpload } from "./imageOptimizationService.js";
+import { IMAGE_CACHE_CONTROL, optimizedImagePath, optimizeImageForUpload } from "./imageOptimizationService.js";
 
 function slugify(value) {
   return String(value ?? "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+
+const publicAlbumSelect = "select=id,title,event_date,location,category,description,cover_label,thumbnail_url,thumbnail_storage_path,thumbnail_source,status,created_at,updated_at";
+const publicPhotoSelect = "select=id,album_id,title,public_url,storage_path,thumbnail_url,thumbnail_storage_path,optimized_width,optimized_height,optimized_file_size,thumbnail_file_size,status,created_at,sort_order";
+
+export async function getPublicGalleryAlbums({ limit = 12, offset = 0 } = {}) {
+  const rows = await getSupabaseRows(
+    "gallery_albums",
+    `${publicAlbumSelect}&status=eq.approved&order=event_date.desc&limit=${Number(limit)}&offset=${Number(offset)}`
+  );
+
+  return rows.map((album) => normalizeAlbum(album, []));
+}
+
+export async function getPublicGalleryAlbumById(albumId) {
+  const rows = await getSupabaseRows(
+    "gallery_albums",
+    `${publicAlbumSelect}&id=eq.${encodeURIComponent(albumId)}&status=eq.approved&limit=1`
+  );
+
+  return rows[0] ? normalizeAlbum(rows[0], []) : null;
+}
+
+export async function getPublicAlbumPhotos(albumId, { limit = 30, offset = 0 } = {}) {
+  const pageSize = Number(limit);
+  const rows = await getSupabaseRows(
+    "gallery_images",
+    `${publicPhotoSelect}&album_id=eq.${encodeURIComponent(albumId)}&status=eq.approved&order=sort_order.asc,created_at.asc&limit=${pageSize + 1}&offset=${Number(offset)}`
+  );
+  const pageRows = rows.slice(0, pageSize);
+
+  return {
+    photos: pageRows.map(normalizePhoto),
+    hasMore: rows.length > pageSize
+  };
 }
 
 async function prepareAlbumData(album) {
@@ -31,7 +67,7 @@ async function prepareAlbumData(album) {
   if (album.thumbnailFile instanceof File) {
     const optimized = await optimizeImageForUpload(album.thumbnailFile, "album_thumbnail");
     thumbnailPath = optimizedImagePath("album-thumbnails/optimized", album.thumbnailFile);
-    thumbnailUrl = await uploadSupabaseFile(thumbnailPath, optimized.file, "album-thumbnails");
+    thumbnailUrl = await uploadSupabaseFile(thumbnailPath, optimized.file, "album-thumbnails", { cacheControl: IMAGE_CACHE_CONTROL });
   }
 
   return {
@@ -282,8 +318,8 @@ export async function createGalleryPhotos(albumId, photos, approvalStatus = "pen
       const thumbnail = await optimizeImageForUpload(photo, "gallery_thumbnail");
       const storagePath = optimizedImagePath(`gallery/optimized/${albumId}`, photo);
       const thumbnailPath = optimizedImagePath(`gallery/thumbnails/${albumId}`, photo, "-thumb");
-      const publicUrl = await uploadSupabaseFile(storagePath, optimized.file, "gallery");
-      const thumbnailUrl = await uploadSupabaseFile(thumbnailPath, thumbnail.file, "gallery");
+      const publicUrl = await uploadSupabaseFile(storagePath, optimized.file, "gallery", { cacheControl: IMAGE_CACHE_CONTROL });
+      const thumbnailUrl = await uploadSupabaseFile(thumbnailPath, thumbnail.file, "gallery", { cacheControl: IMAGE_CACHE_CONTROL });
 
       uploaded.push(
         await insertSupabaseRow("gallery_images", {
@@ -330,3 +366,4 @@ export async function createGalleryPhotos(albumId, photos, approvalStatus = "pen
 
   return uploaded;
 }
+

@@ -72,6 +72,12 @@ function normalizeContactMessage(row) {
   };
 }
 
+
+export async function getPublicFaqs() {
+  const rows = await getSupabaseRows("faqs", "select=id,question,answer,display_order,is_active,created_at,updated_at&is_active=eq.true&order=display_order.asc,created_at.asc").catch(() => []);
+  return rows.map(normalizeFaq).filter((faq) => faq.isActive !== false);
+}
+
 export async function getPublicEngagementData() {
   const [faqRows, messageRows] = await Promise.all([
     getSupabaseRows("faqs", "select=*&order=display_order.asc,created_at.asc").catch(() => []),

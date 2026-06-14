@@ -13,6 +13,7 @@ import {
   X
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { createCalendarEvent, deleteCalendarEvent, updateCalendarEvent } from "../../api/client.js";
 import { useBootstrap } from "../../api/useBootstrap.js";
 import { useAuth } from "../../auth/AuthProvider.jsx";
@@ -21,6 +22,7 @@ import {
   buildOutlookCalendarUrl,
   downloadICSFile
 } from "../../services/calendarExportService.js";
+import FormattedText from "../../components/FormattedText.jsx";
 import { subscribeDashboardRealtime } from "../../services/realtimeService.js";
 
 const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -184,7 +186,9 @@ export default function CalendarManagement() {
     visibility: "public",
     visibleGroupIds: ["louvetoux"],
     location: "Scout Hall",
-    description: ""
+    description: "",
+    linkedBlogId: "",
+    linkedAlbumId: ""
   });
   const [saveMessage, setSaveMessage] = useState("");
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -212,6 +216,14 @@ export default function CalendarManagement() {
     return groupEventsByDate(monthEvents);
   }, [displayDate, visibleEvents]);
   const scoutGroups = data.groups;
+  const linkablePosts = useMemo(
+    () => (data.blogPosts ?? []).filter((post) => (post.approvalStatus ?? post.status) === "approved"),
+    [data.blogPosts]
+  );
+  const linkableAlbums = useMemo(
+    () => (data.galleryAlbums ?? []).filter((album) => (album.approvalStatus ?? album.status) === "approved"),
+    [data.galleryAlbums]
+  );
   const canCreateGroupMeeting =
     hasChiefAccess(user) &&
     ["head", "vice"].includes(user.chiefLevel) &&
@@ -224,7 +236,12 @@ export default function CalendarManagement() {
   const selectedEventGroup = selectedEvent
     ? scoutGroups.find((item) => item.id === selectedEvent.groupId)
     : null;
-
+  const selectedEventBlog = selectedEvent?.linkedBlogId
+    ? linkablePosts.find((post) => post.id === selectedEvent.linkedBlogId)
+    : null;
+  const selectedEventAlbum = selectedEvent?.linkedAlbumId
+    ? linkableAlbums.find((album) => album.id === selectedEvent.linkedAlbumId)
+    : null;
   useEffect(() => {
     const unsubscribe = subscribeDashboardRealtime(async () => {
       await refresh();
@@ -322,7 +339,9 @@ export default function CalendarManagement() {
       visibility: "public",
       visibleGroupIds: ["louvetoux"],
       location: "Scout Hall",
-      description: ""
+      description: "",
+      linkedBlogId: "",
+      linkedAlbumId: ""
     });
     await refresh();
     setLastCalendarUpdate(new Date());
@@ -351,6 +370,8 @@ export default function CalendarManagement() {
       groupId: selectedEvent.groupId ?? "",
       location: selectedEvent.location ?? "",
       description: selectedEvent.description ?? "",
+      linkedBlogId: selectedEvent.linkedBlogId ?? "",
+      linkedAlbumId: selectedEvent.linkedAlbumId ?? "",
       approvalStatus: selectedEvent.approvalStatus ?? "pending"
     });
   };
@@ -436,7 +457,7 @@ export default function CalendarManagement() {
               <label>Title<input type="text" placeholder={`${user.groupId} meeting`} value={groupMeeting.title} onChange={(event) => setGroupMeeting((current) => ({ ...current, title: event.target.value }))} /></label>
               <label>Date from<input type="date" required value={groupMeeting.dateFrom} onChange={(event) => setGroupMeeting((current) => ({ ...current, dateFrom: event.target.value, dateTo: current.dateTo || event.target.value }))} /></label>
               <label>Date to<input type="date" required value={groupMeeting.dateTo} onChange={(event) => setGroupMeeting((current) => ({ ...current, dateTo: event.target.value }))} /></label>
-              <label>Description<input type="text" required value={groupMeeting.description} onChange={(event) => setGroupMeeting((current) => ({ ...current, description: event.target.value }))} /></label>
+              <label>Description<textarea rows="3" required value={groupMeeting.description} onChange={(event) => setGroupMeeting((current) => ({ ...current, description: event.target.value }))} /><small className="formatting-help">Supports **bold**, emojis, and [links](/blogs/post-slug).</small></label>
               <label>Start time<input type="time" value={groupMeeting.startTime} onChange={(event) => setGroupMeeting((current) => ({ ...current, startTime: event.target.value }))} /></label>
               <label>End time<input type="time" value={groupMeeting.endTime} onChange={(event) => setGroupMeeting((current) => ({ ...current, endTime: event.target.value }))} /></label>
               <label>Location<input type="text" required value={groupMeeting.location} onChange={(event) => setGroupMeeting((current) => ({ ...current, location: event.target.value }))} /></label>
@@ -450,11 +471,13 @@ export default function CalendarManagement() {
               <label>Title<input type="text" required placeholder="Group activity" value={adminEvent.title} onChange={(event) => setAdminEvent((current) => ({ ...current, title: event.target.value }))} /></label>
               <label>Date from<input type="date" required value={adminEvent.dateFrom} onChange={(event) => setAdminEvent((current) => ({ ...current, dateFrom: event.target.value, dateTo: current.dateTo || event.target.value }))} /></label>
               <label>Date to<input type="date" required value={adminEvent.dateTo} onChange={(event) => setAdminEvent((current) => ({ ...current, dateTo: event.target.value }))} /></label>
-              <label>Description<input type="text" required value={adminEvent.description} onChange={(event) => setAdminEvent((current) => ({ ...current, description: event.target.value }))} /></label>
+              <label>Description<textarea rows="3" required value={adminEvent.description} onChange={(event) => setAdminEvent((current) => ({ ...current, description: event.target.value }))} /><small className="formatting-help">Supports **bold**, emojis, and [links](/blogs/post-slug).</small></label>
               <label>Start time<input type="time" value={adminEvent.startTime} onChange={(event) => setAdminEvent((current) => ({ ...current, startTime: event.target.value }))} /></label>
               <label>End time<input type="time" value={adminEvent.endTime} onChange={(event) => setAdminEvent((current) => ({ ...current, endTime: event.target.value }))} /></label>
               <label>Location<input type="text" required value={adminEvent.location} onChange={(event) => setAdminEvent((current) => ({ ...current, location: event.target.value }))} /></label>
               <label>Visibility<select value={adminEvent.visibility} onChange={(event) => setAdminEvent((current) => ({ ...current, visibility: event.target.value }))}><option value="public">Everyone</option><option value="logged-in">Logged-in users</option><option value="group">Specific logged-in groups</option></select></label>
+              <label>Linked blog<select value={adminEvent.linkedBlogId} onChange={(event) => setAdminEvent((current) => ({ ...current, linkedBlogId: event.target.value }))}><option value="">No linked blog</option>{linkablePosts.map((post) => <option key={post.id} value={post.id}>{post.title}</option>)}</select></label>
+              <label>Linked gallery<select value={adminEvent.linkedAlbumId} onChange={(event) => setAdminEvent((current) => ({ ...current, linkedAlbumId: event.target.value }))}><option value="">No linked gallery</option>{linkableAlbums.map((album) => <option key={album.id} value={album.id}>{album.title}</option>)}</select></label>
               <label>Groups<select multiple value={adminEvent.visibleGroupIds} onChange={(event) => setAdminEvent((current) => ({ ...current, visibleGroupIds: [...event.target.selectedOptions].map((option) => option.value) }))}>{scoutGroups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}</select></label>
               <button type="submit"><Plus size={18} aria-hidden="true" />Add event</button>
             </form>
@@ -570,7 +593,9 @@ export default function CalendarManagement() {
                   <label>Start time<input type="time" value={editingEvent.startTime} onChange={(event) => setEditingEvent((current) => ({ ...current, startTime: event.target.value }))} /></label>
                   <label>End time<input type="time" value={editingEvent.endTime} onChange={(event) => setEditingEvent((current) => ({ ...current, endTime: event.target.value }))} /></label>
                   <label>Location<input value={editingEvent.location} required onChange={(event) => setEditingEvent((current) => ({ ...current, location: event.target.value }))} /></label>
-                  <label>Description<textarea rows="4" value={editingEvent.description} required onChange={(event) => setEditingEvent((current) => ({ ...current, description: event.target.value }))} /></label>
+                  <label>Description<textarea rows="4" value={editingEvent.description} required onChange={(event) => setEditingEvent((current) => ({ ...current, description: event.target.value }))} /><small className="formatting-help">Supports **bold**, emojis, and [links](/blogs/post-slug).</small></label>
+                  <label>Linked blog<select value={editingEvent.linkedBlogId ?? ""} onChange={(event) => setEditingEvent((current) => ({ ...current, linkedBlogId: event.target.value }))}><option value="">No linked blog</option>{linkablePosts.map((post) => <option key={post.id} value={post.id}>{post.title}</option>)}</select></label>
+                  <label>Linked gallery<select value={editingEvent.linkedAlbumId ?? ""} onChange={(event) => setEditingEvent((current) => ({ ...current, linkedAlbumId: event.target.value }))}><option value="">No linked gallery</option>{linkableAlbums.map((album) => <option key={album.id} value={album.id}>{album.title}</option>)}</select></label>
                   {user?.role === "admin" && (
                     <>
                       <label>Visibility<select value={editingEvent.visibility} onChange={(event) => setEditingEvent((current) => ({ ...current, visibility: event.target.value }))}><option value="public">Everyone</option><option value="logged-in">Logged-in users</option><option value="group">Specific logged-in groups</option></select></label>
@@ -591,7 +616,13 @@ export default function CalendarManagement() {
                     {user?.role === "admin" && <span>Status: {selectedEvent.approvalStatus ?? "approved"}</span>}
                     {user?.role === "admin" && selectedEvent.submittedBy && <span>Created by: {selectedEvent.submittedBy}</span>}
                   </div>
-                  <p className="detail-copy">{selectedEvent.description || "No description added yet."}</p>
+                  <FormattedText text={selectedEvent.description} fallback="No description added yet." className="detail-copy formatted-text" />
+                  {(selectedEventBlog || selectedEventAlbum) && (
+                    <div className="event-linked-content">
+                      {selectedEventBlog && <Link to={`/blogs/${selectedEventBlog.slug}`}>Read linked blog: {selectedEventBlog.title}</Link>}
+                      {selectedEventAlbum && <Link to={`/gallery/${selectedEventAlbum.id}`}>View linked gallery: {selectedEventAlbum.title}</Link>}
+                    </div>
+                  )}
                   <div className="calendar-add-menu-wrap">
                     <button type="button" className="inline-action" onClick={() => setCalendarMenuOpen((current) => !current)}>
                       <Download size={16} aria-hidden="true" />Add to Calendar
@@ -619,3 +650,5 @@ export default function CalendarManagement() {
     </section>
   );
 }
+
+

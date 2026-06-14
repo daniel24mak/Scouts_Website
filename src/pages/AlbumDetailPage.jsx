@@ -1,32 +1,116 @@
-import { CalendarDays, ChevronLeft, ChevronRight, Images, MapPin, X } from "lucide-react";
-import { useState } from "react";
+﻿import { CalendarDays, ChevronLeft, ChevronRight, Images, MapPin, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { deletePhotos } from "../api/client.js";
-import { updateAlbum } from "../api/client.js";
-import { useBootstrap } from "../api/useBootstrap.js";
+import { deletePhotos, updateAlbum } from "../api/client.js";
+import { getPublicAlbumPage } from "../api/publicClient.js";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import { canManageSystem, canPublishContent } from "../services/permissions.js";
 
 const acceptedImageTypes = ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif";
-const initialPhotoLimit = 30;
-const photoPageSize = 30;
+const PHOTOS_PER_PAGE = 30;
 
 export default function AlbumDetailPage() {
   const { albumId } = useParams();
-  const { data, refresh } = useBootstrap();
   const { user } = useAuth();
-  const allAlbums = data.allGalleryAlbums ?? data.galleryAlbums;
-  const album =
-    allAlbums.find((item) => item.id === albumId && (item.approvalStatus === "approved" || item.submittedBy === user?.id || canManageSystem(user))) ??
-    data.galleryAlbums.find((item) => item.id === albumId);
+  const [album, setAlbum] = useState(null);
+  const [photos, setPhotos] = useState([]);
+  const [photoOffset, setPhotoOffset] = useState(0);
+  const [hasMorePhotos, setHasMorePhotos] = useState(false);
+  const [isLoadingAlbum, setIsLoadingAlbum] = useState(true);
+  const [isLoadingPhotos, setIsLoadingPhotos] = useState(false);
+  const [loadError, setLoadError] = useState(null);
   const [activePhotoIndex, setActivePhotoIndex] = useState(null);
   const [selectedPhotoIds, setSelectedPhotoIds] = useState([]);
   const [isEditingAlbum, setIsEditingAlbum] = useState(false);
   const [albumEdit, setAlbumEdit] = useState(null);
   const [message, setMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [visiblePhotoLimit, setVisiblePhotoLimit] = useState(initialPhotoLimit);
   const isAdmin = canManageSystem(user);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadInitialAlbumPage() {
+      setIsLoadingAlbum(true);
+      setIsLoadingPhotos(true);
+      setLoadError(null);
+      setAlbum(null);
+      setPhotos([]);
+      setPhotoOffset(0);
+      setHasMorePhotos(false);
+      setActivePhotoIndex(null);
+      setSelectedPhotoIds([]);
+
+      try {
+        const page = await getPublicAlbumPage(albumId, { limit: PHOTOS_PER_PAGE, offset: 0 });
+        if (cancelled) return;
+        setAlbum(page.album);
+        setPhotos(page.photos);
+        setPhotoOffset(page.photos.length);
+        setHasMorePhotos(page.hasMore);
+      } catch (error) {
+        if (!cancelled) setLoadError(error);
+      } finally {
+        if (!cancelled) {
+          setIsLoadingAlbum(false);
+          setIsLoadingPhotos(false);
+        }
+      }
+    }
+
+    loadInitialAlbumPage();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [albumId]);
+
+  const reloadAlbumPage = async () => {
+    const page = await getPublicAlbumPage(albumId, { limit: Math.max(PHOTOS_PER_PAGE, photoOffset), offset: 0 });
+    setAlbum(page.album);
+    setPhotos(page.photos);
+    setPhotoOffset(page.photos.length);
+    setHasMorePhotos(page.hasMore);
+  };
+
+  const loadMorePhotos = async () => {
+    if (isLoadingPhotos || !hasMorePhotos) return;
+
+    try {
+      setIsLoadingPhotos(true);
+      const page = await getPublicAlbumPage(albumId, { limit: PHOTOS_PER_PAGE, offset: photoOffset });
+      setPhotos((current) => {
+        const seen = new Set(current.map((photo) => photo.id));
+        return [...current, ...page.photos.filter((photo) => !seen.has(photo.id))];
+      });
+      setPhotoOffset((current) => current + page.photos.length);
+      setHasMorePhotos(page.hasMore);
+    } catch (error) {
+      setMessage(`More photos could not be loaded: ${error.message}`);
+    } finally {
+      setIsLoadingPhotos(false);
+    }
+  };
+
+  if (isLoadingAlbum) {
+    return (
+      <section className="page-section narrow">
+        <p className="eyebrow">Album</p>
+        <h1>Loading album...</h1>
+      </section>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <section className="page-section narrow">
+        <p className="eyebrow">Album</p>
+        <h1>Album could not be loaded</h1>
+        <p className="helper-text">{loadError.message}</p>
+        <Link className="inline-action" to="/gallery">Back to gallery</Link>
+      </section>
+    );
+  }
 
   if (!album) {
     return (
@@ -40,18 +124,16 @@ export default function AlbumDetailPage() {
     );
   }
 
-  const visiblePhotos = album.photos.slice(0, visiblePhotoLimit);
-  const hasMorePhotos = visiblePhotoLimit < album.photos.length;
-  const activePhoto = activePhotoIndex === null ? null : album.photos[activePhotoIndex];
-  const coverImage = album.thumbnailUrl ?? album.photos[0]?.thumbnailUrl ?? album.photos[0]?.url;
+  const activePhoto = activePhotoIndex === null ? null : photos[activePhotoIndex];
+  const coverImage = album.thumbnailUrl ?? photos[0]?.thumbnailUrl ?? photos[0]?.url;
   const showPreviousPhoto = () => {
     setActivePhotoIndex((current) =>
-      current === null ? null : (current - 1 + album.photos.length) % album.photos.length
+      current === null ? null : (current - 1 + photos.length) % photos.length
     );
   };
   const showNextPhoto = () => {
     setActivePhotoIndex((current) =>
-      current === null ? null : (current + 1) % album.photos.length
+      current === null ? null : (current + 1) % photos.length
     );
   };
   const togglePhotoSelection = (photoId) => {
@@ -66,7 +148,7 @@ export default function AlbumDetailPage() {
       await deletePhotos(selectedPhotoIds);
       setMessage(`${selectedPhotoIds.length} photo${selectedPhotoIds.length === 1 ? "" : "s"} deleted.`);
       setSelectedPhotoIds([]);
-      await refresh();
+      await reloadAlbumPage();
     } finally {
       setIsSaving(false);
     }
@@ -106,7 +188,7 @@ export default function AlbumDetailPage() {
       });
       setMessage(nextStatus === "draft" ? "Album draft saved." : "Album sent for approval.");
       setIsEditingAlbum(false);
-      await refresh();
+      await reloadAlbumPage();
     } catch (error) {
       setMessage(`Album save failed: ${error.message}`);
     } finally {
@@ -121,6 +203,8 @@ export default function AlbumDetailPage() {
           className="album-detail-cover-image"
           src={coverImage}
           alt={album.title}
+          decoding="async"
+          sizes="100vw"
           onError={(event) => {
             event.currentTarget.hidden = true;
           }}
@@ -138,57 +222,23 @@ export default function AlbumDetailPage() {
         </div>
       )}
       <div className="card-meta">
-        <span>
-          <CalendarDays size={16} aria-hidden="true" />
-          {album.eventDate}
-        </span>
-        <span>
-          <MapPin size={16} aria-hidden="true" />
-          {album.location}
-        </span>
-        <span>
-          <Images size={16} aria-hidden="true" />
-          {album.photoCount} photos
-        </span>
+        <span><CalendarDays size={16} aria-hidden="true" />{album.eventDate}</span>
+        <span><MapPin size={16} aria-hidden="true" />{album.location}</span>
+        <span><Images size={16} aria-hidden="true" />{album.photoCount || photos.length} photos</span>
       </div>
       {message && <p className="helper-text">{message}</p>}
       {isSaving && <UploadLoadingState message={message || "Saving album..."} />}
       {isEditingAlbum && albumEdit && (
         <form className="editor-panel blog-detail-editor" onSubmit={saveAlbumEdit}>
-          <label>
-            Album title
-            <input required value={albumEdit.title} onChange={(event) => setAlbumEdit((current) => ({ ...current, title: event.target.value }))} />
-          </label>
-          <label>
-            Event date
-            <input type="date" value={albumEdit.eventDate} onChange={(event) => setAlbumEdit((current) => ({ ...current, eventDate: event.target.value }))} />
-          </label>
-          <label>
-            Location
-            <input value={albumEdit.location} onChange={(event) => setAlbumEdit((current) => ({ ...current, location: event.target.value }))} />
-          </label>
-          <label>
-            Category
-            <input value={albumEdit.category} onChange={(event) => setAlbumEdit((current) => ({ ...current, category: event.target.value }))} />
-          </label>
-          <label>
-            Description
-            <textarea rows="3" value={albumEdit.description} onChange={(event) => setAlbumEdit((current) => ({ ...current, description: event.target.value }))} />
-          </label>
-          <label className="file-picker">
-            Replace album thumbnail
-            <input type="file" accept={acceptedImageTypes} onChange={(event) => setAlbumEdit((current) => ({ ...current, thumbnailFile: event.target.files?.[0] ?? null }))} />
-          </label>
+          <label>Album title<input required value={albumEdit.title} onChange={(event) => setAlbumEdit((current) => ({ ...current, title: event.target.value }))} /></label>
+          <label>Event date<input type="date" value={albumEdit.eventDate} onChange={(event) => setAlbumEdit((current) => ({ ...current, eventDate: event.target.value }))} /></label>
+          <label>Location<input value={albumEdit.location} onChange={(event) => setAlbumEdit((current) => ({ ...current, location: event.target.value }))} /></label>
+          <label>Category<input value={albumEdit.category} onChange={(event) => setAlbumEdit((current) => ({ ...current, category: event.target.value }))} /></label>
+          <label>Description<textarea rows="3" value={albumEdit.description} onChange={(event) => setAlbumEdit((current) => ({ ...current, description: event.target.value }))} /></label>
+          <label className="file-picker">Replace album thumbnail<input type="file" accept={acceptedImageTypes} onChange={(event) => setAlbumEdit((current) => ({ ...current, thumbnailFile: event.target.files?.[0] ?? null }))} /></label>
           {albumEdit.thumbnailFile && <span className="helper-text">{albumEdit.thumbnailFile.name}</span>}
           {isAdmin && (
-            <label>
-              Status
-              <select value={albumEdit.approvalStatus} onChange={(event) => setAlbumEdit((current) => ({ ...current, approvalStatus: event.target.value }))}>
-                {["draft", "pending", "pending_update", "needs_changes", "approved", "rejected", "archived"].map((status) => (
-                  <option value={status} key={status}>{status}</option>
-                ))}
-              </select>
-            </label>
+            <label>Status<select value={albumEdit.approvalStatus} onChange={(event) => setAlbumEdit((current) => ({ ...current, approvalStatus: event.target.value }))}>{["draft", "pending", "pending_update", "needs_changes", "approved", "rejected", "archived"].map((status) => <option value={status} key={status}>{status}</option>)}</select></label>
           )}
           <div className="blog-submit-actions">
             {!isAdmin && <button type="submit" value="draft" disabled={isSaving}>Save draft</button>}
@@ -200,19 +250,13 @@ export default function AlbumDetailPage() {
       {isAdmin && (
         <div className="album-admin-actions">
           <span>{selectedPhotoIds.length} selected</span>
-          <button type="button" className="inline-action" onClick={() => setSelectedPhotoIds(album.photos.map((photo) => photo.id))}>
-            Select all
-          </button>
-          <button type="button" className="inline-action" onClick={() => setSelectedPhotoIds([])}>
-            Clear
-          </button>
-          <button type="button" className="inline-action danger-action" disabled={!selectedPhotoIds.length || isSaving} onClick={deleteSelectedPhotos}>
-            {isSaving ? "Deleting..." : "Delete selected"}
-          </button>
+          <button type="button" className="inline-action" onClick={() => setSelectedPhotoIds(photos.map((photo) => photo.id))}>Select loaded</button>
+          <button type="button" className="inline-action" onClick={() => setSelectedPhotoIds([])}>Clear</button>
+          <button type="button" className="inline-action danger-action" disabled={!selectedPhotoIds.length || isSaving} onClick={deleteSelectedPhotos}>{isSaving ? "Deleting..." : "Delete selected"}</button>
         </div>
       )}
       <div className="gallery-grid">
-        {visiblePhotos.map((photo, index) => (
+        {photos.map((photo, index) => (
           <article className={`gallery-tile selectable-photo ${selectedPhotoIds.includes(photo.id) ? "selected" : ""}`} key={photo.id}>
             {isAdmin && (
               <label className="photo-select-checkbox">
@@ -221,68 +265,43 @@ export default function AlbumDetailPage() {
               </label>
             )}
             {photo.thumbnailUrl || photo.url ? (
-              <button
-                type="button"
-                className="gallery-photo-button"
-                onClick={() => setActivePhotoIndex(index)}
-                aria-label={`Open photo ${index + 1}`}
-              >
+              <button type="button" className="gallery-photo-button" onClick={() => setActivePhotoIndex(index)} aria-label={`Open photo ${index + 1}`}>
                 <img
                   className="gallery-photo"
                   src={photo.thumbnailUrl ?? photo.url}
                   alt=""
+                  loading={index < 4 ? "eager" : "lazy"}
+                  decoding="async"
+                  sizes="(max-width: 480px) 50vw, (max-width: 768px) 33vw, (max-width: 1200px) 25vw, 20vw"
                   onError={(event) => {
                     event.currentTarget.hidden = true;
                   }}
                 />
               </button>
             ) : (
-              <button
-                type="button"
-                className="photo-placeholder"
-                onClick={() => setActivePhotoIndex(index)}
-                aria-label={`Open photo ${index + 1}`}
-              >
+              <button type="button" className="photo-placeholder" onClick={() => setActivePhotoIndex(index)} aria-label={`Open photo ${index + 1}`}>
                 <span>{index + 1}</span>
               </button>
             )}
           </article>
         ))}
       </div>
+      {!photos.length && !isLoadingPhotos && <p className="empty-public-state">No approved photos are available in this album yet.</p>}
+      {hasMorePhotos && (
+        <div className="load-more-row">
+          <button type="button" className="inline-action" onClick={loadMorePhotos} disabled={isLoadingPhotos}>
+            {isLoadingPhotos ? "Loading photos..." : "Load More Photos"}
+          </button>
+          <span>{photos.length} photos loaded</span>
+        </div>
+      )}
       {activePhoto && (
         <div className="lightbox-backdrop" role="dialog" aria-modal="true" aria-label="Photo viewer">
-          <button
-            type="button"
-            className="lightbox-close"
-            aria-label="Close photo viewer"
-            onClick={() => setActivePhotoIndex(null)}
-          >
-            <X size={24} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className="lightbox-nav previous"
-            aria-label="Previous photo"
-            onClick={showPreviousPhoto}
-          >
-            <ChevronLeft size={34} aria-hidden="true" />
-          </button>
-          {activePhoto.url ? (
-            <img className="lightbox-image" src={activePhoto.url} alt={activePhoto.title || "Selected album photo"} decoding="async" />
-          ) : (
-            <div className="lightbox-missing">Photo preview unavailable</div>
-          )}
-          <button
-            type="button"
-            className="lightbox-nav next"
-            aria-label="Next photo"
-            onClick={showNextPhoto}
-          >
-            <ChevronRight size={34} aria-hidden="true" />
-          </button>
-          <div className="lightbox-count">
-            {activePhotoIndex + 1} / {album.photos.length}
-          </div>
+          <button type="button" className="lightbox-close" aria-label="Close photo viewer" onClick={() => setActivePhotoIndex(null)}><X size={24} aria-hidden="true" /></button>
+          <button type="button" className="lightbox-nav previous" aria-label="Previous photo" onClick={showPreviousPhoto}><ChevronLeft size={34} aria-hidden="true" /></button>
+          {activePhoto.url ? <img className="lightbox-image" src={activePhoto.url} alt={activePhoto.title || "Selected album photo"} decoding="async" /> : <div className="lightbox-missing">Photo preview unavailable</div>}
+          <button type="button" className="lightbox-nav next" aria-label="Next photo" onClick={showNextPhoto}><ChevronRight size={34} aria-hidden="true" /></button>
+          <div className="lightbox-count">{activePhotoIndex + 1} / {photos.length}</div>
         </div>
       )}
     </section>
@@ -300,3 +319,4 @@ function UploadLoadingState({ message }) {
     </div>
   );
 }
+

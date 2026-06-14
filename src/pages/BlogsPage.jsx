@@ -1,42 +1,49 @@
-import { Images } from "lucide-react";
+﻿import { Images } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useBootstrap } from "../api/useBootstrap.js";
+import { getPublicBlogsPage } from "../api/publicClient.js";
+import { usePublicData } from "../api/usePublicData.js";
 
 export default function BlogsPage() {
-  const { data } = useBootstrap();
+  const { data, isLoading, error } = usePublicData(
+    () => getPublicBlogsPage({ limit: 24, offset: 0 }),
+    [],
+    { blogPosts: [], hasMore: false },
+    ["blogs", 24, 0]
+  );
+  const posts = data?.blogPosts ?? [];
 
   return (
     <section className="page-section">
       <p className="eyebrow">Blogs</p>
       <h1>Latest group updates</h1>
+      {error && <p className="empty-public-state">Blogs could not be loaded: {error.message}</p>}
       <div className="card-list">
-        {data.blogPosts.map((post) => (
+        {posts.map((post) => (
           <article className="card" key={post.id}>
             {post.thumbnailUrl ? (
-              <img className="blog-thumb-image" src={post.thumbnailUrl} alt={post.title} />
+              <img
+                className="blog-thumb-image"
+                src={post.thumbnailUrl}
+                alt={post.title}
+                loading="lazy"
+                decoding="async"
+                sizes="(max-width: 768px) 100vw, 360px"
+              />
             ) : (
-              <div className="blog-thumb" style={{ "--tile-color": post.thumbnailColor }}>
-                <span>{post.title}</span>
+              <div className="card-thumb" style={{ "--tile-color": post.thumbnailColor }}>
+                <Images size={32} aria-hidden="true" />
               </div>
             )}
-            <div className="card-meta">
-              <span>{post.date}</span>
-              <span>{post.author}</span>
-              {post.albumId && (
-                <span>
-                  <Images size={16} aria-hidden="true" />
-                  linked album
-                </span>
-              )}
+            <div>
+              <p className="eyebrow">{post.date}</p>
+              <h2>{post.title}</h2>
+              <p>{post.excerpt}</p>
+              <Link className="inline-action" to={`/blogs/${post.slug}`}>Read post</Link>
             </div>
-            <h2>{post.title}</h2>
-            <p>{post.excerpt}</p>
-            <Link className="inline-action" to={`/blogs/${post.slug}`}>
-              Open blog
-            </Link>
           </article>
         ))}
       </div>
+      {!posts.length && !isLoading && <p className="empty-public-state">No approved blog posts are available yet.</p>}
     </section>
   );
 }

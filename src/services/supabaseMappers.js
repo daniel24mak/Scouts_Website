@@ -244,6 +244,8 @@ export function normalizeEvent(event) {
     description: event.description ?? "",
     imageUrl: event.image_url ?? event.imageUrl ?? null,
     storagePath: event.storage_path ?? event.storagePath ?? null,
+    linkedBlogId: event.linked_blog_id ?? event.linkedBlogId ?? null,
+    linkedAlbumId: event.linked_album_id ?? event.linkedAlbumId ?? null,
     submittedBy: event.submitted_by ?? event.created_by ?? event.submittedBy ?? event.createdBy ?? null,
     updatedAt: event.updated_at ?? event.updatedAt ?? null
   };

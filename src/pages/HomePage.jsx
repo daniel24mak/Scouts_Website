@@ -2,6 +2,7 @@ import {
   ArrowRight,
   CalendarDays,
   ChevronDown,
+  Clock,
   Images,
   Instagram,
   Mail,
@@ -15,7 +16,8 @@ import {
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { sendContactMessage } from "../api/client.js";
-import { useBootstrap } from "../api/useBootstrap.js";
+import { getPublicHomeData } from "../api/publicClient.js";
+import { usePublicData } from "../api/usePublicData.js";
 import FadeInSection from "../components/FadeInSection.jsx";
 import { contentImage, contentText } from "../services/siteContentService.js";
 
@@ -35,9 +37,20 @@ function isPublicApprovedEvent(event) {
 function getUpcomingEvents(events) {
   const today = new Date().toISOString().slice(0, 10);
   return events
-    .filter((event) => isPublicApprovedEvent(event) && event.date >= today)
-    .sort((a, b) => a.date.localeCompare(b.date))
+    .filter((event) => isPublicApprovedEvent(event) && (event.dateFrom ?? event.date) >= today)
+    .sort((a, b) => (a.dateFrom ?? a.date).localeCompare(b.dateFrom ?? b.date))
     .slice(0, 3);
+}
+
+function formatEventDate(event) {
+  const date = event.dateFrom ?? event.date;
+  if (!date) return "Date to be announced";
+  return date;
+}
+
+function formatEventTime(event) {
+  if (!event.startTime && !event.endTime) return "Time to be announced";
+  return [event.startTime, event.endTime].filter(Boolean).join(" - ");
 }
 
 function isApproved(content) {
@@ -45,15 +58,15 @@ function isApproved(content) {
 }
 
 export default function HomePage() {
-  const { data, isLoading } = useBootstrap();
+  const { data, isLoading } = usePublicData(getPublicHomeData, [], { siteContent: {}, plannedEvents: [], blogPosts: [], galleryAlbums: [], faqs: [] }, ["home", 3]);
   const [openFaqId, setOpenFaqId] = useState(null);
   const [contactForm, setContactForm] = useState({ name: "", email: "", subject: "", message: "" });
   const [contactStatus, setContactStatus] = useState({ type: "", message: "" });
   const [isSending, setIsSending] = useState(false);
   const siteContent = data.siteContent ?? {};
-  const upcomingEvents = getUpcomingEvents(data.plannedEvents);
-  const latestPosts = data.blogPosts.filter(isApproved).slice(0, 3);
-  const galleryPreview = data.galleryAlbums.filter(isApproved).slice(0, 3);
+  const upcomingEvents = getUpcomingEvents(data.plannedEvents ?? []);
+  const latestPosts = (data.blogPosts ?? []).filter(isApproved).slice(0, 3);
+  const galleryPreview = (data.galleryAlbums ?? []).filter(isApproved).slice(0, 3);
   const activeFaqs = (data.faqs ?? []).filter((faq) => faq.isActive !== false);
   const heroImage = contentImage(siteContent, "home_hero_image", "");
   const aboutImage = contentImage(siteContent, "home_about_image", "");
@@ -151,7 +164,7 @@ export default function HomePage() {
         </div>
         <div className="public-image-card">
           {aboutImage ? (
-            <img src={aboutImage} alt="Scouts gathered at St. Mary's Scouts Dubai" loading="lazy" />
+            <img src={aboutImage} alt="Scouts gathered at St. Mary's Scouts Dubai" loading="lazy" decoding="async" sizes="(max-width: 768px) 100vw, 50vw" />
           ) : (
             <div className="image-fallback">
               <Users size={42} aria-hidden="true" />
@@ -180,7 +193,7 @@ export default function HomePage() {
             return (
               <article className="activity-card" key={title}>
                 {activityImage ? (
-                  <img src={activityImage} alt={`${title} at St. Mary's Scouts Dubai`} loading="lazy" />
+                  <img src={activityImage} alt={`${title} at St. Mary's Scouts Dubai`} loading="lazy" decoding="async" sizes="(max-width: 768px) 100vw, 33vw" />
                 ) : (
                   <div className="activity-icon">
                     <ShieldCheck size={26} aria-hidden="true" />
@@ -210,19 +223,19 @@ export default function HomePage() {
           {isLoading ? (
             <p className="empty-public-state">Loading upcoming events...</p>
           ) : upcomingEvents.length ? upcomingEvents.map((event) => (
-            <article className="event-preview-card" key={event.id}>
+            <Link className="event-preview-card event-preview-button" key={event.id} to={`/calendar?event=${encodeURIComponent(event.id)}`} state={{ openEventId: event.id }}>
               <span className="event-date-badge">
                 <CalendarDays size={18} aria-hidden="true" />
-                {event.date}
+                {formatEventDate(event)}
               </span>
               <h3>{event.title}</h3>
               <p>{event.description || "Public scout event."}</p>
-              {(event.startTime || event.endTime) && <span>{[event.startTime, event.endTime].filter(Boolean).join(" - ")}</span>}
+              <span><Clock size={16} aria-hidden="true" />{formatEventTime(event)}</span>
               <span>
                 <MapPin size={16} aria-hidden="true" />
                 {event.location || "St. Mary's Catholic Church, Dubai"}
               </span>
-            </article>
+            </Link>
           )) : (
             <p className="empty-public-state">No public events are available right now. Please check again soon.</p>
           )}
@@ -271,13 +284,21 @@ export default function HomePage() {
             <p className="empty-public-state">Loading gallery albums...</p>
           ) : galleryPreview.length ? galleryPreview.map((album) => (
             <Link className="gallery-preview-card" to={`/gallery/${album.id}`} key={album.id}>
-              {album.photos[0]?.url ? (
-                <img src={album.photos[0].url} alt={`${album.title} album cover`} loading="lazy" />
-              ) : (
-                <div className="image-fallback">
-                  <Images size={32} aria-hidden="true" />
-                </div>
-              )}
+              <div className="gallery-preview-media">
+                {album.thumbnailUrl || album.photos?.[0]?.thumbnailUrl || album.photos?.[0]?.url ? (
+                  <img
+                    src={album.thumbnailUrl ?? album.photos?.[0]?.thumbnailUrl ?? album.photos?.[0]?.url}
+                    alt={`${album.title} album cover`}
+                    loading="lazy"
+                    decoding="async"
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                  />
+                ) : (
+                  <div className="image-fallback">
+                    <Images size={32} aria-hidden="true" />
+                  </div>
+                )}
+              </div>
               <div>
                 <h3>{album.title}</h3>
                 <span>{album.eventDate}</span>
@@ -385,3 +406,4 @@ export default function HomePage() {
     </>
   );
 }
+

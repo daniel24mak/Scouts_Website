@@ -1,4 +1,4 @@
-import {
+﻿import {
   deleteSupabaseFile,
   deleteSupabaseRows,
   getCurrentSupabaseUserId,
@@ -8,7 +8,7 @@ import {
   uploadSupabaseFile,
   upsertSupabaseRows
 } from "./supabaseClient.js";
-import { optimizedImagePath, optimizeImageForUpload } from "./imageOptimizationService.js";
+import { IMAGE_CACHE_CONTROL, optimizedImagePath, optimizeImageForUpload } from "./imageOptimizationService.js";
 
 export const defaultSiteContent = {
   home_hero_title: {
@@ -90,8 +90,8 @@ export function contentImage(siteContent, key, fallback = "") {
 
 export async function getWebsiteContent() {
   const [contentRows, leaderRows] = await Promise.all([
-    getSupabaseRows("site_content", "select=*&order=section_name.asc,content_key.asc"),
-    getSupabaseRows("leaders", "select=*&order=display_order.asc,full_name.asc")
+    getSupabaseRows("site_content", "select=id,section_name,content_key,text_value,image_url,storage_path,updated_by,updated_at&order=section_name.asc,content_key.asc"),
+    getSupabaseRows("leaders", "select=id,full_name,title,photo_url,storage_path,display_order,is_active,created_at,updated_at&is_active=eq.true&order=display_order.asc,full_name.asc")
   ]);
   const siteContent = Object.fromEntries(
     [...Object.values(defaultSiteContent).map((item) => ({ ...item, id: item.contentKey })), ...contentRows.map(normalizeSiteContent)].map(
@@ -115,7 +115,7 @@ export async function saveSiteContentItem(item) {
     const imageType = item.contentKey?.includes("hero") ? "hero" : "website_content";
     const optimized = await optimizeImageForUpload(item.file, imageType);
     storagePath = optimizedImagePath(`site-images/optimized/${item.contentKey}`, item.file);
-    imageUrl = await uploadSupabaseFile(storagePath, optimized.file, "site-images");
+    imageUrl = await uploadSupabaseFile(storagePath, optimized.file, "site-images", { cacheControl: IMAGE_CACHE_CONTROL });
   }
 
   const saved = await upsertSupabaseRows(
@@ -156,7 +156,7 @@ export async function createLeader(leader) {
 
   const optimized = await optimizeImageForUpload(leader.file, "leader_headshot");
   const storagePath = optimizedImagePath(`leader-headshots/optimized/${created.id}`, leader.file);
-  const photoUrl = await uploadSupabaseFile(storagePath, optimized.file, "leader-headshots");
+  const photoUrl = await uploadSupabaseFile(storagePath, optimized.file, "leader-headshots", { cacheControl: IMAGE_CACHE_CONTROL });
   return patchSupabaseRows("leaders", `id=eq.${encodeURIComponent(created.id)}`, {
     photo_url: photoUrl,
     storage_path: storagePath,
@@ -172,7 +172,7 @@ export async function updateLeader(leaderId, leader) {
   if (leader.file) {
     const optimized = await optimizeImageForUpload(leader.file, "leader_headshot");
     storagePath = optimizedImagePath(`leader-headshots/optimized/${leaderId}`, leader.file);
-    photoUrl = await uploadSupabaseFile(storagePath, optimized.file, "leader-headshots");
+    photoUrl = await uploadSupabaseFile(storagePath, optimized.file, "leader-headshots", { cacheControl: IMAGE_CACHE_CONTROL });
   }
 
   const saved = await patchSupabaseRows("leaders", `id=eq.${encodeURIComponent(leaderId)}`, {
@@ -213,3 +213,5 @@ export function deleteLeader(leaderId) {
       return deleted;
     });
 }
+
+

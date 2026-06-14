@@ -1,3 +1,4 @@
+﻿export const IMAGE_CACHE_CONTROL = "max-age=31536000, immutable";
 const supportedExtensions = ["jpg", "jpeg", "png", "webp", "heic", "heif"];
 const maxOriginalSize = 25 * 1024 * 1024;
 
@@ -64,9 +65,9 @@ export function optimizedImagePath(prefix, file, suffix = "") {
 
 async function convertHeicToJpeg(file) {
   try {
-    const optionalImport = new Function("specifier", "return import(specifier)");
-    const converter = await optionalImport("heic2any");
-    const converted = await converter.default({ blob: file, toType: "image/jpeg", quality: 0.92 });
+    const converterModule = await import("heic2any");
+    const convert = converterModule.default ?? converterModule;
+    const converted = await convert({ blob: file, toType: "image/jpeg", quality: 0.92 });
     const blob = Array.isArray(converted) ? converted[0] : converted;
     return new File([blob], `${safeBaseName(file.name)}.jpg`, { type: "image/jpeg" });
   } catch {
@@ -167,3 +168,4 @@ export async function optimizeImageForUpload(file, imageType = "site") {
     quality: profile.quality
   };
 }
+
