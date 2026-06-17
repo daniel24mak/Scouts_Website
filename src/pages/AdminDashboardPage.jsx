@@ -155,9 +155,11 @@ const websiteContentFields = [
   ["home", "home_activity_image_6", "Life in Scouts image 6", "image"],
   ["home", "home_about_text", "Home about preview text", "textarea"],
   ["home", "home_location_text", "Home location text", "text"],
-  ["about", "about_intro_image", "About intro image", "image"],
+  ["about", "about_hero_image", "About header image", "image"],
+  ["about", "about_intro_image", "About story image", "image"],
   ["about", "about_intro_text", "About intro text", "textarea"],
   ["about", "about_history_text", "About history text", "textarea"],
+  ["about", "about_history_milestones", "About timeline milestones (Year | Title | Description)", "textarea"],
   ["about", "about_mission_text", "About mission text", "textarea"]
 ];
 

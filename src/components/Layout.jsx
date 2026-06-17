@@ -1,5 +1,5 @@
-import { CalendarDays, Camera, FileText, Home, Info, Instagram, Menu, Users, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { CalendarDays, Camera, FileText, Home, Info, Instagram, MapPin, Menu, Users, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import scoutLogo from "../assets/smscouts_logo.png";
@@ -18,6 +18,8 @@ export default function Layout() {
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isHeaderHidden, setIsHeaderHidden] = useState(false);
+  const lastScrollY = useRef(0);
   const isHomePage = location.pathname === "/";
   const isDashboardPage =
     location.pathname === "/dashboard" ||
@@ -25,12 +27,25 @@ export default function Layout() {
     location.pathname.startsWith("/chiefs");
 
   useEffect(() => {
-    const updateHeader = () => setIsScrolled(window.scrollY > 24);
+    const updateHeader = () => {
+      const currentScrollY = window.scrollY;
+      setIsScrolled(currentScrollY > 24);
+
+      if (isMenuOpen || currentScrollY < 80) {
+        setIsHeaderHidden(false);
+      } else if (currentScrollY > lastScrollY.current + 8 && currentScrollY > 120) {
+        setIsHeaderHidden(true);
+      } else if (currentScrollY < lastScrollY.current - 8) {
+        setIsHeaderHidden(false);
+      }
+
+      lastScrollY.current = currentScrollY;
+    };
 
     updateHeader();
     window.addEventListener("scroll", updateHeader, { passive: true });
     return () => window.removeEventListener("scroll", updateHeader);
-  }, []);
+  }, [isMenuOpen]);
 
   const handleLogout = () => {
     logout();
@@ -45,7 +60,7 @@ export default function Layout() {
   return (
     <div className={`app-shell ${isDashboardPage ? "dashboard-shell" : ""}`}>
       {!isDashboardPage && (
-        <header className={`site-header ${isHomePage && !isScrolled && !isMenuOpen ? "transparent" : "scrolled"}`}>
+        <header className={`site-header ${isHomePage && !isScrolled && !isMenuOpen ? "transparent" : "scrolled"} ${isHeaderHidden ? "hidden" : ""}`}>
         <NavLink to="/" className="brand" onClick={closeMenu}>
           <img className="brand-logo" src={scoutLogo} alt="Scout of Saint Mary logo" />
           <span>
@@ -104,21 +119,8 @@ export default function Layout() {
           <img className="footer-logo" src={scoutLogo} alt="Scout of Saint Mary logo" />
           <div>
             <strong>St. Mary's Scouts Dubai</strong>
-            <p>
-              A church-based scouting group at St. Mary's Catholic Church, Dubai,
-              helping young people grow through faith, leadership, service, teamwork,
-              and community.
-            </p>
+            <p>Building character, one adventure at a time.</p>
           </div>
-        </div>
-        <div className="footer-column">
-          <strong>Location</strong>
-          <span>St. Mary's Catholic Church</span>
-          <span>Dubai, United Arab Emirates</span>
-          <a className="footer-social" href="https://www.instagram.com/" target="_blank" rel="noreferrer">
-            <Instagram size={18} aria-hidden="true" />
-            Follow us on Instagram
-          </a>
         </div>
         <nav className="footer-column" aria-label="Footer navigation">
           <strong>Quick links</strong>
@@ -129,6 +131,18 @@ export default function Layout() {
           <Link to="/gallery">Gallery</Link>
           <Link to="/login">Login</Link>
         </nav>
+        <div className="footer-column footer-contact">
+          <strong>Contact Us</strong>
+          <span><MapPin size={17} aria-hidden="true" /> St. Mary's Catholic Church</span>
+          <span><MapPin size={17} aria-hidden="true" /> Dubai, United Arab Emirates</span>
+        </div>
+        <div className="footer-column footer-social-column">
+          <strong>Social</strong>
+          <a className="footer-social" href="https://www.instagram.com/" target="_blank" rel="noreferrer" aria-label="Follow St. Mary's Scouts Dubai on Instagram">
+            <Instagram size={20} aria-hidden="true" />
+            <span>Instagram</span>
+          </a>
+        </div>
         <p className="footer-bottom">Copyright 2026 St. Mary's Scouts Dubai. All rights reserved.</p>
       </footer>
       )}

@@ -1,4 +1,4 @@
-﻿import {
+import {
   deleteSupabaseFile,
   deleteSupabaseRows,
   getCurrentSupabaseUserId,
@@ -33,6 +33,13 @@ export const defaultSiteContent = {
     contentKey: "home_location_text",
     textValue: "Located at St. Mary's Catholic Church, Dubai, United Arab Emirates."
   },
+  about_hero_image: {
+    sectionName: "about",
+    contentKey: "about_hero_image",
+    imageUrl: null,
+    storagePath: null,
+    textValue: ""
+  },
   about_intro_text: {
     sectionName: "about",
     contentKey: "about_intro_text",
@@ -44,6 +51,11 @@ export const defaultSiteContent = {
     contentKey: "about_history_text",
     textValue:
       "St. Mary's Scouts Dubai was created to give young people a place where they can grow through scouting values, faith, friendship, and service. From its beginning, the group has been connected to the church community and has worked to support children and youth through meaningful activities and leadership development."
+  },
+  about_history_milestones: {
+    sectionName: "about",
+    contentKey: "about_history_milestones",
+    textValue: ""
   },
   about_mission_text: {
     sectionName: "about",

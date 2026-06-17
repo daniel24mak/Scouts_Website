@@ -1,6 +1,7 @@
-﻿import { HeartHandshake, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
+import { Compass, HeartHandshake, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
 import { getPublicAboutData } from "../api/publicClient.js";
 import { usePublicData } from "../api/usePublicData.js";
+import { scoutGroups } from "../data/groups.js";
 import { contentImage, contentText } from "../services/siteContentService.js";
 
 const goals = [
@@ -12,6 +13,13 @@ const goals = [
   ["Character", "Helping every scout become honest, kind, brave, and dependable."]
 ];
 
+function groupRange(group) {
+  if (group.assignmentBasis === "age") {
+    return group.ageRange || group.gradeRange || "Group range to be announced";
+  }
+
+  return group.gradeRange || group.ageRange || "Group range to be announced";
+}
 function titleForLeader(user) {
   if (user.role === "admin" && user.chiefLevel === "head") {
     return "Group Leader";
@@ -32,6 +40,52 @@ function titleForLeader(user) {
   return "Chief";
 }
 
+function parseHistoryMilestones(siteContent, fallbackText) {
+  const raw = contentText(siteContent, "about_history_milestones", "").trim();
+
+  if (!raw) {
+    return [
+      {
+        year: "Story",
+        title: "Our journey so far",
+        text: fallbackText
+      }
+    ];
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed
+        .map((item) => ({
+          year: String(item.year ?? "").trim(),
+          title: String(item.title ?? "").trim(),
+          text: String(item.text ?? item.description ?? "").trim()
+        }))
+        .filter((item) => item.year && item.title && item.text);
+    }
+  } catch {
+    // Fall back to the simple line format below.
+  }
+
+  const milestones = raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [year = "", title = "", ...rest] = line.split("|").map((part) => part.trim());
+      return { year, title, text: rest.join("|").trim() };
+    })
+    .filter((item) => item.year && item.title && item.text);
+
+  return milestones.length ? milestones : [
+    {
+      year: "Story",
+      title: "Our journey so far",
+      text: fallbackText
+    }
+  ];
+}
 function initials(name) {
   return String(name)
     .split(/\s+/)
@@ -67,14 +121,24 @@ export default function AboutPage() {
     "about_mission_text",
     "Our mission is to help young people grow into responsible, confident, faithful, and service-minded individuals through scouting activities, leadership opportunities, teamwork, and community involvement."
   );
+  const heroImage = contentImage(siteContent, "about_hero_image", "");
   const aboutImage = contentImage(siteContent, "about_intro_image", "");
+  const historyMilestones = parseHistoryMilestones(siteContent, historyText);
 
   return (
-    <>
+    <div className="about-page">
+      <section className="about-hero public-hero" style={heroImage ? { "--hero-image": `url("${heroImage}")` } : undefined}>
+        <div>
+          <p className="eyebrow">St. Mary's Scouts Dubai</p>
+          <h1>About Us</h1>
+          <p>A scouting family rooted in faith, service, leadership, and community.</p>
+        </div>
+      </section>
+
       <section className="about-intro public-section">
         <div className="about-intro-copy">
-          <p className="eyebrow">About St. Mary's Scouts Dubai</p>
-          <h1>A scouting family rooted in faith, service, and community.</h1>
+          <p className="eyebrow">Our Story</p>
+          <h2>Growing together through scouting values and friendship.</h2>
           <p>{aboutIntro}</p>
           <p>
             We believe scouting helps children and youth become confident, disciplined, and
@@ -100,7 +164,91 @@ export default function AboutPage() {
         )}
       </section>
 
-      <section className="public-section">
+      <section className="public-section about-history-section public-band">
+        <div className="about-history-copy">
+          <p className="eyebrow">Our History</p>
+          <h2>Built through faith, friendship, and service.</h2>
+          <p>{historyText}</p>
+          <p>
+            Over the years, our scout group has continued to grow through weekly meetings,
+            ceremonies, camps, church celebrations, teamwork activities, and community service.
+            Each generation of scouts has helped carry forward the spirit of scouting with
+            dedication, joy, and responsibility.
+          </p>
+        </div>
+        <div className="about-history-track" aria-label="History timeline milestones">
+          {historyMilestones.map((milestone) => (
+            <article key={`${milestone.year}-${milestone.title}`}>
+              <span aria-hidden="true" />
+              <strong>{milestone.year}</strong>
+              <h3>{milestone.title}</h3>
+              <p>{milestone.text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="public-section about-mission-section">
+        <div className="about-mission-statement">
+          <Sparkles size={28} aria-hidden="true" />
+          <p className="eyebrow">Our Mission</p>
+          <h2>Helping young people grow with purpose.</h2>
+          <p>{missionText}</p>
+        </div>
+        <article className="about-vision-card">
+          <ShieldCheck size={28} aria-hidden="true" />
+          <h2>Our Vision</h2>
+          <p>
+            Our vision is to build a strong scouting family where every member feels welcomed,
+            supported, and inspired to become a better leader, friend, and member of the community.
+          </p>
+        </article>
+      </section>
+
+      <section className="public-section public-band about-values-section">
+        <p className="eyebrow">Our Values</p>
+        <h2>Values that shape our scouts.</h2>
+        <div className="goal-grid">
+          {goals.map(([title, text]) => (
+            <article className="goal-card" key={title}>
+              <Compass size={26} aria-hidden="true" />
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="public-section about-groups-section">
+        <p className="eyebrow">Scout Groups</p>
+        <h2>Every age has a place to grow.</h2>
+        <div className="about-group-strip">
+          {scoutGroups.map((group) => (
+            <article className="about-group-card" key={group.id}>
+              <h3>{group.name}</h3>
+              <span>{groupRange(group)}</span>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="public-section split-section public-band about-service-section">
+        <div className="values-panel">
+          <HeartHandshake size={38} aria-hidden="true" />
+          <strong>Faith and service in action</strong>
+          <span>Connected to the parish, families, and the wider Dubai community.</span>
+        </div>
+        <div>
+          <p className="eyebrow">Community</p>
+          <h2>Serving with joy and growing with purpose.</h2>
+          <p>
+            Our scouts learn by participating, helping, leading, and caring for others. Every
+            activity is a chance to build confidence and strengthen the community around them.
+          </p>
+        </div>
+      </section>
+
+      <section className="public-section about-leaders-section">
         <p className="eyebrow">Our Leaders</p>
         <h2>Dedicated chiefs and volunteers guiding every scout.</h2>
         <p>
@@ -128,58 +276,6 @@ export default function AboutPage() {
           ))}
         </div>
       </section>
-
-      <section className="public-section split-section public-band">
-        <div>
-          <p className="eyebrow">Our Story</p>
-          <h2>Growing through scouting values, faith, friendship, and service.</h2>
-          <p>{historyText}</p>
-          <p>
-            Over the years, our scout group has continued to grow through weekly meetings,
-            ceremonies, camps, church celebrations, teamwork activities, and community service.
-            Each generation of scouts has helped carry forward the spirit of scouting with
-            dedication, joy, and responsibility.
-          </p>
-        </div>
-        <div className="values-panel">
-          <HeartHandshake size={38} aria-hidden="true" />
-          <strong>Faith and service in action</strong>
-          <span>Connected to the parish, families, and the wider Dubai community.</span>
-        </div>
-      </section>
-
-      <section className="public-section">
-        <div className="mission-grid">
-          <article>
-            <Sparkles size={28} aria-hidden="true" />
-            <h2>Our Mission</h2>
-            <p>{missionText}</p>
-          </article>
-          <article>
-            <ShieldCheck size={28} aria-hidden="true" />
-            <h2>Our Vision</h2>
-            <p>
-              Our vision is to build a strong scouting family where every member feels welcomed,
-              supported, and inspired to become a better leader, friend, and member of the community.
-            </p>
-          </article>
-        </div>
-      </section>
-
-      <section className="public-section public-band">
-        <p className="eyebrow">Our Goals</p>
-        <h2>Values that shape our scouts.</h2>
-        <div className="goal-grid">
-          {goals.map(([title, text]) => (
-            <article className="goal-card" key={title}>
-              <h3>{title}</h3>
-              <p>{text}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-    </>
+    </div>
   );
 }
-
-
