@@ -125,7 +125,7 @@ export default function HomePage() {
   };
 
   return (
-    <>
+    <div className="home-page">
       <FadeInSection className="home-hero public-hero" style={heroImage ? { "--hero-image": `url("${heroImage}")` } : undefined}>
         <div className="hero-copy">
           <p className="eyebrow">St. Mary's Scouts Dubai</p>
@@ -235,6 +235,9 @@ export default function HomePage() {
                 <MapPin size={16} aria-hidden="true" />
                 {event.location || "St. Mary's Catholic Church, Dubai"}
               </span>
+              <span className="event-details-link">
+                View Details <ArrowRight size={16} aria-hidden="true" />
+              </span>
             </Link>
           )) : (
             <p className="empty-public-state">No public events are available right now. Please check again soon.</p>
@@ -256,13 +259,26 @@ export default function HomePage() {
             <p className="empty-public-state">Loading latest news...</p>
           ) : latestPosts.length ? latestPosts.map((post) => (
             <article className="preview-card" key={post.id}>
-              <div className="preview-icon">
-                <Newspaper size={26} aria-hidden="true" />
+              {post.thumbnailUrl ? (
+                <img
+                  className="preview-card-image"
+                  src={post.thumbnailUrl}
+                  alt={`${post.title} thumbnail`}
+                  loading="lazy"
+                  decoding="async"
+                  sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 33vw"
+                />
+              ) : (
+                <div className="preview-icon preview-card-fallback">
+                  <Newspaper size={26} aria-hidden="true" />
+                </div>
+              )}
+              <div className="preview-card-body">
+                <span>{post.date}</span>
+                <h3>{post.title}</h3>
+                <p>{post.excerpt}</p>
+                <Link to={`/blogs/${post.slug}`}>Read more</Link>
               </div>
-              <span>{post.date}</span>
-              <h3>{post.title}</h3>
-              <p>{post.excerpt}</p>
-              <Link to={`/blogs/${post.slug}`}>Read more</Link>
             </article>
           )) : (
             <p className="empty-public-state">No news posts are available right now.</p>
@@ -403,7 +419,6 @@ export default function HomePage() {
           </form>
         </div>
       </FadeInSection>
-    </>
+    </div>
   );
 }
-
