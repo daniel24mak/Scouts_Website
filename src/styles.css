@@ -6700,3 +6700,67 @@ textarea:focus-visible {
 .about-page .about-group-card span {
   align-self: start;
 }
+
+/* Responsive full-width connector for the About timeline. */
+.about-page .about-history-track {
+  display: block;
+  position: relative;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 0 20px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+.about-page .about-history-track::before {
+  display: none;
+}
+
+.about-page .about-history-timeline {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: clamp(260px, 28vw, 340px);
+  width: max-content;
+  min-width: 100%;
+  gap: 18px;
+  padding: 48px 4px 0;
+}
+
+.about-page .about-history-timeline::before {
+  content: "";
+  position: absolute;
+  top: 26px;
+  left: 28px;
+  right: 28px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgb(64 85 166 / 0.22);
+}
+
+.about-page .about-history-timeline article {
+  position: relative;
+  z-index: 1;
+  min-height: 230px;
+  align-content: start;
+  scroll-snap-align: start;
+}
+
+.about-page .about-history-timeline article > span {
+  position: absolute;
+  top: -31px;
+  left: 24px;
+}
+
+@media (max-width: 640px) {
+  .about-page .about-history-timeline {
+    grid-auto-columns: minmax(260px, 82vw);
+    padding-top: 44px;
+  }
+
+  .about-page .about-history-timeline::before {
+    top: 22px;
+    left: 28px;
+    right: 28px;
+  }
+}

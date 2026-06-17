@@ -177,14 +177,16 @@ export default function AboutPage() {
           </p>
         </div>
         <div className="about-history-track" aria-label="History timeline milestones">
-          {historyMilestones.map((milestone) => (
-            <article key={`${milestone.year}-${milestone.title}`}>
-              <span aria-hidden="true" />
-              <strong>{milestone.year}</strong>
-              <h3>{milestone.title}</h3>
-              <p>{milestone.text}</p>
-            </article>
-          ))}
+          <div className="about-history-timeline">
+            {historyMilestones.map((milestone) => (
+              <article key={`${milestone.year}-${milestone.title}`}>
+                <span aria-hidden="true" />
+                <strong>{milestone.year}</strong>
+                <h3>{milestone.title}</h3>
+                <p>{milestone.text}</p>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
