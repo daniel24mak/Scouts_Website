@@ -31,9 +31,12 @@ export default function Layout() {
       const currentScrollY = window.scrollY;
       setIsScrolled(currentScrollY > 24);
 
-      if (isMenuOpen || currentScrollY < 80) {
+      const isDesktop = window.innerWidth > 1024;
+      const hideStart = Math.max(window.innerHeight * 0.72, 520);
+
+      if (!isDesktop || isMenuOpen || currentScrollY < hideStart) {
         setIsHeaderHidden(false);
-      } else if (currentScrollY > lastScrollY.current + 8 && currentScrollY > 120) {
+      } else if (currentScrollY > lastScrollY.current + 8) {
         setIsHeaderHidden(true);
       } else if (currentScrollY < lastScrollY.current - 8) {
         setIsHeaderHidden(false);
@@ -78,8 +81,16 @@ export default function Layout() {
         >
           {isMenuOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
         </button>
-        <div className={`header-menu ${isMenuOpen ? "open" : ""}`} id="site-menu">
-          <nav className="main-nav" aria-label="Main navigation">
+        <div className={`header-menu ${isMenuOpen ? "open mobile-single-column-menu" : ""}`} id="site-menu">
+          <button
+            type="button"
+            className="mobile-menu-close"
+            aria-label="Close navigation menu"
+            onClick={closeMenu}
+          >
+            <X size={28} aria-hidden="true" />
+          </button>
+          <nav className="main-nav mobile-nav-stack" aria-label="Main navigation">
             {navItems.map(({ to, label, icon: Icon }) => (
               <NavLink key={to} to={to} onClick={closeMenu}>
                 <Icon size={18} aria-hidden="true" />
@@ -149,4 +160,5 @@ export default function Layout() {
     </div>
   );
 }
+
 
