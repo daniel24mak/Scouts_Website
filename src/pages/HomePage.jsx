@@ -13,13 +13,14 @@ import {
   ShieldCheck,
   Users
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { sendContactMessage } from "../api/client.js";
 import { getPublicHomeData } from "../api/publicClient.js";
 import { usePublicData } from "../api/usePublicData.js";
 import FadeInSection from "../components/FadeInSection.jsx";
 import { contentImage, contentText } from "../services/siteContentService.js";
+import { preloadImages } from "../utils/imagePreload.js";
 import { richTextToPlainText } from "../utils/richText.js";
 
 const activityCards = [
@@ -97,6 +98,10 @@ export default function HomePage() {
       `home_activity_image_${index + 1}`,
       ""
     );
+  useEffect(() => {
+    preloadImages([heroImage, aboutImage, ...Array.from({ length: activityCards.length }, (_, index) => getActivityImage(index))]);
+  }, [heroImage, aboutImage, siteContent]);
+
   const handleContactSubmit = async (event) => {
     event.preventDefault();
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -165,7 +170,7 @@ export default function HomePage() {
         </div>
         <div className="public-image-card">
           {aboutImage ? (
-            <img src={aboutImage} alt="Scouts gathered at St. Mary's Scouts Dubai" loading="lazy" decoding="async" sizes="(max-width: 768px) 100vw, 50vw" />
+            <img src={aboutImage} alt="Scouts gathered at St. Mary's Scouts Dubai" loading="lazy" decoding="async" width={900} height={640} sizes="(max-width: 768px) 100vw, 50vw" />
           ) : (
             <div className="image-fallback">
               <Users size={42} aria-hidden="true" />
@@ -194,7 +199,7 @@ export default function HomePage() {
             return (
               <article className="activity-card" key={title}>
                 {activityImage ? (
-                  <img src={activityImage} alt={`${title} at St. Mary's Scouts Dubai`} loading="lazy" decoding="async" sizes="(max-width: 768px) 100vw, 33vw" />
+                  <img src={activityImage} alt={`${title} at St. Mary's Scouts Dubai`} loading="lazy" decoding="async" width={720} height={480} sizes="(max-width: 768px) 100vw, 33vw" />
                 ) : (
                   <div className="activity-icon">
                     <ShieldCheck size={26} aria-hidden="true" />

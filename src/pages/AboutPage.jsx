@@ -1,8 +1,10 @@
 import { Compass, HeartHandshake, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
+import { useEffect } from "react";
 import { getPublicAboutData } from "../api/publicClient.js";
 import { usePublicData } from "../api/usePublicData.js";
 import { scoutGroups } from "../data/groups.js";
 import { contentImage, contentText } from "../services/siteContentService.js";
+import { preloadImages } from "../utils/imagePreload.js";
 
 const goals = [
   ["Faith", "Growing through values, prayer, and connection to the church community."],
@@ -124,6 +126,10 @@ export default function AboutPage() {
   const heroImage = contentImage(siteContent, "about_hero_image", "");
   const aboutImage = contentImage(siteContent, "about_intro_image", "");
   const historyMilestones = parseHistoryMilestones(siteContent, historyText);
+
+  useEffect(() => {
+    preloadImages([heroImage, aboutImage]);
+  }, [heroImage, aboutImage]);
 
   return (
     <div className="about-page">

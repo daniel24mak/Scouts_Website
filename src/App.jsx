@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthProvider.jsx";
 import ProtectedRoute from "./auth/ProtectedRoute.jsx";
 import Layout from "./components/Layout.jsx";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import ScrollToTop from "./components/ScrollToTop.jsx";
 import BrandedLoader from "./components/BrandedLoader.jsx";
 import { ToastProvider } from "./components/ToastProvider.jsx";
@@ -49,7 +50,7 @@ export default function App() {
               path="chiefs/attendance"
               element={
                 <ProtectedRoute allowedRoles={["chief", "admin"]}>
-                  <AttendancePage />
+                  <ErrorBoundary><AttendancePage /></ErrorBoundary>
                 </ProtectedRoute>
               }
             />
@@ -57,7 +58,7 @@ export default function App() {
               path="chiefs/content"
               element={
                 <ProtectedRoute allowedRoles={["chief", "admin"]} requirePublisher>
-                  <ChiefContentDashboardPage />
+                  <ErrorBoundary><ChiefContentDashboardPage /></ErrorBoundary>
                 </ProtectedRoute>
               }
             />
@@ -69,7 +70,7 @@ export default function App() {
               path="admin/chief-attendance"
               element={
                 <ProtectedRoute allowedRoles={["admin"]}>
-                  <AdminChiefAttendancePage />
+                  <ErrorBoundary><AdminChiefAttendancePage /></ErrorBoundary>
                 </ProtectedRoute>
               }
             />
@@ -77,7 +78,7 @@ export default function App() {
               path="dashboard"
               element={
                 <ProtectedRoute allowedRoles={["chief", "admin"]}>
-                  <AdminDashboardPage />
+                  <ErrorBoundary><AdminDashboardPage /></ErrorBoundary>
                 </ProtectedRoute>
               }
             />

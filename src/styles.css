@@ -7555,3 +7555,37 @@ textarea:focus-visible {
   color: #94a3b8;
   pointer-events: none;
 }
+
+.lightbox-image.loading-next {
+  filter: saturate(0.95);
+}
+
+.lightbox-loading-note {
+  position: absolute;
+  left: 50%;
+  bottom: 72px;
+  transform: translateX(-50%);
+  z-index: 2;
+  padding: 7px 12px;
+  border-radius: 999px;
+  color: #ffffff;
+  background: rgb(15 23 42 / 0.72);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.dashboard-error-banner {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+  padding: 14px 16px;
+  border: 1px solid #f8b4b4;
+  border-radius: 8px;
+  color: #7f1d1d;
+  background: #fff1f2;
+}
+
+.dashboard-error-banner .inline-action {
+  justify-self: start;
+}

@@ -214,7 +214,7 @@ export default function CalendarPage() {
           <div className="calendar-agenda-list">
             {selectedDateEvents.length ? selectedDateEvents.map((event) => (
               <button type="button" className="calendar-agenda-card" key={event.id} onClick={() => setSelectedEvent(event)}>
-                {event.imageUrl && <img src={event.imageUrl} alt="" loading="lazy" decoding="async" />}
+                {event.imageUrl && <img src={event.imageUrl} alt="" loading="lazy" decoding="async" width={320} height={180} />}
                 <span>{formatEventTime(event)}</span>
                 <strong>{event.title}</strong>
                 <small>{event.location || "St. Mary's Catholic Church, Dubai"}</small>
@@ -232,7 +232,7 @@ export default function CalendarPage() {
             <button type="button" className="lightbox-close" aria-label="Close event details" onClick={closeEventDetail}>
               <X size={24} aria-hidden="true" />
             </button>
-            {selectedEvent.imageUrl && <img src={selectedEvent.imageUrl} alt="" decoding="async" />}
+            {selectedEvent.imageUrl && <img src={selectedEvent.imageUrl} alt="" loading="eager" decoding="async" width={900} height={520} />}
             <p className="eyebrow">{selectedEvent.type ?? "Event"}</p>
             <h2>{selectedEvent.title}</h2>
             <div className="card-meta">

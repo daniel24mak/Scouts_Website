@@ -117,6 +117,14 @@ export async function getWebsiteContent() {
   };
 }
 
+function siteContentImageType(contentKey) {
+  const key = String(contentKey ?? "");
+
+  if (key.includes("hero")) return "hero";
+  if (key.includes("activity")) return "card";
+  return "website_content";
+}
+
 export async function saveSiteContentItem(item) {
   const currentUserId = getCurrentSupabaseUserId();
   let imageUrl = item.imageUrl ?? null;
@@ -124,7 +132,7 @@ export async function saveSiteContentItem(item) {
   const previousStoragePath = item.storagePath ?? null;
 
   if (item.file) {
-    const imageType = item.contentKey?.includes("hero") ? "hero" : "website_content";
+    const imageType = siteContentImageType(item.contentKey);
     const optimized = await optimizeImageForUpload(item.file, imageType);
     storagePath = optimizedImagePath(`site-images/optimized/${item.contentKey}`, item.file);
     imageUrl = await uploadSupabaseFile(storagePath, optimized.file, "site-images", { cacheControl: IMAGE_CACHE_CONTROL });

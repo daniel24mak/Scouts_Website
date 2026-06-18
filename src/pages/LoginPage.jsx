@@ -6,10 +6,10 @@ import BrandedLoader from "../components/BrandedLoader.jsx";
 import { isSupabaseConfigured } from "../services/supabaseClient.js";
 
 export default function LoginPage() {
-  const { user, users, login, loginWithPassword, refreshUsers, isAuthLoading } = useAuth();
+  const { user, users, login, loginWithPassword, refreshUsers, isAuthLoading, isProfileLoading, authError } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname ?? "/chiefs";
+  const from = location.state?.from?.pathname ?? "/dashboard";
   const [credentials, setCredentials] = useState({ email: "", password: "" });
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -17,12 +17,12 @@ export default function LoginPage() {
     refreshUsers();
   }, [refreshUsers]);
 
-  if (isAuthLoading) {
+  if (isAuthLoading || isProfileLoading) {
     return <BrandedLoader label="Checking your session" />;
   }
 
   if (user) {
-    return <Navigate to={user.role === "admin" ? "/admin" : "/chiefs"} replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   const handlePasswordLogin = async (event) => {
@@ -44,7 +44,8 @@ export default function LoginPage() {
     }
 
     login(userId);
-    navigate(selectedUser?.role === "admin" ? "/admin" : from, { replace: true });
+    console.debug("[auth] demo login page navigate", { userId: selectedUser?.id ?? null, role: selectedUser?.role ?? null, to: from });
+    navigate(from, { replace: true });
   };
 
   return (

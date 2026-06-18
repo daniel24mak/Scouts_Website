@@ -13,10 +13,17 @@ function loadBootstrap({ force = false } = {}) {
     return inFlightBootstrap;
   }
 
+  console.debug("[dashboard] bootstrap fetch start", { force });
+
   inFlightBootstrap = getBootstrap()
     .then((nextData) => {
       cachedBootstrap = nextData;
+      console.debug("[dashboard] bootstrap fetch complete");
       return nextData;
+    })
+    .catch((error) => {
+      console.error("[dashboard] bootstrap fetch failed", error);
+      throw error;
     })
     .finally(() => {
       inFlightBootstrap = null;
@@ -28,12 +35,20 @@ function loadBootstrap({ force = false } = {}) {
 export function useBootstrap() {
   const [data, setData] = useState(cachedBootstrap ?? loadingData);
   const [isLoading, setIsLoading] = useState(!cachedBootstrap);
+  const [error, setError] = useState(null);
 
   async function refresh() {
-    const nextData = await loadBootstrap({ force: true });
-    setData(nextData);
-    setIsLoading(false);
-    return nextData;
+    setError(null);
+    try {
+      const nextData = await loadBootstrap({ force: true });
+      setData(nextData);
+      return nextData;
+    } catch (nextError) {
+      setError(nextError);
+      return data;
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -42,22 +57,31 @@ export function useBootstrap() {
     if (cachedBootstrap) {
       setData(cachedBootstrap);
       setIsLoading(false);
+      setError(null);
       return () => {
         cancelled = true;
       };
     }
 
-    loadBootstrap().then((nextData) => {
-      if (!cancelled) {
-        setData(nextData);
-        setIsLoading(false);
-      }
-    });
+    loadBootstrap()
+      .then((nextData) => {
+        if (!cancelled) {
+          setData(nextData);
+          setError(null);
+          setIsLoading(false);
+        }
+      })
+      .catch((nextError) => {
+        if (!cancelled) {
+          setError(nextError);
+          setIsLoading(false);
+        }
+      });
 
     return () => {
       cancelled = true;
     };
   }, []);
 
-  return { data, isLoading, refresh };
+  return { data, isLoading, error, refresh };
 }

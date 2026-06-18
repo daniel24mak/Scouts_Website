@@ -1,4 +1,4 @@
-﻿import { Images } from "lucide-react";
+import { Images } from "lucide-react";
 import { Link } from "react-router-dom";
 import { getPublicBlogsPage } from "../api/publicClient.js";
 import { usePublicData } from "../api/usePublicData.js";

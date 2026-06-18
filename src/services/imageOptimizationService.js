@@ -1,18 +1,18 @@
-﻿export const IMAGE_CACHE_CONTROL = "max-age=31536000, immutable";
+export const IMAGE_CACHE_CONTROL = "max-age=31536000, immutable";
 const supportedExtensions = ["jpg", "jpeg", "png", "webp", "heic", "heif"];
 const maxOriginalSize = 25 * 1024 * 1024;
 
 const imageProfiles = {
   hero: { maxWidth: 1920, quality: 0.9 },
-  site: { maxWidth: 1600, quality: 0.88 },
-  website_content: { maxWidth: 1600, quality: 0.88 },
+  site: { maxWidth: 1400, quality: 0.86 },
+  website_content: { maxWidth: 1400, quality: 0.86 },
   gallery: { maxWidth: 1600, quality: 0.88 },
-  gallery_thumbnail: { maxWidth: 600, quality: 0.84 },
-  album_thumbnail: { maxWidth: 900, quality: 0.88 },
-  blog_thumbnail: { maxWidth: 1200, quality: 0.88 },
+  gallery_thumbnail: { maxWidth: 480, quality: 0.82 },
+  album_thumbnail: { maxWidth: 720, quality: 0.84 },
+  blog_thumbnail: { maxWidth: 900, quality: 0.84 },
   leader_headshot: { maxWidth: 600, maxHeight: 600, quality: 0.9, cropSquare: true },
-  event: { maxWidth: 1200, quality: 0.88 },
-  card: { maxWidth: 900, quality: 0.86 }
+  event: { maxWidth: 1000, quality: 0.84 },
+  card: { maxWidth: 720, quality: 0.84 }
 };
 
 function extensionFor(file) {

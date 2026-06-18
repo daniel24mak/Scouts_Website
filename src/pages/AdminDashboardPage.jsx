@@ -337,7 +337,7 @@ function canOpenSection(sectionId, user) {
 export default function AdminDashboardPage() {
   const { user, logout } = useAuth();
   const { showToast } = useToast();
-  const { data, refresh } = useBootstrap();
+  const { data, isLoading: isDashboardLoading, error: dashboardError, refresh } = useBootstrap();
   const [activeSection, setActiveSection] = useState("overview");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -1254,7 +1254,7 @@ export default function AdminDashboardPage() {
                   {fieldType === "image" ? (
                     <>
                       {previewImage ? (
-                        <img className="website-image-preview" src={previewImage} alt="" />
+                        <img className="website-image-preview" src={previewImage} alt="" loading="lazy" decoding="async" width={360} height={220} />
                       ) : (
                         <div className="website-image-empty">No image saved yet</div>
                       )}
@@ -1325,14 +1325,14 @@ export default function AdminDashboardPage() {
             <p>{getContentText("home_hero_subtitle", "A living preview of the public home page.")}</p>
           </div>
           <div className="preview-content-block">
-            {getContentImage("home_about_image") && <img src={getContentImage("home_about_image")} alt="" />}
+            {getContentImage("home_about_image") && <img src={getContentImage("home_about_image")} alt="" loading="lazy" decoding="async" width={360} height={240} />}
             <h3>About Preview</h3>
             <p>{getContentText("home_about_text", "Update the about preview text to see it here before publishing.")}</p>
           </div>
           <div className="preview-activity-grid">
             {["home_activity_image_1", "home_activity_image_2", "home_activity_image_3"].map((key) => (
               <div key={key}>
-                {getContentImage(key) ? <img src={getContentImage(key)} alt="" /> : <span>Life in Scouts</span>}
+                {getContentImage(key) ? <img src={getContentImage(key)} alt="" loading="lazy" decoding="async" width={180} height={140} /> : <span>Life in Scouts</span>}
               </div>
             ))}
           </div>
@@ -2562,6 +2562,14 @@ export default function AdminDashboardPage() {
           </div>
         </div>
         {saveMessage && <p className="helper-text">{saveMessage}</p>}
+        {isDashboardLoading && <UploadLoadingState message="Loading dashboard data..." />}
+        {dashboardError && (
+          <div className="dashboard-error-banner" role="alert">
+            <strong>Some dashboard data could not be loaded.</strong>
+            <span>{dashboardError.message}</span>
+            <button type="button" className="inline-action" onClick={refresh}>Try again</button>
+          </div>
+        )}
         {uploadStatus && <UploadLoadingState message={uploadStatus} progress={photoUploadProgress.total ? photoUploadProgress : null} />}
         {renderSection()}
       </main>

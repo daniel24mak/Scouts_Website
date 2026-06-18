@@ -6,6 +6,7 @@ import { getPublicAlbumPage } from "../api/publicClient.js";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import { useToast } from "../components/ToastProvider.jsx";
 import { canManageSystem, canPublishContent } from "../services/permissions.js";
+import { preloadImage, preloadImages } from "../utils/imagePreload.js";
 
 const acceptedImageTypes = ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif";
 const PHOTOS_PER_PAGE = 30;
@@ -22,12 +23,15 @@ export default function AlbumDetailPage() {
   const [isLoadingPhotos, setIsLoadingPhotos] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [activePhotoIndex, setActivePhotoIndex] = useState(null);
+  const [lightboxImageUrl, setLightboxImageUrl] = useState(null);
+  const [isLightboxImageLoading, setIsLightboxImageLoading] = useState(false);
   const [selectedPhotoIds, setSelectedPhotoIds] = useState([]);
   const [isEditingAlbum, setIsEditingAlbum] = useState(false);
   const [albumEdit, setAlbumEdit] = useState(null);
   const [message, setMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const isAdmin = canManageSystem(user);
+  const activePhoto = activePhotoIndex === null ? null : photos[activePhotoIndex];
 
   useEffect(() => {
     if (message) {
@@ -73,6 +77,55 @@ if (!cancelled) {
     };
   }, [albumId]);
 
+  useEffect(() => {
+    preloadImages(photos.slice(0, 8).flatMap((photo) => [photo.thumbnailUrl, photo.url]));
+  }, [photos]);
+
+  useEffect(() => {
+    if (activePhotoIndex === null || !photos.length) return;
+
+    const nearbyIndexes = [activePhotoIndex, activePhotoIndex + 1, activePhotoIndex - 1, activePhotoIndex + 2, activePhotoIndex - 2]
+      .map((index) => (index + photos.length) % photos.length);
+    const nearbySources = nearbyIndexes.flatMap((index) => [photos[index]?.thumbnailUrl, photos[index]?.url]);
+
+    preloadImages(nearbySources);
+  }, [activePhotoIndex, photos]);
+
+  useEffect(() => {
+    if (!activePhoto) {
+      setLightboxImageUrl(null);
+      setIsLightboxImageLoading(false);
+      return;
+    }
+
+    const previewUrl = activePhoto.thumbnailUrl ?? activePhoto.url ?? null;
+    const fullUrl = activePhoto.url ?? previewUrl;
+
+    setLightboxImageUrl(previewUrl);
+    setIsLightboxImageLoading(Boolean(fullUrl && fullUrl !== previewUrl));
+
+    if (!fullUrl || fullUrl === previewUrl) {
+      return;
+    }
+
+    let cancelled = false;
+    preloadImage(fullUrl)
+      .then(() => {
+        if (!cancelled) {
+          setLightboxImageUrl(fullUrl);
+          setIsLightboxImageLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setIsLightboxImageLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activePhoto]);
   const reloadAlbumPage = async () => {
     const page = await getPublicAlbumPage(albumId, { limit: Math.max(PHOTOS_PER_PAGE, photoOffset), offset: 0 });
     setAlbum(page.album);
@@ -129,7 +182,6 @@ if (!album) {
     );
   }
 
-  const activePhoto = activePhotoIndex === null ? null : photos[activePhotoIndex];
   const coverImage = album.thumbnailUrl ?? photos[0]?.thumbnailUrl ?? photos[0]?.url;
   const showPreviousPhoto = () => {
     setActivePhotoIndex((current) =>
@@ -208,7 +260,9 @@ if (!album) {
           className="album-detail-cover-image"
           src={coverImage}
           alt={album.title}
+          loading="eager"
           decoding="async"
+          fetchPriority="high"
           sizes="100vw"
           onError={(event) => {
             event.currentTarget.hidden = true;
@@ -277,6 +331,8 @@ if (!album) {
                   alt=""
                   loading={index < 4 ? "eager" : "lazy"}
                   decoding="async"
+                  width={480}
+                  height={320}
                   sizes="(max-width: 480px) 50vw, (max-width: 768px) 33vw, (max-width: 1200px) 25vw, 20vw"
                   onError={(event) => {
                     event.currentTarget.hidden = true;
@@ -304,7 +360,20 @@ if (!album) {
         <div className="lightbox-backdrop" role="dialog" aria-modal="true" aria-label="Photo viewer">
           <button type="button" className="lightbox-close" aria-label="Close photo viewer" onClick={() => setActivePhotoIndex(null)}><X size={24} aria-hidden="true" /></button>
           <button type="button" className="lightbox-nav previous" aria-label="Previous photo" onClick={showPreviousPhoto}><ChevronLeft size={34} aria-hidden="true" /></button>
-          {activePhoto.url ? <img className="lightbox-image" src={activePhoto.url} alt={activePhoto.title || "Selected album photo"} decoding="async" /> : <div className="lightbox-missing">Photo preview unavailable</div>}
+          {lightboxImageUrl ? (
+            <>
+              <img
+                key={`${activePhoto.id}-${lightboxImageUrl}`}
+                className={`lightbox-image ${isLightboxImageLoading ? "loading-next" : ""}`}
+                src={lightboxImageUrl}
+                alt={activePhoto.title || "Selected album photo"}
+                decoding="async"
+                width={activePhoto.width || undefined}
+                height={activePhoto.height || undefined}
+              />
+              {isLightboxImageLoading && <span className="lightbox-loading-note">Loading sharper image...</span>}
+            </>
+          ) : <div className="lightbox-missing">Photo preview unavailable</div>}
           <button type="button" className="lightbox-nav next" aria-label="Next photo" onClick={showNextPhoto}><ChevronRight size={34} aria-hidden="true" /></button>
           <div className="lightbox-count">{activePhotoIndex + 1} / {photos.length}</div>
         </div>
