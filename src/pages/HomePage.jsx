@@ -20,6 +20,7 @@ import { getPublicHomeData } from "../api/publicClient.js";
 import { usePublicData } from "../api/usePublicData.js";
 import FadeInSection from "../components/FadeInSection.jsx";
 import { contentImage, contentText } from "../services/siteContentService.js";
+import { richTextToPlainText } from "../utils/richText.js";
 
 const activityCards = [
   ["Weekly Meetings", "Skills, patrol teamwork, games, and formation."],
@@ -229,7 +230,7 @@ export default function HomePage() {
                 {formatEventDate(event)}
               </span>
               <h3>{event.title}</h3>
-              <p>{event.description || "Public scout event."}</p>
+              <p>{richTextToPlainText(event.description) || "Public scout event."}</p>
               <span><Clock size={16} aria-hidden="true" />{formatEventTime(event)}</span>
               <span>
                 <MapPin size={16} aria-hidden="true" />
@@ -422,3 +423,4 @@ export default function HomePage() {
     </div>
   );
 }
+

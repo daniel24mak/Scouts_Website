@@ -3,6 +3,7 @@ import { addAlbumPhotos, createAlbum, createBlog } from "../api/client.js";
 import { useBootstrap } from "../api/useBootstrap.js";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import { useToast } from "../components/ToastProvider.jsx";
+import RichTextEditor from "../components/RichTextEditor.jsx";
 
 const acceptedImageTypes = ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif";
 
@@ -12,7 +13,7 @@ export default function ChiefContentDashboardPage() {
   const { data, refresh } = useBootstrap();
   const availableAlbums = data.allGalleryAlbums ?? data.galleryAlbums;
   const [message, setMessage] = useState("");
-  const [blog, setBlog] = useState({ title: "", excerpt: "", albumId: "" });
+  const [blog, setBlog] = useState({ title: "", excerpt: "", body: "", albumId: "" });
   const [album, setAlbum] = useState({
     title: "",
     eventDate: "",
@@ -62,11 +63,11 @@ export default function ChiefContentDashboardPage() {
       await createBlog({
         title: blog.title,
         excerpt: blog.excerpt,
-        body: blog.excerpt,
+        body: blog.body || blog.excerpt,
         albumId: blog.albumId || null,
         author: user.name
       });
-      setBlog({ title: "", excerpt: "", albumId: "" });
+      setBlog({ title: "", excerpt: "", body: "", albumId: "" });
       setMessage("Blog submitted for admin approval.");
       await refresh();
     } catch (error) {
@@ -165,7 +166,7 @@ export default function ChiefContentDashboardPage() {
           <label>
             Summary
             <textarea
-              rows="5"
+              rows="3"
               required
               placeholder="Short update for the blogs page"
               value={blog.excerpt}
@@ -174,6 +175,14 @@ export default function ChiefContentDashboardPage() {
               }
             />
           </label>
+          <RichTextEditor
+            label="Full blog content"
+            required
+            value={blog.body}
+            onChange={(value) => setBlog((current) => ({ ...current, body: value }))}
+            minHeight={220}
+            placeholder="Write the full blog with links, headings, colors, lists, and emojis..."
+          />
           <label>
             Linked album
             <select
@@ -369,3 +378,4 @@ function UploadLoadingState({ message, progress = null }) {
     </div>
   );
 }
+

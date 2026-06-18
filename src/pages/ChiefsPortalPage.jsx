@@ -4,6 +4,7 @@ import { createCalendarEvent } from "../api/client.js";
 import { useBootstrap } from "../api/useBootstrap.js";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import { canCreateGroupMeetings } from "../services/permissions.js";
+import RichTextEditor from "../components/RichTextEditor.jsx";
 
 const sortLabels = {
   schoolGrade: "school grade",
@@ -198,15 +199,16 @@ export default function ChiefsPortalPage() {
                 {(user.role === "admin" || user.permissions?.canPublish) && <option value="public">Public</option>}
               </select>
             </label>
-            <label className="wide-field">
-              Description
-              <textarea
-                rows="4"
+            <div className="wide-field">
+              <RichTextEditor
+                label="Description"
                 required
                 value={chiefEvent.description}
-                onChange={(event) => setChiefEvent((current) => ({ ...current, description: event.target.value }))}
+                onChange={(value) => setChiefEvent((current) => ({ ...current, description: value }))}
+                minHeight={190}
+                placeholder="Add event details, links, formatting, and emojis..."
               />
-            </label>
+            </div>
             <button type="submit">Submit calendar event</button>
           </form>
         </article>
@@ -321,3 +323,4 @@ export default function ChiefsPortalPage() {
     </section>
   );
 }
+

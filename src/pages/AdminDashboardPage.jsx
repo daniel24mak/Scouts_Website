@@ -65,6 +65,7 @@ import ChiefAttendanceManager from "../features/attendance/ChiefAttendanceManage
 import CalendarManagement from "../features/calendar/CalendarManagement.jsx";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import { useToast } from "../components/ToastProvider.jsx";
+import RichTextEditor from "../components/RichTextEditor.jsx";
 import { logAuditEvent } from "../services/auditService.js";
 import { signUpInternalUser } from "../services/authService.js";
 import {
@@ -2132,9 +2133,8 @@ export default function AdminDashboardPage() {
       <form className="cms-form" onSubmit={createPost}>
         <h2>Create post</h2>
         <input required placeholder="Title" value={newPost.title} onChange={(event) => setNewPost((current) => ({ ...current, title: event.target.value }))} />
-        <textarea rows="3" placeholder="Excerpt" value={newPost.excerpt} onChange={(event) => setNewPost((current) => ({ ...current, excerpt: event.target.value, body: event.target.value }))} />
-        <textarea rows="6" placeholder="Full blog content" value={newPost.body} onChange={(event) => setNewPost((current) => ({ ...current, body: event.target.value }))} />
-        <small className="formatting-help">Formatting: **bold**, *italic*, `code`, - bullet lines, # headings, emojis, and [blog link](/blogs/post-slug).</small>
+        <textarea rows="3" placeholder="Excerpt" value={newPost.excerpt} onChange={(event) => setNewPost((current) => ({ ...current, excerpt: event.target.value }))} />
+        <RichTextEditor label="Full blog content" required value={newPost.body} onChange={(value) => setNewPost((current) => ({ ...current, body: value }))} minHeight={220} placeholder="Write the full blog post with links, headings, colors, and lists..." />
         <label className="file-picker">
           Thumbnail image
           <input type="file" accept={acceptedImageTypes} onChange={(event) => setNewPost((current) => ({ ...current, thumbnailFile: event.target.files?.[0] ?? null }))} />
@@ -2688,8 +2688,7 @@ function ContentTable({ items, edits, setEdits, onSave, onDelete, refresh, type,
                   {type === "post" && (
                     <div className="blog-inline-editor">
                       <textarea rows="3" placeholder="Excerpt" value={edit.excerpt ?? ""} onChange={(event) => setEdit("excerpt", event.target.value)} />
-                      <textarea rows="6" placeholder="Full blog content" value={edit.body ?? ""} onChange={(event) => setEdit("body", event.target.value)} />
-                      <small className="formatting-help">Formatting: **bold**, *italic*, `code`, - bullet lines, # headings, emojis, and [blog link](/blogs/post-slug).</small>
+                      <RichTextEditor label="Full blog content" value={edit.body ?? ""} onChange={(value) => setEdit("body", value)} minHeight={170} placeholder="Edit the formatted blog content..." />
                     </div>
                   )}
                   {item.reviewerComment && <small className="review-note">Review note: {item.reviewerComment}</small>}
@@ -2760,5 +2759,7 @@ function AccessDenied({ message = "Your role, chief level, assigned group, and p
     </article>
   );
 }
+
+
 
 

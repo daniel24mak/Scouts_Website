@@ -23,6 +23,7 @@ import {
   downloadICSFile
 } from "../../services/calendarExportService.js";
 import FormattedText from "../../components/FormattedText.jsx";
+import RichTextEditor from "../../components/RichTextEditor.jsx";
 import { subscribeDashboardRealtime } from "../../services/realtimeService.js";
 
 const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -457,7 +458,7 @@ export default function CalendarManagement() {
               <label>Title<input type="text" placeholder={`${user.groupId} meeting`} value={groupMeeting.title} onChange={(event) => setGroupMeeting((current) => ({ ...current, title: event.target.value }))} /></label>
               <label>Date from<input type="date" required value={groupMeeting.dateFrom} onChange={(event) => setGroupMeeting((current) => ({ ...current, dateFrom: event.target.value, dateTo: current.dateTo || event.target.value }))} /></label>
               <label>Date to<input type="date" required value={groupMeeting.dateTo} onChange={(event) => setGroupMeeting((current) => ({ ...current, dateTo: event.target.value }))} /></label>
-              <label>Description<textarea rows="3" required value={groupMeeting.description} onChange={(event) => setGroupMeeting((current) => ({ ...current, description: event.target.value }))} /><small className="formatting-help">Supports **bold**, emojis, and [links](/blogs/post-slug).</small></label>
+              <RichTextEditor label="Description" required value={groupMeeting.description} onChange={(value) => setGroupMeeting((current) => ({ ...current, description: value }))} minHeight={170} placeholder="Add meeting details, links, formatting, and emojis..." />
               <label>Start time<input type="time" value={groupMeeting.startTime} onChange={(event) => setGroupMeeting((current) => ({ ...current, startTime: event.target.value }))} /></label>
               <label>End time<input type="time" value={groupMeeting.endTime} onChange={(event) => setGroupMeeting((current) => ({ ...current, endTime: event.target.value }))} /></label>
               <label>Location<input type="text" required value={groupMeeting.location} onChange={(event) => setGroupMeeting((current) => ({ ...current, location: event.target.value }))} /></label>
@@ -471,7 +472,7 @@ export default function CalendarManagement() {
               <label>Title<input type="text" required placeholder="Group activity" value={adminEvent.title} onChange={(event) => setAdminEvent((current) => ({ ...current, title: event.target.value }))} /></label>
               <label>Date from<input type="date" required value={adminEvent.dateFrom} onChange={(event) => setAdminEvent((current) => ({ ...current, dateFrom: event.target.value, dateTo: current.dateTo || event.target.value }))} /></label>
               <label>Date to<input type="date" required value={adminEvent.dateTo} onChange={(event) => setAdminEvent((current) => ({ ...current, dateTo: event.target.value }))} /></label>
-              <label>Description<textarea rows="3" required value={adminEvent.description} onChange={(event) => setAdminEvent((current) => ({ ...current, description: event.target.value }))} /><small className="formatting-help">Supports **bold**, emojis, and [links](/blogs/post-slug).</small></label>
+              <RichTextEditor label="Description" required value={adminEvent.description} onChange={(value) => setAdminEvent((current) => ({ ...current, description: value }))} minHeight={170} placeholder="Add event details, links, formatting, and emojis..." />
               <label>Start time<input type="time" value={adminEvent.startTime} onChange={(event) => setAdminEvent((current) => ({ ...current, startTime: event.target.value }))} /></label>
               <label>End time<input type="time" value={adminEvent.endTime} onChange={(event) => setAdminEvent((current) => ({ ...current, endTime: event.target.value }))} /></label>
               <label>Location<input type="text" required value={adminEvent.location} onChange={(event) => setAdminEvent((current) => ({ ...current, location: event.target.value }))} /></label>
@@ -593,7 +594,7 @@ export default function CalendarManagement() {
                   <label>Start time<input type="time" value={editingEvent.startTime} onChange={(event) => setEditingEvent((current) => ({ ...current, startTime: event.target.value }))} /></label>
                   <label>End time<input type="time" value={editingEvent.endTime} onChange={(event) => setEditingEvent((current) => ({ ...current, endTime: event.target.value }))} /></label>
                   <label>Location<input value={editingEvent.location} required onChange={(event) => setEditingEvent((current) => ({ ...current, location: event.target.value }))} /></label>
-                  <label>Description<textarea rows="4" value={editingEvent.description} required onChange={(event) => setEditingEvent((current) => ({ ...current, description: event.target.value }))} /><small className="formatting-help">Supports **bold**, emojis, and [links](/blogs/post-slug).</small></label>
+                  <RichTextEditor label="Description" required value={editingEvent.description} onChange={(value) => setEditingEvent((current) => ({ ...current, description: value }))} minHeight={180} placeholder="Edit event details, links, formatting, and emojis..." />
                   <label>Linked blog<select value={editingEvent.linkedBlogId ?? ""} onChange={(event) => setEditingEvent((current) => ({ ...current, linkedBlogId: event.target.value }))}><option value="">No linked blog</option>{linkablePosts.map((post) => <option key={post.id} value={post.id}>{post.title}</option>)}</select></label>
                   <label>Linked gallery<select value={editingEvent.linkedAlbumId ?? ""} onChange={(event) => setEditingEvent((current) => ({ ...current, linkedAlbumId: event.target.value }))}><option value="">No linked gallery</option>{linkableAlbums.map((album) => <option key={album.id} value={album.id}>{album.title}</option>)}</select></label>
                   {user?.role === "admin" && (
@@ -650,5 +651,6 @@ export default function CalendarManagement() {
     </section>
   );
 }
+
 
 

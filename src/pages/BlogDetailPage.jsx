@@ -7,6 +7,7 @@ import { usePublicData } from "../api/usePublicData.js";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import { useToast } from "../components/ToastProvider.jsx";
 import FormattedText from "../components/FormattedText.jsx";
+import RichTextEditor from "../components/RichTextEditor.jsx";
 import { canManageSystem, canPublishContent } from "../services/permissions.js";
 
 const acceptedImageTypes = ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif";
@@ -140,11 +141,7 @@ if (!post) {
             Excerpt
             <textarea rows="3" value={editPost.excerpt} onChange={(event) => setEditPost((current) => ({ ...current, excerpt: event.target.value }))} />
           </label>
-          <label>
-            Full blog content
-            <textarea rows="9" value={editPost.body} onChange={(event) => setEditPost((current) => ({ ...current, body: event.target.value }))} />
-            <small className="formatting-help">Formatting: **bold**, *italic*, `code`, - bullet lines, # headings, emojis, and [blog link](/blogs/post-slug).</small>
-          </label>
+          <RichTextEditor label="Full blog content" value={editPost.body} onChange={(value) => setEditPost((current) => ({ ...current, body: value }))} minHeight={260} placeholder="Edit the full blog post with links, headings, colors, and lists..." />
           <label>
             Author
             <input value={editPost.author} onChange={(event) => setEditPost((current) => ({ ...current, author: event.target.value }))} />
@@ -207,4 +204,6 @@ function UploadLoadingState({ message }) {
 function StatusText({ status }) {
   return <span>{String(status).replace("_", " ")}</span>;
 }
+
+
 

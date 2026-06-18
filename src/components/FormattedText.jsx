@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { hasHtmlMarkup, sanitizeRichHtml } from "../utils/richText.js";
 
 function isSafeHref(href) {
   return /^(https?:\/\/|mailto:|tel:|\/)/i.test(String(href ?? ""));
@@ -52,6 +53,10 @@ export default function FormattedText({ text, fallback = "", className = "format
     return null;
   }
 
+  if (hasHtmlMarkup(value)) {
+    return <div className={className} dir="auto" dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(value) }} />;
+  }
+
   const blocks = [];
   const bulletItems = [];
   const flushBullets = () => {
@@ -92,5 +97,8 @@ export default function FormattedText({ text, fallback = "", className = "format
 
   flushBullets();
 
-  return <div className={className}>{blocks}</div>;
+  return <div className={className} dir="auto">{blocks}</div>;
 }
+
+
+
