@@ -1,4 +1,4 @@
-﻿import { CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, X } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, X } from "lucide-react";
 import SafeImage from "../components/SafeImage.jsx";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -6,9 +6,11 @@ import FormattedText from "../components/FormattedText.jsx";
 import { getPublicCalendarEvents } from "../services/calendarService.js";
 import { usePublicData } from "../api/usePublicData.js";
 import { getPublicBlogsPage, getPublicGalleryPage } from "../api/publicClient.js";
+import { buildGoogleCalendarUrl, buildOutlookCalendarUrl, downloadICSFile } from "../services/calendarExportService.js";
 
-const eventLimit = 100;
+const eventLimit = 500;
 const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const monthFormatter = new Intl.DateTimeFormat("en", { month: "long", year: "numeric" });
 const dateFormatter = new Intl.DateTimeFormat("en", {
   weekday: "long",
@@ -16,6 +18,7 @@ const dateFormatter = new Intl.DateTimeFormat("en", {
   day: "numeric",
   year: "numeric"
 });
+const defaultEventColor = "#4055a6";
 
 function formatDateKey(date) {
   const year = date.getFullYear();
@@ -82,11 +85,38 @@ function formatEventTime(event) {
   return [event.startTime, event.endTime].filter(Boolean).join(" - ");
 }
 
+function getEventColor(event) {
+  return event.color ?? event.eventColor ?? event.accentColor ?? defaultEventColor;
+}
+
+function getEventMapLink(event) {
+  return event.locationUrl ?? event.locationLink ?? event.mapUrl ?? event.mapLink ?? "";
+}
+
+function getEventMapEmbed(event) {
+  return event.mapEmbedUrl ?? event.locationEmbedUrl ?? "";
+}
+
+function getAvailableYears(events, displayDate) {
+  const currentYear = new Date().getFullYear();
+  const displayYear = displayDate.getFullYear();
+  const years = new Set([currentYear - 1, currentYear, currentYear + 1, displayYear]);
+
+  events.forEach((event) => {
+    const date = event.dateFrom ?? event.date;
+    if (date) years.add(parseLocalDate(date).getFullYear());
+  });
+
+  return [...years].sort((a, b) => a - b);
+}
+
 export default function CalendarPage() {
   const todayKey = formatDateKey(new Date());
   const [displayDate, setDisplayDate] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [selectedDayModalDate, setSelectedDayModalDate] = useState("");
+  const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -111,7 +141,12 @@ export default function CalendarPage() {
   );
   const monthCells = useMemo(() => getMonthCells(displayDate), [displayDate]);
   const monthLabel = monthFormatter.format(displayDate);
+  const availableYears = useMemo(() => getAvailableYears(events, displayDate), [events, displayDate]);
   const selectedDateEvents = useMemo(() => getEventsForDay(events, selectedDate), [events, selectedDate]);
+  const selectedDayModalEvents = useMemo(
+    () => (selectedDayModalDate ? getEventsForDay(events, selectedDayModalDate) : []),
+    [events, selectedDayModalDate]
+  );
   const requestedEventId = searchParams.get("event") || location.state?.openEventId || "";
   const linkedBlog = selectedEvent?.linkedBlogId
     ? linkedContent.blogPosts.find((post) => post.id === selectedEvent.linkedBlogId)
@@ -119,6 +154,8 @@ export default function CalendarPage() {
   const linkedAlbum = selectedEvent?.linkedAlbumId
     ? linkedContent.albums.find((album) => album.id === selectedEvent.linkedAlbumId)
     : null;
+  const mapLink = selectedEvent ? getEventMapLink(selectedEvent) : "";
+  const mapEmbed = selectedEvent ? getEventMapEmbed(selectedEvent) : "";
 
   useEffect(() => {
     if (!requestedEventId || !events.length) return;
@@ -137,6 +174,7 @@ export default function CalendarPage() {
   }, [events, requestedEventId]);
 
   const changeMonth = (direction) => {
+    setIsMonthPickerOpen(false);
     setDisplayDate((current) => new Date(current.getFullYear(), current.getMonth() + direction, 1));
   };
 
@@ -147,33 +185,72 @@ export default function CalendarPage() {
     }
   };
 
-  const selectCalendarDate = (dateKey) => {
+  const selectCalendarDate = (dateKey, dayEvents = []) => {
     setSelectedDate(dateKey);
     const nextDate = parseLocalDate(dateKey);
     setDisplayDate(new Date(nextDate.getFullYear(), nextDate.getMonth(), 1));
+
+    if (window.matchMedia("(max-width: 768px)").matches && dayEvents.length) {
+      if (dayEvents.length === 1) {
+        setSelectedEvent(dayEvents[0]);
+      } else {
+        setSelectedDayModalDate(dateKey);
+      }
+    }
+  };
+
+  const jumpToToday = () => {
+    const today = new Date();
+    setSelectedDate(todayKey);
+    setDisplayDate(new Date(today.getFullYear(), today.getMonth(), 1));
+    setIsMonthPickerOpen(false);
+  };
+
+  const updateMonthPicker = ({ month = displayDate.getMonth(), year = displayDate.getFullYear() }) => {
+    setDisplayDate(new Date(Number(year), Number(month), 1));
   };
 
   return (
     <section className="page-section calendar-page public-calendar-page">
-      <p className="eyebrow">Calendar</p>
-      <div className="calendar-title-row">
+      <div className="calendar-title-row public-calendar-title-row">
         <div>
-          <h1>Upcoming public events</h1>
+          <h1>Events & Calendar</h1>
           <p className="helper-text calendar-selected-date">Selected date: {dateFormatter.format(parseLocalDate(selectedDate))}</p>
-        </div>
-        <div className="calendar-nav-controls" aria-label="Calendar navigation">
-          <button type="button" onClick={() => changeMonth(-1)} aria-label="Previous month">
-            <ChevronLeft size={18} aria-hidden="true" />
-          </button>
-          <strong>{monthLabel}</strong>
-          <button type="button" onClick={() => changeMonth(1)} aria-label="Next month">
-            <ChevronRight size={18} aria-hidden="true" />
-          </button>
         </div>
       </div>
 
-      {error && <p className="empty-public-state">Events could not be loaded: {error.message}</p>}
+      <div className="calendar-nav-bar" aria-label="Calendar navigation">
+        <button type="button" className="calendar-icon-nav" onClick={() => changeMonth(-1)} aria-label="Previous month">
+          <ChevronLeft size={20} aria-hidden="true" />
+        </button>
+        <div className="calendar-month-picker-wrap">
+          <button type="button" className="calendar-month-label" onClick={() => setIsMonthPickerOpen((open) => !open)}>
+            {monthLabel}
+          </button>
+          {isMonthPickerOpen && (
+            <div className="calendar-month-picker">
+              <label>
+                Month
+                <select value={displayDate.getMonth()} onChange={(event) => updateMonthPicker({ month: event.target.value })}>
+                  {monthNames.map((month, index) => <option value={index} key={month}>{month}</option>)}
+                </select>
+              </label>
+              <label>
+                Year
+                <select value={displayDate.getFullYear()} onChange={(event) => updateMonthPicker({ year: event.target.value })}>
+                  {availableYears.map((year) => <option value={year} key={year}>{year}</option>)}
+                </select>
+              </label>
+            </div>
+          )}
+        </div>
+        <button type="button" className="calendar-icon-nav" onClick={() => changeMonth(1)} aria-label="Next month">
+          <ChevronRight size={20} aria-hidden="true" />
+        </button>
+        <button type="button" className="calendar-today-button" onClick={jumpToToday}>Today</button>
+      </div>
 
+      {error && <p className="empty-public-state">Events could not be loaded: {error.message}</p>}
 
       <div className="calendar-responsive-shell month" aria-busy={isLoading}>
         <div className="month-calendar" aria-label={`${monthLabel} calendar`}>
@@ -183,28 +260,34 @@ export default function CalendarPage() {
             const dayEvents = getEventsForDay(events, cell.dateKey);
 
             return (
-              <button
-                type="button"
+              <div
                 className={`calendar-day ${cell.isCurrentMonth ? "" : "outside"} ${cell.isToday ? "today" : ""} ${cell.dateKey === selectedDate ? "selected" : ""}`}
                 key={cell.dateKey}
-                onClick={() => selectCalendarDate(cell.dateKey)}
                 aria-label={`${cell.dateKey}, ${dayEvents.length} event${dayEvents.length === 1 ? "" : "s"}`}
               >
-                <span className="day-number">{cell.day}</span>
-                <span className="mobile-event-indicators" aria-hidden="true">
-                  {dayEvents.slice(0, 3).map((event) => <i key={event.id} className="public" />)}
-                </span>
-                {dayEvents.length > 0 && <span className="mobile-event-count">{dayEvents.length} event{dayEvents.length === 1 ? "" : "s"}</span>}
+                <button type="button" className="calendar-day-select" onClick={() => selectCalendarDate(cell.dateKey, dayEvents)}>
+                  <span className="day-number">{cell.day}</span>
+                </button>
+                <button type="button" className="mobile-event-indicators" aria-label={`Open ${cell.dateKey} events`} onClick={() => selectCalendarDate(cell.dateKey, dayEvents)}>
+                  {dayEvents.slice(0, 3).map((event) => <i key={event.id} style={{ "--event-color": getEventColor(event) }} />)}
+                </button>
+                {dayEvents.length > 0 && <button type="button" className="mobile-event-count" onClick={() => selectCalendarDate(cell.dateKey, dayEvents)}>{dayEvents.length} event{dayEvents.length === 1 ? "" : "s"}</button>}
                 <span className="day-events">
                   {dayEvents.slice(0, 3).map((event) => (
-                    <span className="calendar-pill public" key={event.id}>
+                    <button
+                      type="button"
+                      className="calendar-pill public"
+                      key={event.id}
+                      style={{ "--event-color": getEventColor(event) }}
+                      onClick={() => setSelectedEvent(event)}
+                    >
                       <span className="calendar-pill-title">{event.title}</span>
                       <small>{formatEventTime(event)}</small>
-                    </span>
+                    </button>
                   ))}
-                  {dayEvents.length > 3 && <span className="calendar-more-count">+{dayEvents.length - 3} more</span>}
+                  {dayEvents.length > 3 && <button type="button" className="calendar-more-count" onClick={() => setSelectedDayModalDate(cell.dateKey)}>+{dayEvents.length - 3} more</button>}
                 </span>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -223,7 +306,7 @@ export default function CalendarPage() {
                 </span>
               </div>
             ) : selectedDateEvents.length ? selectedDateEvents.map((event) => (
-              <button type="button" className="calendar-agenda-card" key={event.id} onClick={() => setSelectedEvent(event)}>
+              <button type="button" className="calendar-agenda-card" key={event.id} onClick={() => setSelectedEvent(event)} style={{ "--event-color": getEventColor(event) }}>
                 {event.imageUrl && <SafeImage src={event.imageUrl} alt="" loading="lazy" width={320} height={180} />}
                 <span>{formatEventTime(event)}</span>
                 <strong>{event.title}</strong>
@@ -234,33 +317,69 @@ export default function CalendarPage() {
         </aside>
       </div>
 
-      {!events.length && !isLoading && <p className="empty-public-state">No upcoming public events are available yet.</p>}
+      {!events.length && !isLoading && <p className="empty-public-state">No public events are available yet.</p>}
+
+      {selectedDayModalDate && !selectedEvent && (
+        <div className="lightbox-backdrop" role="dialog" aria-modal="true" aria-label="Events for selected date" onClick={() => setSelectedDayModalDate("")}>
+          <article className="event-detail-modal event-day-list-modal" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="lightbox-close" aria-label="Close event list" onClick={() => setSelectedDayModalDate("")}>
+              <X size={24} aria-hidden="true" />
+            </button>
+            <p className="eyebrow">Events</p>
+            <h2>{dateFormatter.format(parseLocalDate(selectedDayModalDate))}</h2>
+            <div className="calendar-agenda-list">
+              {selectedDayModalEvents.map((event) => (
+                <button type="button" className="calendar-agenda-card" key={event.id} onClick={() => { setSelectedDayModalDate(""); setSelectedEvent(event); }} style={{ "--event-color": getEventColor(event) }}>
+                  <span>{formatEventTime(event)}</span>
+                  <strong>{event.title}</strong>
+                  <small>{event.location || "St. Mary's Catholic Church, Dubai"}</small>
+                </button>
+              ))}
+            </div>
+          </article>
+        </div>
+      )}
 
       {selectedEvent && (
         <div className="lightbox-backdrop" role="dialog" aria-modal="true" aria-label="Event details" onClick={closeEventDetail}>
-          <article className="event-detail-modal" onClick={(event) => event.stopPropagation()}>
+          <article className="event-detail-modal" onClick={(event) => event.stopPropagation()} style={{ "--event-color": getEventColor(selectedEvent) }}>
             <button type="button" className="lightbox-close" aria-label="Close event details" onClick={closeEventDetail}>
               <X size={24} aria-hidden="true" />
             </button>
             {selectedEvent.imageUrl && <SafeImage src={selectedEvent.imageUrl} alt="" loading="eager" fetchPriority="high" width={900} height={520} />}
-            <p className="eyebrow">{selectedEvent.type ?? "Event"}</p>
-            <h2>{selectedEvent.title}</h2>
+            <div className="event-detail-heading-block">
+              <span className="event-color-dot" aria-hidden="true" />
+              <div>
+                <p className="eyebrow">{selectedEvent.type ?? "Event"}</p>
+                <h2>{selectedEvent.title}</h2>
+              </div>
+            </div>
             <div className="card-meta">
               <span><CalendarDays size={16} aria-hidden="true" />{formatEventRange(selectedEvent)}</span>
               <span><Clock size={16} aria-hidden="true" />{formatEventTime(selectedEvent)}</span>
               <span><MapPin size={16} aria-hidden="true" />{selectedEvent.location || "St. Mary's Catholic Church, Dubai"}</span>
             </div>
             <FormattedText text={selectedEvent.description} fallback="More details will be shared soon." className="detail-copy formatted-text" />
+            {(mapEmbed || mapLink) && (
+              <div className="event-map-preview">
+                {mapEmbed ? <iframe title={`${selectedEvent.title} map`} src={mapEmbed} loading="lazy" referrerPolicy="no-referrer-when-downgrade" /> : null}
+                {mapLink ? <a href={mapLink} target="_blank" rel="noreferrer">Open location map</a> : null}
+              </div>
+            )}
             {(linkedBlog || linkedAlbum) && (
               <div className="event-linked-content">
                 {linkedBlog && <Link to={`/blogs/${linkedBlog.slug}`}>Read linked blog: {linkedBlog.title}</Link>}
                 {linkedAlbum && <Link to={`/gallery/${linkedAlbum.id}`}>View linked gallery: {linkedAlbum.title}</Link>}
               </div>
             )}
+            <div className="event-calendar-actions">
+              <a href={buildGoogleCalendarUrl(selectedEvent)} target="_blank" rel="noreferrer">Add to Google Calendar</a>
+              <a href={buildOutlookCalendarUrl(selectedEvent)} target="_blank" rel="noreferrer">Add to Outlook</a>
+              <button type="button" onClick={() => downloadICSFile(selectedEvent)}>Download .ics</button>
+            </div>
           </article>
         </div>
       )}
     </section>
   );
 }
-

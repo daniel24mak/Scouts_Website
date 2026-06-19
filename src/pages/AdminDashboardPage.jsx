@@ -61,6 +61,7 @@ import {
 } from "../api/client.js";
 import { useBootstrap } from "../api/useBootstrap.js";
 import ScoutAttendanceManager from "../features/attendance/ScoutAttendanceManager.jsx";
+import AttendanceSheetsManager from "../features/attendance/AttendanceSheetsManager.jsx";
 import ChiefAttendanceManager from "../features/attendance/ChiefAttendanceManager.jsx";
 import CalendarManagement from "../features/calendar/CalendarManagement.jsx";
 import { useAuth } from "../auth/AuthProvider.jsx";
@@ -168,6 +169,7 @@ const sections = [
   ["overview", "Overview", LayoutDashboard, "all"],
   ["myGroup", "My Group", Users, "chief"],
   ["scoutAttendance", "Scout Attendance", CheckCircle2, "attendance"],
+  ["attendanceSheets", "Attendance Sheets", FileText, "attendance"],
   ["chiefAttendance", "Chief Attendance", ShieldCheck, "admin"],
   ["scouts", "Scouts", Users, "scouts"],
   ["equipes", "Equipe Management", ShieldCheck, "chief"],
@@ -1509,6 +1511,7 @@ export default function AdminDashboardPage() {
         </div>
         <div className="action-row">
           {canTakeAttendance(user) && <button type="button" className="inline-action" onClick={() => setActiveSection("scoutAttendance")}>Take scout attendance</button>}
+          {canTakeAttendance(user) && <button type="button" className="inline-action" onClick={() => setActiveSection("attendanceSheets")}>View attendance sheet</button>}
           {canPublishContent(user) && <Link className="inline-action" to="/chiefs/content">Submit post or photos</Link>}
         </div>
         <article className="table-panel">
@@ -1607,6 +1610,7 @@ export default function AdminDashboardPage() {
               <h2>Quick actions</h2>
               <div className="shortcut-list">
                 {canTakeAttendance(user) && <button type="button" onClick={() => setActiveSection("scoutAttendance")}>Take scout attendance</button>}
+                {canTakeAttendance(user) && <button type="button" onClick={() => setActiveSection("attendanceSheets")}>View attendance sheet</button>}
                 {canPublishContent(user) && <Link to="/chiefs/content">Submit post or photos</Link>}
                 {canCreateGroupMeetings(user) && <button type="button" onClick={() => setActiveSection("calendar")}>Create group event</button>}
               </div>
@@ -2184,7 +2188,7 @@ export default function AdminDashboardPage() {
             <input required type="date" value={newAlbum.eventDate} onChange={(event) => setNewAlbum((current) => ({ ...current, eventDate: event.target.value }))} />
             <input required placeholder="Location" value={newAlbum.location} onChange={(event) => setNewAlbum((current) => ({ ...current, location: event.target.value }))} />
             <input required placeholder="Category" value={newAlbum.category} onChange={(event) => setNewAlbum((current) => ({ ...current, category: event.target.value }))} />
-            <textarea rows="3" placeholder="Album description (optional)" value={newAlbum.description} onChange={(event) => setNewAlbum((current) => ({ ...current, description: event.target.value }))} />
+            <RichTextEditor label="Album description" value={newAlbum.description} onChange={(value) => setNewAlbum((current) => ({ ...current, description: value }))} minHeight={180} placeholder="Optional formatted album description with links, lists, and emojis..." />
             <label className="file-picker">
               Album thumbnail
               <input required type="file" accept={acceptedImageTypes} onChange={(event) => setAlbumThumbnailFile(event.target.files?.[0] ?? null)} />
@@ -2335,13 +2339,21 @@ export default function AdminDashboardPage() {
                 </div>
               )}
               {selectedApproval.contentType === "Album" && (
-                <div className="preview-activity-grid">
-                  {(selectedApproval.photos ?? []).slice(0, 3).map((photo) => (
-                    <div key={photo.id}>
-                      {photo.url ? <img src={photo.url} alt="" /> : <span>Photo</span>}
-                    </div>
-                  ))}
-                  {!(selectedApproval.photos ?? []).length && <div><span>No photos yet</span></div>}
+                <div className="photo-batch-preview">
+                  <div className="preview-event-meta">
+                    <span>{selectedApproval.eventDate || "No date"}</span>
+                    <span>{selectedApproval.location || "No location"}</span>
+                    <span>{selectedApproval.photoCount ?? selectedApproval.photos?.length ?? 0} photos</span>
+                  </div>
+                  <p>{selectedApproval.description || "No description added yet."}</p>
+                  <div className="approval-photo-grid">
+                    {(selectedApproval.photos ?? []).slice(0, 6).map((photo) => (
+                      <div key={photo.id}>
+                        {photo.thumbnailUrl || photo.url ? <img src={photo.thumbnailUrl ?? photo.url} alt="" /> : <span>Photo</span>}
+                      </div>
+                    ))}
+                    {!(selectedApproval.photos ?? []).length && <div><span>No photos yet</span></div>}
+                  </div>
                 </div>
               )}
               {selectedApproval.contentType === "Photo" && (
@@ -2443,6 +2455,7 @@ export default function AdminDashboardPage() {
     if (activeSection === "contactMessages") return renderContactMessages();
     if (activeSection === "approvals") return renderApprovals();
     if (activeSection === "scoutAttendance") return <ScoutAttendanceManager />;
+    if (activeSection === "attendanceSheets") return <AttendanceSheetsManager />;
     if (activeSection === "chiefAttendance") return <ChiefAttendanceManager />;
     if (activeSection === "calendar") return <CalendarManagement />;
     if (activeSection === "settings") return renderSettings();
@@ -2699,6 +2712,11 @@ function ContentTable({ items, edits, setEdits, onSave, onDelete, refresh, type,
                       <RichTextEditor label="Full blog content" value={edit.body ?? ""} onChange={(value) => setEdit("body", value)} minHeight={170} placeholder="Edit the formatted blog content..." />
                     </div>
                   )}
+                  {type === "album" && (
+                    <div className="blog-inline-editor">
+                      <RichTextEditor label="Album description" value={edit.description ?? ""} onChange={(value) => setEdit("description", value)} minHeight={150} placeholder="Edit the formatted album description..." />
+                    </div>
+                  )}
                   {item.reviewerComment && <small className="review-note">Review note: {item.reviewerComment}</small>}
                 </td>
                 <td>
@@ -2767,6 +2785,8 @@ function AccessDenied({ message = "Your role, chief level, assigned group, and p
     </article>
   );
 }
+
+
 
 
 

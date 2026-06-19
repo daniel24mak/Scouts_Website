@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { addAlbumPhotos, createAlbum, createBlog } from "../api/client.js";
 import { useBootstrap } from "../api/useBootstrap.js";
 import { useAuth } from "../auth/AuthProvider.jsx";
@@ -250,17 +250,13 @@ export default function ChiefContentDashboardPage() {
               }
             />
           </label>
-          <label>
-            Description
-            <textarea
-              rows="3"
-              placeholder="Optional album description"
-              value={album.description}
-              onChange={(event) =>
-                setAlbum((current) => ({ ...current, description: event.target.value }))
-              }
-            />
-          </label>
+          <RichTextEditor
+            label="Album description"
+            value={album.description}
+            onChange={(value) => setAlbum((current) => ({ ...current, description: value }))}
+            minHeight={180}
+            placeholder="Optional formatted album description with links, lists, and emojis..."
+          />
           <label className="file-picker">
             Album thumbnail
             <input
@@ -378,4 +374,5 @@ function UploadLoadingState({ message, progress = null }) {
     </div>
   );
 }
+
 

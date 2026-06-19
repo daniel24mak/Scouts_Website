@@ -2,7 +2,9 @@ import {
   deleteSupabaseRows,
   getCurrentSupabaseUserId,
   getSupabaseRows,
-  insertSupabaseRow
+  insertSupabaseRow,
+  patchSupabaseRows,
+  supabaseRequest
 } from "./supabaseClient.js";
 import { getActiveScoutYearId } from "./scoutService.js";
 
@@ -26,7 +28,9 @@ export async function getAttendanceData() {
       equipeId: meeting.equipe_id ?? null,
       scope: meeting.scope ?? "group",
       date: meeting.date,
-      topic: meeting.topic,
+      topic: meeting.topic ?? "Meeting",
+      takenBy: meeting.taken_by ?? null,
+      createdAt: meeting.created_at ?? null,
       records: Object.fromEntries(
         attendanceRecords
           .filter((record) => record.session_id === meeting.id)
@@ -37,7 +41,9 @@ export async function getAttendanceData() {
     chiefAttendanceMeetings: chiefAttendanceMeetings.map((meeting) => ({
       id: meeting.id,
       date: meeting.date,
-      topic: meeting.topic,
+      topic: meeting.topic ?? "Chief meeting",
+      takenBy: meeting.taken_by ?? null,
+      createdAt: meeting.created_at ?? null,
       records: Object.fromEntries(
         chiefAttendanceRecords
           .filter((record) => record.session_id === meeting.id)
@@ -56,7 +62,7 @@ export async function saveSupabaseScoutAttendance({ groupId, equipeId = null, sc
   const equipeFilter = equipeId ? `equipe_id=eq.${encodeURIComponent(equipeId)}` : "equipe_id=is.null";
   const [existingSession] = await getSupabaseRows(
     "attendance_sessions",
-    `select=id&scout_year_id=eq.${encodeURIComponent(scoutYearId)}&group_id=eq.${encodeURIComponent(groupId)}&scope=eq.${encodeURIComponent(scope)}&${equipeFilter}&date=eq.${encodeURIComponent(date)}&limit=1`
+    `select=id,topic&scout_year_id=eq.${encodeURIComponent(scoutYearId)}&group_id=eq.${encodeURIComponent(groupId)}&scope=eq.${encodeURIComponent(scope)}&${equipeFilter}&date=eq.${encodeURIComponent(date)}&limit=1`
   );
   const [session] =
     existingSession
@@ -84,6 +90,28 @@ export async function saveSupabaseScoutAttendance({ groupId, equipeId = null, sc
   );
 
   return { id: session.id };
+}
+
+export async function updateSupabaseAttendanceSessionLabel(sessionId, topic) {
+  const label = String(topic ?? "").trim() || "Meeting";
+
+  return patchSupabaseRows("attendance_sessions", `id=eq.${encodeURIComponent(sessionId)}`, {
+    topic: label
+  });
+}
+
+export async function updateSupabaseAttendanceSessionDate(sessionId, date) {
+  return supabaseRequest("/rest/v1/rpc/update_attendance_session_date", {
+    method: "POST",
+    body: JSON.stringify({ target_session_id: sessionId, target_date: date })
+  });
+}
+
+export async function deleteSupabaseAttendanceSession(sessionId) {
+  return supabaseRequest("/rest/v1/rpc/delete_attendance_session", {
+    method: "POST",
+    body: JSON.stringify({ target_session_id: sessionId })
+  });
 }
 
 export async function saveSupabaseChiefAttendance({ date, topic = "Chief meeting", records }) {

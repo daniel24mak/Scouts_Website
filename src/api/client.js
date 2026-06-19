@@ -4,7 +4,7 @@ import { blogPosts, galleryAlbums } from "../data/content.js";
 import { scoutGroups } from "../data/groups.js";
 import { groupingRulesStore, registeredScouts, registrationImportSettings } from "../data/registration.js";
 import { demoUsers } from "../data/users.js";
-import { getAttendanceData, saveSupabaseChiefAttendance, saveSupabaseScoutAttendance } from "../services/attendanceService.js";
+import { deleteSupabaseAttendanceSession, getAttendanceData, saveSupabaseChiefAttendance, saveSupabaseScoutAttendance, updateSupabaseAttendanceSessionDate, updateSupabaseAttendanceSessionLabel } from "../services/attendanceService.js";
 import {
   createSupabaseCalendarEvent,
   deleteSupabaseCalendarEvent,
@@ -304,6 +304,29 @@ export function saveScoutAttendance(payload) {
   return request("/attendance/scouts", { method: "POST", body: JSON.stringify(payload) });
 }
 
+
+export function updateAttendanceSessionLabel(sessionId, topic) {
+  if (isSupabaseConfigured) {
+    return updateSupabaseAttendanceSessionLabel(sessionId, topic);
+  }
+
+  return Promise.resolve({ id: sessionId, topic });
+}
+export function updateAttendanceSessionDate(sessionId, date) {
+  if (isSupabaseConfigured) {
+    return updateSupabaseAttendanceSessionDate(sessionId, date);
+  }
+
+  return Promise.resolve({ id: sessionId, date });
+}
+
+export function deleteAttendanceSession(sessionId) {
+  if (isSupabaseConfigured) {
+    return deleteSupabaseAttendanceSession(sessionId);
+  }
+
+  return Promise.resolve({ id: sessionId });
+}
 export function saveChiefAttendance(payload) {
   if (isSupabaseConfigured) {
     return saveSupabaseChiefAttendance(payload).catch(() =>
@@ -537,3 +560,4 @@ export function assignEquipeScouts(payload) {
 
   return Promise.resolve(payload);
 }
+

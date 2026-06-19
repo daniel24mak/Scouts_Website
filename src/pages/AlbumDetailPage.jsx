@@ -1,5 +1,7 @@
-import { CalendarDays, ChevronLeft, ChevronRight, Images, MapPin, X } from "lucide-react";
+﻿import { CalendarDays, ChevronLeft, ChevronRight, Images, MapPin, X } from "lucide-react";
 import SafeImage from "../components/SafeImage.jsx";
+import FormattedText from "../components/FormattedText.jsx";
+import RichTextEditor from "../components/RichTextEditor.jsx";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { deletePhotos, updateAlbum } from "../api/client.js";
@@ -284,6 +286,7 @@ if (!album) {
         <span><MapPin size={16} aria-hidden="true" />{album.location}</span>
         <span><Images size={16} aria-hidden="true" />{album.photoCount || photos.length} photos</span>
       </div>
+      {album.description && <FormattedText text={album.description} className="album-description detail-copy formatted-text" />}
       {message && <p className="helper-text">{message}</p>}
       {isSaving && <UploadLoadingState message={message || "Saving album..."} />}
       {isEditingAlbum && albumEdit && (
@@ -292,7 +295,7 @@ if (!album) {
           <label>Event date<input type="date" value={albumEdit.eventDate} onChange={(event) => setAlbumEdit((current) => ({ ...current, eventDate: event.target.value }))} /></label>
           <label>Location<input value={albumEdit.location} onChange={(event) => setAlbumEdit((current) => ({ ...current, location: event.target.value }))} /></label>
           <label>Category<input value={albumEdit.category} onChange={(event) => setAlbumEdit((current) => ({ ...current, category: event.target.value }))} /></label>
-          <label>Description<textarea rows="3" value={albumEdit.description} onChange={(event) => setAlbumEdit((current) => ({ ...current, description: event.target.value }))} /></label>
+          <RichTextEditor label="Album description" value={albumEdit.description} onChange={(value) => setAlbumEdit((current) => ({ ...current, description: value }))} minHeight={180} placeholder="Add a short formatted album description with links, lists, and emojis..." />
           <label className="file-picker">Replace album thumbnail<input type="file" accept={acceptedImageTypes} onChange={(event) => setAlbumEdit((current) => ({ ...current, thumbnailFile: event.target.files?.[0] ?? null }))} /></label>
           {albumEdit.thumbnailFile && <span className="helper-text">{albumEdit.thumbnailFile.name}</span>}
           {isAdmin && (
@@ -391,3 +394,4 @@ function UploadLoadingState({ message }) {
     </div>
   );
 }
+

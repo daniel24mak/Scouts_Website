@@ -34,10 +34,9 @@ export async function getCalendarEvents() {
 }
 
 export async function getPublicCalendarEvents({ limit = 3 } = {}) {
-  const today = new Date().toISOString().slice(0, 10);
   const rows = await getSupabaseRows(
     "calendar_events",
-    `select=id,title,event_date,date_from,date_to,start_time,end_time,event_type,visibility,location,description,image_url,storage_path,status,linked_blog_id,linked_album_id&status=eq.approved&visibility=eq.public&event_date=gte.${today}&order=event_date.asc&limit=${Number(limit)}`
+    `select=id,title,event_date,date_from,date_to,start_time,end_time,event_type,visibility,location,description,image_url,storage_path,status,linked_blog_id,linked_album_id&status=eq.approved&visibility=eq.public&order=event_date.asc&limit=${Number(limit)}`
   );
 
   return rows.map(normalizeEvent);
