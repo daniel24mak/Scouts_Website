@@ -1,4 +1,5 @@
-import { CalendarDays, Images, MapPin } from "lucide-react";
+﻿import { CalendarDays, Images, MapPin } from "lucide-react";
+import SafeImage from "../components/SafeImage.jsx";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { getPublicGalleryPage } from "../api/publicClient.js";
@@ -31,17 +32,26 @@ export default function GalleryPage() {
       <p className="eyebrow">Gallery</p>
       <h1>Photo albums from every event</h1>
       {error && <p className="empty-public-state">Albums could not be loaded: {error.message}</p>}
-      <div className="album-grid">
-        {albums.map((album) => (
+      <div className="album-grid" aria-busy={isLoading}>
+        {isLoading && !albums.length ? Array.from({ length: 6 }, (_, index) => (
+          <article className="album-card public-loading-card" key={`loading-album-${index}`}>
+            <div className="loading-media" />
+            <div className="album-card-body">
+              <span>Loading album...</span>
+              <i />
+              <i className="short" />
+            </div>
+          </article>
+        )) : albums.map((album) => (
           <Link className="album-card" to={`/gallery/${album.id}`} key={album.id}>
             <div className="album-card-media">
               {album.thumbnailUrl ? (
-                <img
-                  className="album-card-image"
+                <SafeImage
                   src={album.thumbnailUrl}
                   alt={`${album.title} album cover`}
+                  className="album-card-image-frame"
+                  imageClassName="album-card-image"
                   loading="lazy"
-                  decoding="async"
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 />
               ) : (

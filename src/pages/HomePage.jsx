@@ -19,6 +19,7 @@ import { sendContactMessage } from "../api/client.js";
 import { getPublicHomeData } from "../api/publicClient.js";
 import { usePublicData } from "../api/usePublicData.js";
 import FadeInSection from "../components/FadeInSection.jsx";
+import SafeImage from "../components/SafeImage.jsx";
 import { contentImage, contentText } from "../services/siteContentService.js";
 import { preloadImages } from "../utils/imagePreload.js";
 import { richTextToPlainText } from "../utils/richText.js";
@@ -170,7 +171,7 @@ export default function HomePage() {
         </div>
         <div className="public-image-card">
           {aboutImage ? (
-            <img src={aboutImage} alt="Scouts gathered at St. Mary's Scouts Dubai" loading="lazy" decoding="async" width={900} height={640} sizes="(max-width: 768px) 100vw, 50vw" />
+            <SafeImage src={aboutImage} alt="Scouts gathered at St. Mary's Scouts Dubai" loading="lazy" width={900} height={640} sizes="(max-width: 768px) 100vw, 50vw" />
           ) : (
             <div className="image-fallback">
               <Users size={42} aria-hidden="true" />
@@ -199,7 +200,7 @@ export default function HomePage() {
             return (
               <article className="activity-card" key={title}>
                 {activityImage ? (
-                  <img src={activityImage} alt={`${title} at St. Mary's Scouts Dubai`} loading="lazy" decoding="async" width={720} height={480} sizes="(max-width: 768px) 100vw, 33vw" />
+                  <SafeImage src={activityImage} alt={`${title} at St. Mary's Scouts Dubai`} loading="lazy" width={720} height={480} sizes="(max-width: 768px) 100vw, 33vw" />
                 ) : (
                   <div className="activity-icon">
                     <ShieldCheck size={26} aria-hidden="true" />
@@ -266,12 +267,12 @@ export default function HomePage() {
           ) : latestPosts.length ? latestPosts.map((post) => (
             <article className="preview-card" key={post.id}>
               {post.thumbnailUrl ? (
-                <img
-                  className="preview-card-image"
+                <SafeImage
                   src={post.thumbnailUrl}
                   alt={`${post.title} thumbnail`}
+                  className="preview-card-image-frame"
+                  imageClassName="preview-card-image"
                   loading="lazy"
-                  decoding="async"
                   sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 33vw"
                 />
               ) : (
@@ -308,11 +309,10 @@ export default function HomePage() {
             <Link className="gallery-preview-card" to={`/gallery/${album.id}`} key={album.id}>
               <div className="gallery-preview-media">
                 {album.thumbnailUrl || album.photos?.[0]?.thumbnailUrl || album.photos?.[0]?.url ? (
-                  <img
+                  <SafeImage
                     src={album.thumbnailUrl ?? album.photos?.[0]?.thumbnailUrl ?? album.photos?.[0]?.url}
                     alt={`${album.title} album cover`}
                     loading="lazy"
-                    decoding="async"
                     sizes="(max-width: 768px) 100vw, 33vw"
                   />
                 ) : (
@@ -428,4 +428,3 @@ export default function HomePage() {
     </div>
   );
 }
-

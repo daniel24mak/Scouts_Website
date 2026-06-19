@@ -1,4 +1,5 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Images, MapPin, X } from "lucide-react";
+import SafeImage from "../components/SafeImage.jsx";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { deletePhotos, updateAlbum } from "../api/client.js";
@@ -256,17 +257,15 @@ if (!album) {
   return (
     <section className="page-section">
       {coverImage ? (
-        <img
-          className="album-detail-cover-image"
+        <SafeImage
           src={coverImage}
           alt={album.title}
+          className="album-detail-cover-image-frame"
+          imageClassName="album-detail-cover-image"
           loading="eager"
-          decoding="async"
           fetchPriority="high"
           sizes="100vw"
-          onError={(event) => {
-            event.currentTarget.hidden = true;
-          }}
+          retryCount={3}
         />
       ) : (
         <div className="album-detail-cover">
@@ -325,18 +324,15 @@ if (!album) {
             )}
             {photo.thumbnailUrl || photo.url ? (
               <button type="button" className="gallery-photo-button" onClick={() => setActivePhotoIndex(index)} aria-label={`Open photo ${index + 1}`}>
-                <img
-                  className="gallery-photo"
+                <SafeImage
                   src={photo.thumbnailUrl ?? photo.url}
                   alt=""
+                  className="gallery-photo-frame"
+                  imageClassName="gallery-photo"
                   loading={index < 4 ? "eager" : "lazy"}
-                  decoding="async"
                   width={480}
                   height={320}
                   sizes="(max-width: 480px) 50vw, (max-width: 768px) 33vw, (max-width: 1200px) 25vw, 20vw"
-                  onError={(event) => {
-                    event.currentTarget.hidden = true;
-                  }}
                 />
               </button>
             ) : (
@@ -362,14 +358,16 @@ if (!album) {
           <button type="button" className="lightbox-nav previous" aria-label="Previous photo" onClick={showPreviousPhoto}><ChevronLeft size={34} aria-hidden="true" /></button>
           {lightboxImageUrl ? (
             <>
-              <img
+              <SafeImage
                 key={`${activePhoto.id}-${lightboxImageUrl}`}
-                className={`lightbox-image ${isLightboxImageLoading ? "loading-next" : ""}`}
                 src={lightboxImageUrl}
                 alt={activePhoto.title || "Selected album photo"}
-                decoding="async"
+                className={`lightbox-image-frame ${isLightboxImageLoading ? "loading-next" : ""}`}
+                imageClassName="lightbox-image"
+                loading="eager"
                 width={activePhoto.width || undefined}
                 height={activePhoto.height || undefined}
+                retryCount={3}
               />
               {isLightboxImageLoading && <span className="lightbox-loading-note">Loading sharper image...</span>}
             </>
@@ -393,4 +391,3 @@ function UploadLoadingState({ message }) {
     </div>
   );
 }
-

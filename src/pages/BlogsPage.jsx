@@ -1,4 +1,5 @@
-import { Images } from "lucide-react";
+﻿import { Images } from "lucide-react";
+import SafeImage from "../components/SafeImage.jsx";
 import { Link } from "react-router-dom";
 import { getPublicBlogsPage } from "../api/publicClient.js";
 import { usePublicData } from "../api/usePublicData.js";
@@ -17,16 +18,26 @@ export default function BlogsPage() {
       <p className="eyebrow">Blogs</p>
       <h1>Latest group updates</h1>
       {error && <p className="empty-public-state">Blogs could not be loaded: {error.message}</p>}
-      <div className="card-list">
-        {posts.map((post) => (
+      <div className="card-list" aria-busy={isLoading}>
+        {isLoading && !posts.length ? Array.from({ length: 4 }, (_, index) => (
+          <article className="card public-loading-card" key={`loading-blog-${index}`}>
+            <div className="loading-media" />
+            <div>
+              <span>Loading post...</span>
+              <i />
+              <i className="wide" />
+              <i className="short" />
+            </div>
+          </article>
+        )) : posts.map((post) => (
           <article className="card" key={post.id}>
             {post.thumbnailUrl ? (
-              <img
-                className="blog-thumb-image"
+              <SafeImage
                 src={post.thumbnailUrl}
                 alt={post.title}
+                className="blog-thumb-image-frame"
+                imageClassName="blog-thumb-image"
                 loading="lazy"
-                decoding="async"
                 sizes="(max-width: 768px) 100vw, 360px"
               />
             ) : (
@@ -47,3 +58,4 @@ export default function BlogsPage() {
     </section>
   );
 }
+

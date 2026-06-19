@@ -1,4 +1,5 @@
 import { Images } from "lucide-react";
+import SafeImage from "../components/SafeImage.jsx";
 import { Link, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { updateBlog } from "../api/client.js";
@@ -112,11 +113,13 @@ if (!post) {
       {message && <p className="helper-text">{message}</p>}
       {isSaving && <UploadLoadingState message={message || "Saving blog..."} />}
       {post.thumbnailUrl ? (
-        <img
-          className="blog-hero-image"
+        <SafeImage
           src={post.thumbnailUrl}
           alt={post.title}
-          decoding="async"
+          className="blog-hero-image-frame"
+          imageClassName="blog-hero-image"
+          loading="eager"
+          fetchPriority="high"
           sizes="(max-width: 768px) 100vw, 760px"
         />
       ) : (
@@ -204,6 +207,3 @@ function UploadLoadingState({ message }) {
 function StatusText({ status }) {
   return <span>{String(status).replace("_", " ")}</span>;
 }
-
-
-

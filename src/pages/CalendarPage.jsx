@@ -1,4 +1,5 @@
-import { CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, X } from "lucide-react";
+﻿import { CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, X } from "lucide-react";
+import SafeImage from "../components/SafeImage.jsx";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import FormattedText from "../components/FormattedText.jsx";
@@ -172,10 +173,11 @@ export default function CalendarPage() {
       </div>
 
       {error && <p className="empty-public-state">Events could not be loaded: {error.message}</p>}
-      {isLoading && <p className="helper-text">Loading events...</p>}
 
-      <div className="calendar-responsive-shell month">
+
+      <div className="calendar-responsive-shell month" aria-busy={isLoading}>
         <div className="month-calendar" aria-label={`${monthLabel} calendar`}>
+          {isLoading && <div className="calendar-loading-panel" role="status">Loading events...</div>}
           {weekdays.map((day) => <span className="weekday-heading" key={day}>{day}</span>)}
           {monthCells.map((cell) => {
             const dayEvents = getEventsForDay(events, cell.dateKey);
@@ -212,9 +214,17 @@ export default function CalendarPage() {
           <h2>{dateFormatter.format(parseLocalDate(selectedDate))}</h2>
           <p>{selectedDateEvents.length ? `${selectedDateEvents.length} public event${selectedDateEvents.length === 1 ? "" : "s"}` : "No public events are scheduled for this date."}</p>
           <div className="calendar-agenda-list">
-            {selectedDateEvents.length ? selectedDateEvents.map((event) => (
+            {isLoading ? (
+              <div className="calendar-agenda-card public-loading-card">
+                <div className="loading-thumb" />
+                <span>
+                  <strong>Loading events...</strong>
+                  <i />
+                </span>
+              </div>
+            ) : selectedDateEvents.length ? selectedDateEvents.map((event) => (
               <button type="button" className="calendar-agenda-card" key={event.id} onClick={() => setSelectedEvent(event)}>
-                {event.imageUrl && <img src={event.imageUrl} alt="" loading="lazy" decoding="async" width={320} height={180} />}
+                {event.imageUrl && <SafeImage src={event.imageUrl} alt="" loading="lazy" width={320} height={180} />}
                 <span>{formatEventTime(event)}</span>
                 <strong>{event.title}</strong>
                 <small>{event.location || "St. Mary's Catholic Church, Dubai"}</small>
@@ -232,7 +242,7 @@ export default function CalendarPage() {
             <button type="button" className="lightbox-close" aria-label="Close event details" onClick={closeEventDetail}>
               <X size={24} aria-hidden="true" />
             </button>
-            {selectedEvent.imageUrl && <img src={selectedEvent.imageUrl} alt="" loading="eager" decoding="async" width={900} height={520} />}
+            {selectedEvent.imageUrl && <SafeImage src={selectedEvent.imageUrl} alt="" loading="eager" fetchPriority="high" width={900} height={520} />}
             <p className="eyebrow">{selectedEvent.type ?? "Event"}</p>
             <h2>{selectedEvent.title}</h2>
             <div className="card-meta">
@@ -253,5 +263,4 @@ export default function CalendarPage() {
     </section>
   );
 }
-
 

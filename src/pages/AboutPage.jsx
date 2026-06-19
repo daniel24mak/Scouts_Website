@@ -2,6 +2,7 @@ import { Compass, HeartHandshake, ShieldCheck, Sparkles, UsersRound } from "luci
 import { useEffect } from "react";
 import { getPublicAboutData } from "../api/publicClient.js";
 import { usePublicData } from "../api/usePublicData.js";
+import SafeImage from "../components/SafeImage.jsx";
 import { scoutGroups } from "../data/groups.js";
 import { contentImage, contentText } from "../services/siteContentService.js";
 import { preloadImages } from "../utils/imagePreload.js";
@@ -153,11 +154,10 @@ export default function AboutPage() {
         </div>
         {aboutImage ? (
           <div className="public-image-card">
-            <img
+            <SafeImage
               src={aboutImage}
               alt="St. Mary's Scouts Dubai community activity"
               loading="lazy"
-              decoding="async"
               sizes="(max-width: 768px) 100vw, 50vw"
             />
           </div>
@@ -268,11 +268,10 @@ export default function AboutPage() {
           {leaders.map((leader) => (
             <article className="leader-card" key={leader.id}>
               {leader.photoUrl ? (
-                <img
+                <SafeImage
                   src={leader.photoUrl}
                   alt={`${leader.name}, ${leader.title ?? titleForLeader(leader)}`}
                   loading="lazy"
-                  decoding="async"
                   sizes="(max-width: 768px) 50vw, 220px"
                 />
               ) : (
