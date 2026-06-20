@@ -93,6 +93,13 @@ export function normalizeRule(rule) {
   };
 }
 
+function normalizeAuthorName(value) {
+  const author = String(value ?? "").trim();
+  if (["group admin", "admin", "chief", "admin + chief", "scouts group"].includes(author.toLowerCase())) {
+    return "Unknown author";
+  }
+  return author || "Unknown author";
+}
 export function normalizePost(post) {
   return {
     id: post.id,
@@ -102,7 +109,7 @@ export function normalizePost(post) {
     contentType: post.content_type ?? post.postType ?? post.type ?? "blog",
     category: post.category ?? "general",
     date: post.published_at?.slice(0, 10) ?? post.date ?? post.created_at?.slice(0, 10) ?? "",
-    author: post.author_name ?? post.author ?? "Scouts Group",
+    author: normalizeAuthorName(post.author_name ?? post.author),
     authorProfilePictureUrl: post.author_profile_picture_url ?? post.authorProfilePictureUrl ?? null,
     thumbnailColor: post.thumbnail_color ?? post.thumbnailColor ?? "#2f7d6d",
     thumbnailUrl: post.thumbnail_url ?? post.thumbnailUrl ?? null,
@@ -264,6 +271,7 @@ export function normalizeEvent(event) {
     updatedAt: event.updated_at ?? event.updatedAt ?? null
   };
 }
+
 
 
 

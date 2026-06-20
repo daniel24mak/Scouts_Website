@@ -1,6 +1,5 @@
 import { Copy, Images, Mail, Share2 } from "lucide-react";
 import SafeImage from "../components/SafeImage.jsx";
-import UserAvatar from "../components/UserAvatar.jsx";
 import { Link, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { updateBlog } from "../api/client.js";
@@ -8,7 +7,7 @@ import { getPublicBlogDetailPage, getPublicBlogsPage } from "../api/publicClient
 import { usePublicData } from "../api/usePublicData.js";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import { useToast } from "../components/ToastProvider.jsx";
-import FormattedText from "../components/FormattedText.jsx";
+import BlogPostPreview from "../components/BlogPostPreview.jsx";
 import RichTextEditor from "../components/RichTextEditor.jsx";
 import { canManageSystem, canPublishContent } from "../services/permissions.js";
 
@@ -166,41 +165,6 @@ export default function BlogDetailPage() {
       )}
       {message && <p className="helper-text">{message}</p>}
       {isSaving && <UploadLoadingState message={message || "Saving blog..."} />}
-      {post.thumbnailUrl ? (
-        <SafeImage
-          src={post.thumbnailUrl}
-          alt={post.title}
-          className="blog-detail-banner-image-frame"
-          imageClassName="blog-detail-banner-image"
-          loading="eager"
-          fetchPriority="high"
-          sizes="100vw"
-        />
-      ) : (
-        <div className="blog-detail-banner-fallback" style={{ "--tile-color": post.thumbnailColor }}>
-          <span>{post.title}</span>
-        </div>
-      )}
-      <header className="blog-detail-header">
-        <Link className="blog-back-link" to="/blogs">Back to News &amp; Blog</Link>
-        <h1>{post.title}</h1>
-        <div className="blog-detail-meta">
-          <span className="blog-category-badge detail">{getPostCategory(post)}</span>
-          <span>{getPostDate(post)}</span>
-          {post.author && <span className="blog-author-byline"><UserAvatar name={post.author} imageUrl={post.authorProfilePictureUrl} size={30} />{post.author}</span>}
-        </div>
-        <div className="blog-share-row" aria-label="Share this blog post">
-          <button type="button" className="blog-share-button" onClick={sharePost} aria-label="Share post">
-            <Share2 size={18} aria-hidden="true" />
-          </button>
-          <button type="button" className="blog-share-button" onClick={copyShareLink} aria-label="Copy blog link">
-            <Copy size={18} aria-hidden="true" />
-          </button>
-          <a className="blog-share-button" href={mailShareUrl} aria-label="Share by email">
-            <Mail size={18} aria-hidden="true" />
-          </a>
-        </div>
-      </header>
       {isEditing && editPost ? (
         <form className="editor-panel blog-detail-editor" onSubmit={saveEdit}>
           <label>
@@ -268,15 +232,23 @@ export default function BlogDetailPage() {
           </div>
         </form>
       ) : (
-        <div className="blog-reading-column">
-          <FormattedText text={post.body} className="detail-copy formatted-text" />
-          {linkedAlbum && (
-            <Link className="linked-album" to={`/gallery/${linkedAlbum.id}`}>
-              <Images size={20} aria-hidden="true" />
-              View linked album: {linkedAlbum.title}
-            </Link>
+        <BlogPostPreview
+          post={post}
+          linkedAlbum={linkedAlbum}
+          actions={(
+            <div className="blog-share-row" aria-label="Share this blog post">
+              <button type="button" className="blog-share-button" onClick={sharePost} aria-label="Share post">
+                <Share2 size={18} aria-hidden="true" />
+              </button>
+              <button type="button" className="blog-share-button" onClick={copyShareLink} aria-label="Copy blog link">
+                <Copy size={18} aria-hidden="true" />
+              </button>
+              <a className="blog-share-button" href={mailShareUrl} aria-label="Share by email">
+                <Mail size={18} aria-hidden="true" />
+              </a>
+            </div>
           )}
-        </div>
+        />
       )}
       {relatedPosts.length > 0 && (
         <section className="blog-related-section">
@@ -334,6 +306,9 @@ function UploadLoadingState({ message }) {
 function StatusText({ status }) {
   return <span>{String(status).replace("_", " ")}</span>;
 }
+
+
+
 
 
 

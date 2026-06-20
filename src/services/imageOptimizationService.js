@@ -77,6 +77,11 @@ async function convertHeicToJpeg(file) {
   }
 }
 
+export async function getReadableImageFile(file) {
+  const originalFormat = validateImageFile(file);
+  return ["heic", "heif"].includes(originalFormat) ? await convertHeicToJpeg(file) : file;
+}
+
 function loadImage(file) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
@@ -168,4 +173,5 @@ export async function optimizeImageForUpload(file, imageType = "site") {
     quality: profile.quality
   };
 }
+
 

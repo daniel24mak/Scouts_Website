@@ -1,5 +1,5 @@
 import { normalizePost, normalizePostRevision } from "./supabaseMappers.js";
-import { getProfileById } from "./userService.js";
+import { getProfileById, getProfiles } from "./userService.js";
 import {
   deleteSupabaseFile,
   deleteSupabaseRows,
@@ -27,6 +27,26 @@ function isMissingPostMetadataColumns(error) {
   return message.includes("content_type") || message.includes("category") || message.includes("author_profile_picture_url") || message.includes("pgrst204") || message.includes("42703");
 }
 
+function isRoleLikeAuthor(value) {
+  return ["group admin", "admin", "chief", "admin + chief", "scouts group"].includes(String(value ?? "").trim().toLowerCase());
+}
+
+function applyAuthorProfile(post, profile) {
+  if (!profile) return post;
+  return {
+    ...post,
+    author: isRoleLikeAuthor(post.author) ? profile.name : post.author || profile.name,
+    authorProfilePictureUrl: post.authorProfilePictureUrl || profile.profilePictureUrl || null,
+    submitterName: profile.name,
+    submitterProfilePictureUrl: profile.profilePictureUrl || null
+  };
+}
+
+async function enrichPostsWithAuthors(posts) {
+  const profiles = await getProfiles().catch(() => []);
+  const profilesById = new Map(profiles.map((profile) => [profile.id, profile]));
+  return posts.map((post) => applyAuthorProfile(post, profilesById.get(post.submittedBy)));
+}
 function stripPostMetadataColumns(row) {
   const { content_type, category, author_profile_picture_url, ...rest } = row;
   return rest;
@@ -141,27 +161,28 @@ export async function getPosts() {
     getSupabaseRows("posts", "select=*&order=created_at.desc"),
     getSupabaseRows("post_revisions", "select=*&order=updated_at.desc").catch(() => [])
   ]);
-  const posts = rows.map(normalizePost);
-  const revisions = revisionRows.map((revision) =>
+  const posts = await enrichPostsWithAuthors(rows.map(normalizePost));
+  const revisions = await enrichPostsWithAuthors(revisionRows.map((revision) =>
     normalizePostRevision(
       revision,
       rows.find((post) => post.id === (revision.original_content_id ?? revision.originalContentId)) ?? null
     )
-  );
+  ));
 
   return {
     allBlogPosts: [...revisions, ...posts],
     blogPosts: posts.filter((post) => post.approvalStatus === "approved")
   };
 }
-
 export async function createPost(post) {
   const currentUserId = getCurrentSupabaseUserId();
   const postData = await preparePostData(post, { ensureUniqueSlug: true });
   const authorProfile = currentUserId ? await getProfileById(currentUserId).catch(() => null) : null;
+  const authorName = authorProfile?.name || postData.author_name || "Unknown author";
 
   return insertPostRow({
     ...postData,
+    author_name: authorName,
     author_profile_picture_url: authorProfile?.profilePictureUrl ?? null,
     status: post.approvalStatus ?? "pending",
     submitted_by: currentUserId,
@@ -173,6 +194,13 @@ export async function updatePost(postId, post) {
   const reviewed = ["approved", "rejected", "needs_changes", "archived"].includes(post.approvalStatus);
   const previousThumbnailPath = post.thumbnailPath ?? post.currentVersion?.thumbnailPath ?? null;
   const postData = await preparePostData(post, { currentPostId: post.originalId ?? postId });
+  const submitterProfile = post.submittedBy ? await getProfileById(post.submittedBy).catch(() => null) : null;
+  if (submitterProfile && (!postData.author_name || isRoleLikeAuthor(postData.author_name))) {
+    postData.author_name = submitterProfile.name;
+  }
+  if (submitterProfile && !postData.author_profile_picture_url) {
+    postData.author_profile_picture_url = submitterProfile.profilePictureUrl ?? null;
+  }
   const proposedData = {
     ...post,
     thumbnailUrl: postData.thumbnail_url,
@@ -254,6 +282,10 @@ export async function deletePost(postId) {
 
   return deleted;
 }
+
+
+
+
 
 
 

@@ -70,6 +70,8 @@ import ChiefAttendanceManager from "../features/attendance/ChiefAttendanceManage
 import CalendarManagement from "../features/calendar/CalendarManagement.jsx";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import { useToast } from "../components/ToastProvider.jsx";
+import AvatarCropModal from "../components/AvatarCropModal.jsx";
+import BlogPostPreview from "../components/BlogPostPreview.jsx";
 import RichTextEditor from "../components/RichTextEditor.jsx";
 import UserAvatar from "../components/UserAvatar.jsx";
 import { logAuditEvent } from "../services/auditService.js";
@@ -390,6 +392,7 @@ export default function AdminDashboardPage() {
   const [profileMessage, setProfileMessage] = useState("");
   const [passwordResetUser, setPasswordResetUser] = useState(null);
   const [passwordResetValue, setPasswordResetValue] = useState("");
+  const [avatarCropRequest, setAvatarCropRequest] = useState(null);
   const [postEdits, setPostEdits] = useState({});
   const [newPost, setNewPost] = useState(emptyPost);
   const [albumEdits, setAlbumEdits] = useState({});
@@ -435,6 +438,10 @@ export default function AdminDashboardPage() {
   const isAdmin = canManageSystem(user);
   const dashboardGroupId = isAdmin ? selectedGroupId : user?.groupId;
   const dashboardGroup = data.groups.find((group) => group.id === dashboardGroupId);
+  const usersById = useMemo(() => new Map((data.users ?? []).map((profile) => [profile.id, profile])), [data.users]);
+  const getSubmitterProfile = (submittedBy) => usersById.get(submittedBy) ?? null;
+  const getSubmitterName = (item) => item.submitterName || getSubmitterProfile(item.submittedBy)?.name || (item.submittedBy && !String(item.submittedBy).includes("-") ? item.submittedBy : "Unknown");
+  const getSubmitterPicture = (item) => item.submitterProfilePictureUrl || getSubmitterProfile(item.submittedBy)?.profilePictureUrl || null;
   const chiefs = data.users.filter((user) => user.role === "chief" || user.groupId || user.chiefLevel);
   const groupEquipes = (data.equipes ?? []).filter((equipe) => equipe.groupId === dashboardGroupId && equipe.isActive);
   const groupChiefs = chiefs.filter((chief) => chief.groupId === dashboardGroupId);
@@ -462,6 +469,15 @@ export default function AdminDashboardPage() {
     }));
   const pendingItems = [...reviewItems, ...profileReviewItems].filter((item) => ["pending", "pending_update", "needs_changes"].includes(item.approvalStatus));
   const selectedSection = sections.find(([id]) => id === activeSection);
+
+  useEffect(() => {
+    setProfileEdit((current) => ({
+      ...current,
+      name: user?.name ?? "",
+      profilePictureFile: null,
+      profilePicturePreview: ""
+    }));
+  }, [user?.id, user?.name, user?.profilePictureUrl]);
 
   useEffect(() => {
     const previews = Object.fromEntries(
@@ -596,11 +612,12 @@ export default function AdminDashboardPage() {
     return filterBySearch(byStatus, search, ["name", "email", "subject", "message", "status"]);
   }, [data.contactMessages, search, statusFilter]);
   const visibleApprovalItems = useMemo(() => {
+    const allReviewItems = [...reviewItems, ...profileReviewItems];
     const byStatus =
       statusFilter === "all"
-        ? reviewItems
-        : reviewItems.filter((item) => item.approvalStatus === statusFilter);
-    return filterBySearch(byStatus, search, ["title", "contentType", "approvalStatus", "submittedBy"]);
+        ? allReviewItems
+        : allReviewItems.filter((item) => item.approvalStatus === statusFilter);
+    return filterBySearch(byStatus, search, ["title", "contentType", "approvalStatus", "submittedBy", "name", "pendingName"]);
   }, [reviewItems, profileReviewItems, search, statusFilter]);
 
   const updateRule = (groupId, field, value) => {
@@ -884,6 +901,45 @@ export default function AdminDashboardPage() {
       [chiefId]: { ...current[chiefId], chiefLevel: level, ...chiefDefaults(level) }
     }));
   };
+  const openAvatarCrop = (file, target) => {
+    if (!file) return;
+    setAvatarCropRequest({ file, target });
+  };
+
+  const applyCroppedAvatar = (file) => {
+    const target = avatarCropRequest?.target;
+    if (!target) return;
+
+    if (target.type === "newChief") {
+      if (newChiefPreview) URL.revokeObjectURL(newChiefPreview);
+      setNewChief((current) => ({ ...current, profilePictureFile: file }));
+      setNewChiefPreview(URL.createObjectURL(file));
+    }
+
+    if (target.type === "ownProfile") {
+      if (profileEdit.profilePicturePreview) URL.revokeObjectURL(profileEdit.profilePicturePreview);
+      setProfileEdit((current) => ({ ...current, profilePictureFile: file, profilePicturePreview: URL.createObjectURL(file) }));
+    }
+
+    if (target.type === "chief") {
+      const chief = target.chief;
+      const currentEdit = chiefEdits[chief.id] ?? toChiefForm(chief);
+      if (currentEdit.profilePicturePreview) {
+        URL.revokeObjectURL(currentEdit.profilePicturePreview);
+      }
+      setChiefEdits((current) => ({
+        ...current,
+        [chief.id]: {
+          ...currentEdit,
+          profilePictureFile: file,
+          profilePicturePreview: URL.createObjectURL(file)
+        }
+      }));
+    }
+
+    setAvatarCropRequest(null);
+  };
+
   const setNewChiefLevel = (level) => {
     setNewChief((current) => ({ ...current, chiefLevel: level, ...chiefDefaults(level) }));
   };
@@ -1143,18 +1199,23 @@ export default function AdminDashboardPage() {
       approvalStatus,
       reviewerComment: approvalComment.trim()
     };
-    const save =
-      item.contentType === "Blog post"
-        ? savePost
-        : item.contentType === "Calendar event"
-          ? saveEventApproval
-          : item.contentType === "Photo batch"
-            ? updatePhotoBatch
-          : item.contentType === "Photo"
-            ? updatePhoto
-            : saveAlbum;
 
-    await save(item.id, payload);
+    if (item.contentType === "Profile change") {
+      await reviewProfileChange(item, approvalStatus, payload.reviewerComment);
+    } else {
+      const save =
+        item.contentType === "Blog post"
+          ? savePost
+          : item.contentType === "Calendar event"
+            ? saveEventApproval
+            : item.contentType === "Photo batch"
+              ? updatePhotoBatch
+              : item.contentType === "Photo"
+                ? updatePhoto
+                : saveAlbum;
+
+      await save(item.id, payload);
+    }
     await logAuditEvent(`content_${approvalStatus}`, item.contentType, item.id, {
       title: item.title,
       reviewerComment: payload.reviewerComment
@@ -2204,7 +2265,7 @@ export default function AdminDashboardPage() {
         <input required type="password" placeholder="Temporary password" value={newChief.temporaryPassword} onChange={(event) => setNewChief((current) => ({ ...current, temporaryPassword: event.target.value }))} />
         <label className="profile-picture-picker">
           <span>Profile picture</span>
-          <input type="file" accept={acceptedImageTypes} onChange={(event) => setNewChief((current) => ({ ...current, profilePictureFile: event.target.files?.[0] ?? null }))} />
+          <input type="file" accept={acceptedImageTypes} onChange={(event) => openAvatarCrop(event.target.files?.[0] ?? null, { type: "newChief" })} />
           <div className="profile-picture-preview">
             <UserAvatar name={newChief.name || "New user"} imageUrl={newChiefPreview} size={48} />
             {newChief.profilePictureFile ? <small>{newChief.profilePictureFile.name}</small> : <small>Optional image</small>}
@@ -2243,7 +2304,7 @@ export default function AdminDashboardPage() {
                       <UserAvatar name={edit.name || chief.name} imageUrl={edit.profilePicturePreview || edit.profilePictureUrl} size={42} />
                       <label className="avatar-replace-control">
                         <span>Change</span>
-                        <input type="file" accept={acceptedImageTypes} onChange={(event) => setProfileImage(event.target.files?.[0] ?? null)} />
+                        <input type="file" accept={acceptedImageTypes} onChange={(event) => openAvatarCrop(event.target.files?.[0] ?? null, { type: "chief", chief })} />
                       </label>
                     </div>
                   </td>
@@ -2432,7 +2493,7 @@ export default function AdminDashboardPage() {
                 <td>{item.contentType}</td>
                 <td>{item.title}</td>
                 <td><StatusBadge status={item.approvalStatus} /></td>
-                <td>{item.submittedBy ?? "Unknown"}</td>
+                <td><span className="approval-submitter"><UserAvatar name={getSubmitterName(item)} imageUrl={getSubmitterPicture(item)} size={28} />{getSubmitterName(item)}</span></td>
                 <td>{item.updatedAt ?? item.createdAt}</td>
                 <td className="table-actions">
                   <button type="button" className="inline-action" onClick={() => {
@@ -2465,6 +2526,9 @@ export default function AdminDashboardPage() {
               <StatusBadge status={selectedApproval.approvalStatus} />
             </div>
             <div className="approval-preview-card">
+              {selectedApproval.contentType === "Blog post" && (
+                <BlogPostPreview post={{ ...selectedApproval, author: selectedApproval.author || getSubmitterName(selectedApproval), authorProfilePictureUrl: selectedApproval.authorProfilePictureUrl || getSubmitterPicture(selectedApproval) }} compact />
+              )}
               {selectedApproval.currentVersion && (
                 <div className="comparison-grid">
                   <article>
@@ -2559,7 +2623,7 @@ export default function AdminDashboardPage() {
               <p>{selectedApproval.excerpt ?? selectedApproval.description ?? selectedApproval.location ?? "No preview text provided."}</p>
               {selectedApproval.body && <p>{selectedApproval.body}</p>}
               <dl className="approval-details">
-                <div><dt>Submitted by</dt><dd>{selectedApproval.submittedBy ?? "Unknown"}</dd></div>
+                <div><dt>Submitted by</dt><dd><span className="approval-submitter"><UserAvatar name={getSubmitterName(selectedApproval)} imageUrl={getSubmitterPicture(selectedApproval)} size={30} />{getSubmitterName(selectedApproval)}</span></dd></div>
                 <div><dt>Created</dt><dd>{selectedApproval.createdAt ?? "Unknown"}</dd></div>
                 <div><dt>Updated</dt><dd>{selectedApproval.updatedAt ?? "Not updated"}</dd></div>
               </dl>
@@ -2689,14 +2753,13 @@ export default function AdminDashboardPage() {
           ))}
         </nav>
         <div className="sidebar-account">
-          <div className="sidebar-account-summary">
-            <strong>{user.name}</strong>
+          <button type="button" className="sidebar-account-summary" onClick={() => setIsProfileModalOpen(true)} title="Profile settings">
+            <UserAvatar user={user} size={38} />
             <span>
-              {user.role === "admin" ? "Admin" : "Chief"}
-              {user.chiefLevel ? ` - ${user.chiefLevel}` : ""}
-              {dashboardGroup?.name ? ` - ${dashboardGroup.name}` : ""}
+              <strong>{user.name}</strong>
+              <small>{user.role === "admin" ? "Admin" : "Chief"}{user.chiefLevel ? ` - ${user.chiefLevel}` : ""}{dashboardGroup?.name ? ` - ${dashboardGroup.name}` : ""}</small>
             </span>
-          </div>
+          </button>
           <button type="button" className="sidebar-logout-button" onClick={() => { setIsMobileSidebarOpen(false); logout(); }} title="Logout">
             <LockKeyhole size={17} aria-hidden="true" />
             <span>Logout</span>
@@ -2748,6 +2811,55 @@ export default function AdminDashboardPage() {
         {uploadStatus && <UploadLoadingState message={uploadStatus} progress={photoUploadProgress.total ? photoUploadProgress : null} />}
         {renderSection()}
       </main>
+      {isProfileModalOpen && (
+        <div className="profile-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setIsProfileModalOpen(false); }}>
+          <div className="profile-modal" role="dialog" aria-modal="true" aria-label="Profile settings">
+            <button type="button" className="modal-close-button" aria-label="Close profile settings" onClick={() => setIsProfileModalOpen(false)}>
+              <X size={18} aria-hidden="true" />
+            </button>
+            <h2>Profile settings</h2>
+            <div className="profile-modal-current">
+              <UserAvatar name={profileEdit.name || user.name} imageUrl={profileEdit.profilePicturePreview || user.profilePictureUrl} size={74} />
+              <div>
+                <strong>{user.name}</strong>
+                <span>{user.email}</span>
+                {user.profileChangeStatus === "pending" && <small>Profile change pending approval</small>}
+              </div>
+            </div>
+            {profileMessage && <p className="helper-text">{profileMessage}</p>}
+            <form className="profile-settings-form" onSubmit={submitOwnProfileChange}>
+              <label>
+                Display name
+                <input value={profileEdit.name} onChange={(event) => setProfileEdit((current) => ({ ...current, name: event.target.value }))} />
+              </label>
+              <label className="profile-picture-picker">
+                <span>Profile picture</span>
+                <input type="file" accept={acceptedImageTypes} onChange={(event) => openAvatarCrop(event.target.files?.[0] ?? null, { type: "ownProfile" })} />
+                <div className="profile-picture-preview">
+                  <UserAvatar name={profileEdit.name || user.name} imageUrl={profileEdit.profilePicturePreview || user.profilePictureUrl} size={52} />
+                  <small>{profileEdit.profilePictureFile ? profileEdit.profilePictureFile.name : "Choose and crop a new picture"}</small>
+                </div>
+              </label>
+              <button type="submit" className="primary-action">Submit profile update</button>
+            </form>
+            <form className="profile-settings-form" onSubmit={changePassword}>
+              <h3>Change password</h3>
+              <input type="password" placeholder="Current password" value={profileEdit.currentPassword} onChange={(event) => setProfileEdit((current) => ({ ...current, currentPassword: event.target.value }))} />
+              <input type="password" placeholder="New password" value={profileEdit.newPassword} onChange={(event) => setProfileEdit((current) => ({ ...current, newPassword: event.target.value }))} />
+              <input type="password" placeholder="Confirm new password" value={profileEdit.confirmPassword} onChange={(event) => setProfileEdit((current) => ({ ...current, confirmPassword: event.target.value }))} />
+              <button type="submit" className="inline-action">Update password</button>
+            </form>
+          </div>
+        </div>
+      )}
+      {avatarCropRequest && (
+        <AvatarCropModal
+          file={avatarCropRequest.file}
+          title="Crop profile picture"
+          onCancel={() => setAvatarCropRequest(null)}
+          onConfirm={applyCroppedAvatar}
+        />
+      )}
       {passwordResetUser && (
         <div className="profile-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPasswordResetUser(null); }}>
           <form className="profile-modal password-reset-modal" onSubmit={submitPasswordReset}>
@@ -2763,7 +2875,8 @@ export default function AdminDashboardPage() {
             </div>
           </form>
         </div>
-      )}    </section>
+      )}
+    </section>
   );
 }
 
@@ -2976,6 +3089,16 @@ function AccessDenied({ message = "Your role, chief level, assigned group, and p
     </article>
   );
 }
+
+
+
+
+
+
+
+
+
+
 
 
 
