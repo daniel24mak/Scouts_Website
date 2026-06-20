@@ -1,7 +1,9 @@
 import {
   Archive,
+  Bell,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   FileText,
   Folder,
   GalleryHorizontal,
@@ -10,6 +12,7 @@ import {
   LayoutDashboard,
   LockKeyhole,
   MessageSquare,
+  MoreHorizontal,
   Menu,
   X,
   ArrowLeft,
@@ -72,6 +75,7 @@ import { useAuth } from "../auth/AuthProvider.jsx";
 import { useToast } from "../components/ToastProvider.jsx";
 import AvatarCropModal from "../components/AvatarCropModal.jsx";
 import BlogPostPreview from "../components/BlogPostPreview.jsx";
+import FormattedText from "../components/FormattedText.jsx";
 import RichTextEditor from "../components/RichTextEditor.jsx";
 import UserAvatar from "../components/UserAvatar.jsx";
 import { logAuditEvent } from "../services/auditService.js";
@@ -216,6 +220,7 @@ const sections = [
 
 const settingSections = [
   ["usersPermissions", "Users & Permissions", LockKeyhole, "Manage users, chiefs, roles, chief levels, groups, and permissions."],
+  ["scouts", "Scouts", Users, "Add, edit, and assign scout records."],
   ["upload", "Registered Scout Upload", Upload, "Upload the active scout registration sheet and preserve historical lists."],
   ["rules", "Groups & Sorting Rules", Settings, "Control automatic grouping by school grade, age, and gender rules."],
   ["websiteContent", "Website Content", Image, "Edit public website text, images, leader headshots, and content blocks."],
@@ -229,6 +234,7 @@ const contentStatuses = ["draft", "pending", "pending_update", "needs_changes", 
 const reviewStatuses = ["pending", "pending_update", "needs_changes", "rejected", "archived"];
 const sidebarModeKey = "scouts-dashboard-sidebar-mode";
 const acceptedImageTypes = ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif";
+const wizardSteps = ["Details", "Media", "Review"];
 
 const sortLabels = {
   schoolGrade: "school grade",
@@ -364,6 +370,95 @@ function canOpenSection(sectionId, user) {
   return isSectionAllowed(section, user);
 }
 
+function formatRelativeTime(value) {
+  if (!value) return "Recently";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Recently";
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function WizardStepper({ step }) {
+  return (
+    <div className="wizard-stepper" aria-label={`Step ${step + 1} of ${wizardSteps.length}`}>
+      <div className="wizard-stepper-desktop">
+        {wizardSteps.map((label, index) => (
+          <span className={`wizard-step ${index < step ? "complete" : ""} ${index === step ? "current" : ""}`} key={label}>
+            <i>{index + 1}</i>
+            <small>{label}</small>
+          </span>
+        ))}
+      </div>
+      <div className="wizard-stepper-mobile">
+        <strong>Step {step + 1} of {wizardSteps.length}</strong>
+        <div><span style={{ width: `${((step + 1) / wizardSteps.length) * 100}%` }} /></div>
+      </div>
+    </div>
+  );
+}
+
+function WizardControls({ step, setStep, isSubmitting = false, submitLabel = "Submit", canProceed = true }) {
+  return (
+    <div className="wizard-actions">
+      {step > 0 && (
+        <button type="button" className="secondary-action" onClick={() => setStep((current) => Math.max(0, current - 1))}>
+          Back
+        </button>
+      )}
+      {step < wizardSteps.length - 1 ? (
+        <button type="button" className="primary-action" disabled={!canProceed} onClick={() => setStep((current) => Math.min(wizardSteps.length - 1, current + 1))}>
+          Next
+        </button>
+      ) : (
+        <button type="submit" className="primary-action" disabled={isSubmitting}>
+          {isSubmitting ? "Working..." : submitLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ReviewGrid({ items }) {
+  return (
+    <div className="review-grid">
+      {items.map(([label, value]) => (
+        <span key={label}>
+          <small>{label}</small>
+          <strong>{value || "Not set"}</strong>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function PendingWorkList({ items, getSubmitterName, getSubmitterPicture, onOpen }) {
+  const visibleItems = items.slice(0, 5);
+  return (
+    <article className="dashboard-work-panel">
+      <div className="panel-heading compact-heading">
+        <div>
+          <h2>Pending Work</h2>
+          <p>Requests and drafts that need attention.</p>
+        </div>
+        <span>{items.length}</span>
+      </div>
+      <div className="pending-work-list">
+        {visibleItems.length ? visibleItems.map((item) => (
+          <div className="pending-work-row" key={`${item.contentType}-${item.id}`}>
+            <span className="pending-type-badge"><FileText size={15} aria-hidden="true" />{item.contentType}</span>
+            <strong>{item.title || item.name || "Untitled request"}</strong>
+            <span className="pending-submitter">
+              <UserAvatar name={getSubmitterName(item)} imageUrl={getSubmitterPicture(item)} size={28} />
+              {getSubmitterName(item)}
+            </span>
+            <small>{formatRelativeTime(item.updatedAt || item.createdAt || item.dateFrom || item.date)}</small>
+            <button type="button" className="inline-action" onClick={() => onOpen(item)}>{item.approvalStatus === "pending" ? "Review" : "View"}</button>
+          </div>
+        )) : <p className="empty-state">No pending work right now.</p>}
+      </div>
+    </article>
+  );
+}
+
 export default function AdminDashboardPage() {
   const { user, logout, loginWithPassword, refreshUsers } = useAuth();
   const { showToast } = useToast();
@@ -388,6 +483,8 @@ export default function AdminDashboardPage() {
   const [newChief, setNewChief] = useState({ ...emptyChief, groupId: data.groups[0]?.id ?? "" });
   const [newChiefPreview, setNewChiefPreview] = useState("");
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
   const [profileEdit, setProfileEdit] = useState({ name: user?.name ?? "", profilePictureFile: null, profilePicturePreview: "", currentPassword: "", newPassword: "", confirmPassword: "" });
   const [profileMessage, setProfileMessage] = useState("");
   const [passwordResetUser, setPasswordResetUser] = useState(null);
@@ -411,15 +508,18 @@ export default function AdminDashboardPage() {
   const [newFaq, setNewFaq] = useState(emptyFaq);
   const [contactEdits, setContactEdits] = useState({});
   const [activeSetting, setActiveSetting] = useState("usersPermissions");
-  const [settingsMode, setSettingsMode] = useState(false);
   const [lastDashboardSection, setLastDashboardSection] = useState("overview");
   const [sidebarMode, setSidebarMode] = useState(() => window.localStorage.getItem(sidebarModeKey) ?? "expanded");
+  const [openSidebarGroups, setOpenSidebarGroups] = useState({});
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [showMobileMenuBar, setShowMobileMenuBar] = useState(false);
+  const [postWizardStep, setPostWizardStep] = useState(0);
+  const [galleryWizardStep, setGalleryWizardStep] = useState(0);
   const [contentPreviewMode, setContentPreviewMode] = useState("web");
   const [selectedApproval, setSelectedApproval] = useState(null);
   const [selectedApprovalPhotoIds, setSelectedApprovalPhotoIds] = useState([]);
   const [approvalComment, setApprovalComment] = useState("");
+  const [approvalTypeFilter, setApprovalTypeFilter] = useState("all");
   const [lastLiveUpdate, setLastLiveUpdate] = useState(null);
   const [selectedGroupId, setSelectedGroupId] = useState(user?.groupId ?? data.groups[0]?.id ?? "");
   const [saveMessage, setSaveMessage] = useState("");
@@ -429,9 +529,14 @@ export default function AdminDashboardPage() {
   const [newScoutYearName, setNewScoutYearName] = useState("");
 
   useEffect(() => {
-    if (saveMessage) {
-      showToast(saveMessage);
+    if (!saveMessage) {
+      return undefined;
     }
+
+    showToast(saveMessage);
+    const messageTimer = window.setTimeout(() => setSaveMessage(""), 3600);
+
+    return () => window.clearTimeout(messageTimer);
   }, [saveMessage, showToast]);
 
   const visibleSections = sections.filter((section) => isSectionAllowed(section, user));
@@ -468,7 +573,48 @@ export default function AdminDashboardPage() {
       description: profile.profileChangeComment ?? ""
     }));
   const pendingItems = [...reviewItems, ...profileReviewItems].filter((item) => ["pending", "pending_update", "needs_changes"].includes(item.approvalStatus));
+  const ownPendingItems = useMemo(
+    () => [
+      ...allPosts,
+      ...allAlbums,
+      ...data.plannedEvents
+    ]
+      .filter((item) => item.submittedBy === user?.id)
+      .filter((item) => ["pending", "pending_update", "needs_changes", "rejected"].includes(item.approvalStatus))
+      .map((item) => ({ ...item, contentType: item.contentType ?? (item.location ? "Calendar event" : item.photos ? "Album" : "Blog post") })),
+    [allPosts, allAlbums, data.plannedEvents, user?.id]
+  );
+  const dashboardNotificationCount = canOpenSection("approvals", user) ? pendingItems.length : ownPendingItems.length;
   const selectedSection = sections.find(([id]) => id === activeSection);
+  const sectionById = useMemo(() => new Map(sections.map((section) => [section[0], section])), []);
+  const sidebarGroups = useMemo(() => {
+    const item = (id) => sectionById.get(id);
+    const available = (ids) => ids.map(item).filter(Boolean).filter((section) => canOpenSection(section[0], user));
+    const groups = [
+      { id: "overview", type: "item", item: item("overview") },
+      { id: "myGroupGroup", type: "group", label: "My Group", Icon: Users, children: available(["myGroup", "equipes"]) },
+      { id: "attendanceGroup", type: "group", label: "Attendance", Icon: CheckCircle2, children: available(["scoutAttendance", "attendanceSheets", "chiefAttendance"]) },
+      { id: "contentGroup", type: "group", label: "Content", Icon: FileText, children: available(["calendar", "posts", "gallery"]) }
+    ];
+
+    if (canOpenSection("approvals", user)) groups.push({ id: "approvals", type: "item", item: item("approvals") });
+    if (canOpenSection("contactMessages", user)) groups.push({ id: "contactMessages", type: "item", item: item("contactMessages") });
+    if (isAdmin) {
+      groups.push({
+        id: "settingsGroup",
+        type: "group",
+        label: "Settings",
+        Icon: Settings,
+        children: available(["usersPermissions", "scouts", "upload", "rules", "websiteContent", "faqs", "documents", "reports", "archives"])
+      });
+    }
+
+    return groups.filter((group) => group.type === "item" ? group.item && canOpenSection(group.item[0], user) : group.children.length);
+  }, [isAdmin, sectionById, user]);
+  const flatSidebarItems = useMemo(
+    () => sidebarGroups.flatMap((group) => group.type === "item" ? [group.item] : group.children),
+    [sidebarGroups]
+  );
 
   useEffect(() => {
     setProfileEdit((current) => ({
@@ -510,17 +656,25 @@ export default function AdminDashboardPage() {
     }
   }, [activeSection, user]);
   useEffect(() => {
+    const activeGroup = sidebarGroups.find((group) => group.type === "group" && group.children.some(([id]) => id === activeSection));
+    if (activeGroup) {
+      setOpenSidebarGroups((current) => current[activeGroup.id] ? current : { ...current, [activeGroup.id]: true });
+    }
+  }, [activeSection, sidebarGroups]);
+  useEffect(() => {
     if (!selectedGroupId && data.groups[0]?.id) {
       setSelectedGroupId(data.groups[0].id);
     }
   }, [data.groups, selectedGroupId]);
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  }, [activeSection, activeSetting, settingsMode]);
+  }, [activeSection, activeSetting]);
   useEffect(() => {
     const handleKeyDown = (event) => {
     if (event.key === "Escape") {
         setIsMobileSidebarOpen(false);
+        setIsMobileMoreOpen(false);
+        setIsProfileMenuOpen(false);
       }
     };
 
@@ -613,12 +767,13 @@ export default function AdminDashboardPage() {
   }, [data.contactMessages, search, statusFilter]);
   const visibleApprovalItems = useMemo(() => {
     const allReviewItems = [...reviewItems, ...profileReviewItems];
+    const byType = approvalTypeFilter === "all" ? allReviewItems : allReviewItems.filter((item) => item.contentType === approvalTypeFilter);
     const byStatus =
       statusFilter === "all"
-        ? allReviewItems
-        : allReviewItems.filter((item) => item.approvalStatus === statusFilter);
+        ? byType
+        : byType.filter((item) => item.approvalStatus === statusFilter);
     return filterBySearch(byStatus, search, ["title", "contentType", "approvalStatus", "submittedBy", "name", "pendingName"]);
-  }, [reviewItems, profileReviewItems, search, statusFilter]);
+  }, [reviewItems, profileReviewItems, approvalTypeFilter, search, statusFilter]);
 
   const updateRule = (groupId, field, value) => {
     setRules((current) =>
@@ -641,25 +796,50 @@ export default function AdminDashboardPage() {
     await refresh();
   };
   const openDashboardSection = (sectionId) => {
-    if (sectionId === "settings") {
-      setLastDashboardSection(activeSection === "settings" ? lastDashboardSection : activeSection);
-      setSettingsMode(true);
-      setActiveSection(activeSetting);
-      return;
-    }
-
-    setSettingsMode(false);
     setActiveSection(sectionId);
     setLastDashboardSection(sectionId);
   };
-  const backToDashboard = () => {
-    setSettingsMode(false);
-    setActiveSection(canOpenSection(lastDashboardSection, user) ? lastDashboardSection : "overview");
+  const selectSidebarItem = (id) => {
+    if (settingSections.some(([settingId]) => settingId === id)) {
+      setActiveSetting(id);
+      setActiveSection(id);
+    } else {
+      openDashboardSection(id);
+    }
+    setIsMobileSidebarOpen(false);
+    setIsMobileMoreOpen(false);
   };
   const toggleSidebarMode = async () => {
     const nextMode = sidebarMode === "expanded" ? "collapsed" : "expanded";
     setSidebarMode(nextMode);
     await logAuditEvent("sidebar_preference_changed", "Dashboard", user?.id ?? "anonymous", { sidebarMode: nextMode });
+  };
+  const toggleSidebarGroup = (id) => {
+    setOpenSidebarGroups((current) => ({ ...current, [id]: !current[id] }));
+  };
+  const openPendingWorkItem = (item) => {
+    if (!item) {
+      return;
+    }
+
+    if (canOpenSection("approvals", user) && ["pending", "pending_update", "needs_changes"].includes(item.approvalStatus)) {
+      setApprovalTypeFilter("all");
+      setSelectedApproval(item);
+      setSelectedApprovalPhotoIds([]);
+      setApprovalComment(item.reviewerComment ?? "");
+      openDashboardSection("approvals");
+      return;
+    }
+
+    const sectionByContentType = {
+      "Blog post": "posts",
+      Album: "gallery",
+      "Photo batch": "gallery",
+      "Calendar event": "calendar",
+      "Profile change": "usersPermissions"
+    };
+    const targetSection = sectionByContentType[item.contentType] ?? "overview";
+    openDashboardSection(canOpenSection(targetSection, user) ? targetSection : "overview");
   };
   const handleRegistrationUpload = async (event) => {
     const file = event.target.files?.[0];
@@ -1046,6 +1226,7 @@ export default function AdminDashboardPage() {
         approvalStatus: isAdmin ? newPost.approvalStatus : requestedStatus || "pending"
       });
       setNewPost(emptyPost);
+      setPostWizardStep(0);
       setSaveMessage((requestedStatus || newPost.approvalStatus) === "draft" ? "Post draft saved." : "Post sent for approval.");
       await refresh();
     } catch (error) {
@@ -1156,6 +1337,7 @@ export default function AdminDashboardPage() {
       setNewAlbum(emptyAlbum);
       setAlbumThumbnailFile(null);
       setPhotoFiles([]);
+      setGalleryWizardStep(0);
       setSaveMessage(galleryUploadMode === "new" ? "Album and photo bundle submitted." : "Photo bundle submitted.");
       setPhotoUploadProgress({ completed: 0, total: 0, percent: 0 });
       await refresh();
@@ -1748,6 +1930,7 @@ export default function AdminDashboardPage() {
         ...allAlbums,
         ...data.plannedEvents
       ].filter((item) => item.submittedBy === user.id);
+      const pendingOwnItems = ownPendingItems;
 
       return (
         <>
@@ -1764,23 +1947,19 @@ export default function AdminDashboardPage() {
               </article>
             ))}
           </div>
-          <div className="admin-dashboard-grid">
-            <article className="admin-panel dashboard-upload-panel">
-              <h2>My Group</h2>
-              <p>View scouts, attendance summaries, and internal group events for {dashboardGroup?.name ?? "your group"}.</p>
-              <button type="button" className="inline-action" onClick={() => setActiveSection("myGroup")}>
-                Open My Group
-              </button>
-            </article>
-            <article className="admin-panel dashboard-upload-panel">
-              <h2>Quick actions</h2>
-              <div className="shortcut-list">
-                {canTakeAttendance(user) && <button type="button" onClick={() => setActiveSection("scoutAttendance")}>Take scout attendance</button>}
-                {canTakeAttendance(user) && <button type="button" onClick={() => setActiveSection("attendanceSheets")}>View attendance sheet</button>}
-                {canPublishContent(user) && <Link to="/chiefs/content">Submit post or photos</Link>}
-                {canCreateGroupMeetings(user) && <button type="button" onClick={() => setActiveSection("calendar")}>Create group event</button>}
-              </div>
-            </article>
+          <div className="dashboard-overview-stack">
+            <PendingWorkList
+              items={pendingOwnItems}
+              getSubmitterName={() => user.name}
+              getSubmitterPicture={() => user.profilePictureUrl}
+              onOpen={openPendingWorkItem}
+            />
+            <div className="quick-shortcuts-row">
+              <button type="button" onClick={() => setActiveSection("myGroup")}><Users size={17} aria-hidden="true" />My Group</button>
+              {canPublishContent(user) && <button type="button" onClick={() => setActiveSection("posts")}><FileText size={17} aria-hidden="true" />New Blog Post</button>}
+              {canCreateGroupMeetings(user) && <button type="button" onClick={() => setActiveSection("calendar")}><CalendarDays size={17} aria-hidden="true" />New Event</button>}
+              {canTakeAttendance(user) && <button type="button" onClick={() => setActiveSection("scoutAttendance")}><CheckCircle2 size={17} aria-hidden="true" />Take Attendance</button>}
+            </div>
             <article className="admin-panel dashboard-upload-panel">
               <h2>Upcoming internal events</h2>
               <div className="mini-list">
@@ -1808,24 +1987,30 @@ export default function AdminDashboardPage() {
             </article>
           ))}
         </div>
-        <div className="admin-dashboard-grid">
-          <article className="admin-panel dashboard-upload-panel">
-            <h2>Active year</h2>
-            <p>
-              {data.registrationImportSettings.scoutYear} is active. Current import:{" "}
-              {data.registrationImportSettings.excelFileName}.
-            </p>
-            <button type="button" className="inline-action" onClick={() => setActiveSection("upload")}>
-              Upload scout list
-            </button>
-          </article>
-          <article className="admin-panel dashboard-upload-panel">
-            <h2>Approvals</h2>
-            <p>{pendingItems.length} items are waiting for review.</p>
-            <button type="button" className="inline-action" onClick={() => setActiveSection("approvals")}>
-              Review requests
-            </button>
-          </article>
+        <div className="dashboard-overview-stack">
+          <PendingWorkList
+            items={pendingItems}
+            getSubmitterName={getSubmitterName}
+            getSubmitterPicture={getSubmitterPicture}
+            onOpen={openPendingWorkItem}
+          />
+          <div className="quick-shortcuts-row">
+            <button type="button" onClick={() => setActiveSection("posts")}><FileText size={17} aria-hidden="true" />New Blog Post</button>
+            <button type="button" onClick={() => setActiveSection("calendar")}><CalendarDays size={17} aria-hidden="true" />New Event</button>
+            <button type="button" onClick={() => setActiveSection("scoutAttendance")}><CheckCircle2 size={17} aria-hidden="true" />Take Attendance</button>
+            <button type="button" onClick={() => setActiveSection("upload")}><Upload size={17} aria-hidden="true" />Upload Scouts</button>
+          </div>
+          <div className="admin-dashboard-grid">
+            <article className="admin-panel dashboard-upload-panel">
+              <h2>Active year</h2>
+              <p>
+                {data.registrationImportSettings.scoutYear} is active. Current import:{" "}
+                {data.registrationImportSettings.excelFileName}.
+              </p>
+              <button type="button" className="inline-action" onClick={() => setActiveSection("upload")}>
+                Upload scout list
+              </button>
+            </article>
           <article className="admin-panel dashboard-upload-panel">
             <h2>Recent activity</h2>
             <div className="mini-list">
@@ -1835,6 +2020,7 @@ export default function AdminDashboardPage() {
               <span>{(data.contactMessages ?? []).filter((message) => message.status === "new").length} new contact messages</span>
             </div>
           </article>
+          </div>
         </div>
       </>
     );
@@ -2268,7 +2454,7 @@ export default function AdminDashboardPage() {
           <input type="file" accept={acceptedImageTypes} onChange={(event) => openAvatarCrop(event.target.files?.[0] ?? null, { type: "newChief" })} />
           <div className="profile-picture-preview">
             <UserAvatar name={newChief.name || "New user"} imageUrl={newChiefPreview} size={48} />
-            {newChief.profilePictureFile ? <small>{newChief.profilePictureFile.name}</small> : <small>Optional image</small>}
+            {newChief.profilePictureFile ? <small>{newChief.profilePictureFile.name}</small> : <small>Preview</small>}
           </div>
           {newChief.profilePictureFile && <button type="button" className="inline-action" onClick={() => setNewChief((current) => ({ ...current, profilePictureFile: null }))}>Remove image</button>}
         </label>
@@ -2329,38 +2515,63 @@ export default function AdminDashboardPage() {
   );
   const renderPosts = () => (
     <div className="cms-panel-stack">
-      <form className="cms-form" onSubmit={createPost}>
+      <form className="cms-form wizard-form" onSubmit={createPost}>
         <h2>Create post</h2>
-        <input required placeholder="Title" value={newPost.title} onChange={(event) => setNewPost((current) => ({ ...current, title: event.target.value }))} />
-        <div className="inline-editor-grid compact">
-          <label>
-            Type
-            <select value={newPost.postType} onChange={(event) => setNewPost((current) => ({ ...current, postType: event.target.value }))}>
-              {postTypeOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
-            </select>
-          </label>
-          <label>
-            Category
-            <select value={newPost.category} onChange={(event) => setNewPost((current) => ({ ...current, category: event.target.value }))}>
-              {postCategoryOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
-            </select>
-          </label>
-        </div>
-        <textarea rows="3" placeholder="Excerpt" value={newPost.excerpt} onChange={(event) => setNewPost((current) => ({ ...current, excerpt: event.target.value }))} />
-        <RichTextEditor label="Full blog content" required value={newPost.body} onChange={(value) => setNewPost((current) => ({ ...current, body: value }))} minHeight={220} placeholder="Write the full blog post with links, headings, colors, and lists..." />
-        <label className="file-picker">
-          Thumbnail image
-          <input type="file" accept={acceptedImageTypes} onChange={(event) => setNewPost((current) => ({ ...current, thumbnailFile: event.target.files?.[0] ?? null }))} />
-        </label>
-        {newPost.thumbnailFile && <span className="helper-text">{newPost.thumbnailFile.name}</span>}
-        <select value={newPost.albumId} onChange={(event) => setNewPost((current) => ({ ...current, albumId: event.target.value }))}><option value="">No linked album</option>{allAlbums.map((album) => <option value={album.id} key={album.id}>{album.title}</option>)}</select>
-        {isAdmin && <select value={newPost.approvalStatus} onChange={(event) => setNewPost((current) => ({ ...current, approvalStatus: event.target.value }))}>{contentStatuses.map((status) => <option key={status}>{status}</option>)}</select>}
-        {isAdmin ? (
-          <button type="submit" disabled={Boolean(uploadStatus)}>{uploadStatus ? "Saving..." : "Create post"}</button>
+        <WizardStepper step={postWizardStep} />
+        {postWizardStep === 0 && (
+          <div className="wizard-panel">
+            <input required placeholder="Title" value={newPost.title} onChange={(event) => setNewPost((current) => ({ ...current, title: event.target.value }))} />
+            <div className="inline-editor-grid compact">
+              <label>
+                Type
+                <select value={newPost.postType} onChange={(event) => setNewPost((current) => ({ ...current, postType: event.target.value }))}>
+                  {postTypeOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
+                </select>
+              </label>
+              <label>
+                Category
+                <select value={newPost.category} onChange={(event) => setNewPost((current) => ({ ...current, category: event.target.value }))}>
+                  {postCategoryOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
+                </select>
+              </label>
+            </div>
+            <textarea rows="3" placeholder="Excerpt" value={newPost.excerpt} onChange={(event) => setNewPost((current) => ({ ...current, excerpt: event.target.value }))} />
+            <RichTextEditor label="Full blog content" required value={newPost.body} onChange={(value) => setNewPost((current) => ({ ...current, body: value }))} minHeight={220} placeholder="Write the full blog post with links, headings, colors, and lists..." />
+          </div>
+        )}
+        {postWizardStep === 1 && (
+          <div className="wizard-panel">
+            <label className="file-picker">
+              Thumbnail image
+              <input type="file" accept={acceptedImageTypes} onChange={(event) => setNewPost((current) => ({ ...current, thumbnailFile: event.target.files?.[0] ?? null }))} />
+            </label>
+            {newPost.thumbnailFile && <span className="helper-text">{newPost.thumbnailFile.name}</span>}
+            <label>Linked album<select value={newPost.albumId} onChange={(event) => setNewPost((current) => ({ ...current, albumId: event.target.value }))}><option value="">No linked album</option>{allAlbums.map((album) => <option value={album.id} key={album.id}>{album.title}</option>)}</select></label>
+            {isAdmin && <label>Status<select value={newPost.approvalStatus} onChange={(event) => setNewPost((current) => ({ ...current, approvalStatus: event.target.value }))}>{contentStatuses.map((status) => <option key={status}>{status}</option>)}</select></label>}
+          </div>
+        )}
+        {postWizardStep === 2 && (
+          <div className="wizard-panel">
+            <h3>Review post</h3>
+            <ReviewGrid items={[
+              ["Title", newPost.title],
+              ["Type", newPost.postType],
+              ["Category", newPost.category],
+              ["Excerpt", newPost.excerpt],
+              ["Thumbnail", newPost.thumbnailFile?.name],
+              ["Linked album", allAlbums.find((album) => album.id === newPost.albumId)?.title]
+            ]} />
+          </div>
+        )}
+        {postWizardStep < 2 ? (
+          <WizardControls step={postWizardStep} setStep={setPostWizardStep} canProceed={postWizardStep === 0 ? Boolean(newPost.title.trim() && newPost.body.trim()) : true} />
+        ) : isAdmin ? (
+          <WizardControls step={postWizardStep} setStep={setPostWizardStep} isSubmitting={Boolean(uploadStatus)} submitLabel="Create post" />
         ) : (
-          <div className="blog-submit-actions">
-            <button type="submit" value="draft" disabled={Boolean(uploadStatus)}>Save draft</button>
-            <button type="submit" value="pending" disabled={Boolean(uploadStatus)}>Send for approval</button>
+          <div className="wizard-actions">
+            <button type="button" className="secondary-action" onClick={() => setPostWizardStep(1)}>Back</button>
+            <button type="submit" className="secondary-action" value="draft" disabled={Boolean(uploadStatus)}>Save draft</button>
+            <button type="submit" className="primary-action" value="pending" disabled={Boolean(uploadStatus)}>Send for approval</button>
           </div>
         )}
       </form>
@@ -2370,69 +2581,92 @@ export default function AdminDashboardPage() {
 
   const renderGallery = () => (
     <div className="cms-panel-stack">
-      <form className="cms-form gallery-bundle-form" onSubmit={createGalleryAlbum}>
+      <form className="cms-form gallery-bundle-form wizard-form" onSubmit={createGalleryAlbum}>
         <h2>Gallery upload</h2>
-        <div className="segmented-choice">
-          <label>
-            <input type="radio" name="galleryUploadMode" checked={galleryUploadMode === "existing"} onChange={() => setGalleryUploadMode("existing")} />
-            <span>Add photos to an existing album</span>
-          </label>
-          <label>
-            <input type="radio" name="galleryUploadMode" checked={galleryUploadMode === "new"} onChange={() => setGalleryUploadMode("new")} />
-            <span>Create a new album and add photos</span>
-          </label>
-        </div>
-
-        {galleryUploadMode === "existing" ? (
-          <label>
-            Existing album
-            <select required value={photoAlbumId} onChange={(event) => setPhotoAlbumId(event.target.value)}>
-              <option value="">Choose an album</option>
-              {allAlbums.map((album) => <option value={album.id} key={album.id}>{album.title}</option>)}
-            </select>
-          </label>
-        ) : (
-          <div className="inline-editor-grid">
-            <input required placeholder="Album title" value={newAlbum.title} onChange={(event) => setNewAlbum((current) => ({ ...current, title: event.target.value }))} />
-            <input required type="date" value={newAlbum.eventDate} onChange={(event) => setNewAlbum((current) => ({ ...current, eventDate: event.target.value }))} />
-            <input required placeholder="Location" value={newAlbum.location} onChange={(event) => setNewAlbum((current) => ({ ...current, location: event.target.value }))} />
-            <input required placeholder="Category" value={newAlbum.category} onChange={(event) => setNewAlbum((current) => ({ ...current, category: event.target.value }))} />
-            <RichTextEditor label="Album description" value={newAlbum.description} onChange={(value) => setNewAlbum((current) => ({ ...current, description: value }))} minHeight={180} placeholder="Optional formatted album description with links, lists, and emojis..." />
+        <WizardStepper step={galleryWizardStep} />
+        {galleryWizardStep === 0 && (
+          <div className="wizard-panel">
+            <div className="segmented-choice">
+              <label>
+                <input type="radio" name="galleryUploadMode" checked={galleryUploadMode === "existing"} onChange={() => setGalleryUploadMode("existing")} />
+                <span>Add photos to an existing album</span>
+              </label>
+              <label>
+                <input type="radio" name="galleryUploadMode" checked={galleryUploadMode === "new"} onChange={() => setGalleryUploadMode("new")} />
+                <span>Create a new album and add photos</span>
+              </label>
+            </div>
+            {galleryUploadMode === "existing" ? (
+              <label>
+                Existing album
+                <select required value={photoAlbumId} onChange={(event) => setPhotoAlbumId(event.target.value)}>
+                  <option value="">Choose an album</option>
+                  {allAlbums.map((album) => <option value={album.id} key={album.id}>{album.title}</option>)}
+                </select>
+              </label>
+            ) : (
+              <div className="inline-editor-grid">
+                <input required placeholder="Album title" value={newAlbum.title} onChange={(event) => setNewAlbum((current) => ({ ...current, title: event.target.value }))} />
+                <input required type="date" value={newAlbum.eventDate} onChange={(event) => setNewAlbum((current) => ({ ...current, eventDate: event.target.value }))} />
+                <input required placeholder="Location" value={newAlbum.location} onChange={(event) => setNewAlbum((current) => ({ ...current, location: event.target.value }))} />
+                <input required placeholder="Category" value={newAlbum.category} onChange={(event) => setNewAlbum((current) => ({ ...current, category: event.target.value }))} />
+                <RichTextEditor label="Album description" value={newAlbum.description} onChange={(value) => setNewAlbum((current) => ({ ...current, description: value }))} minHeight={180} placeholder="Optional formatted album description with links, lists, and emojis..." />
+              </div>
+            )}
+          </div>
+        )}
+        {galleryWizardStep === 1 && (
+          <div className="wizard-panel">
+            {galleryUploadMode === "new" && (
+              <>
+                <label className="file-picker">
+                  Album thumbnail
+                  <input required type="file" accept={acceptedImageTypes} onChange={(event) => setAlbumThumbnailFile(event.target.files?.[0] ?? null)} />
+                </label>
+                {albumThumbnailFile && <span className="helper-text">{albumThumbnailFile.name}</span>}
+                {isAdmin && <label>Status<select value={newAlbum.approvalStatus} onChange={(event) => setNewAlbum((current) => ({ ...current, approvalStatus: event.target.value }))}>{contentStatuses.map((status) => <option key={status}>{status}</option>)}</select></label>}
+              </>
+            )}
             <label className="file-picker">
-              Album thumbnail
-              <input required type="file" accept={acceptedImageTypes} onChange={(event) => setAlbumThumbnailFile(event.target.files?.[0] ?? null)} />
+              Choose photos
+              <input type="file" accept={acceptedImageTypes} multiple onChange={(event) => {
+                appendPhotoFiles(event.target.files);
+                event.target.value = "";
+              }} />
             </label>
-            {albumThumbnailFile && <span className="helper-text">{albumThumbnailFile.name}</span>}
-            {isAdmin && <select value={newAlbum.approvalStatus} onChange={(event) => setNewAlbum((current) => ({ ...current, approvalStatus: event.target.value }))}>{contentStatuses.map((status) => <option key={status}>{status}</option>)}</select>}
+            <div className="upload-preview image-upload-list">
+              {photoFiles.map((file) => (
+                <span key={`${file.name}-${file.size}-${file.lastModified}`}>
+                  {file.name}
+                  <button type="button" aria-label={`Remove ${file.name}`} onClick={() => removeSelectedPhotoFile(file)}>Remove</button>
+                </span>
+              ))}
+              {!photoFiles.length && <small>No photos selected yet.</small>}
+            </div>
+            {photoUploadProgress.total > 0 && (
+              <div className="upload-progress" aria-label="Photo upload progress">
+                <div><span style={{ width: `${photoUploadProgress.percent}%` }} /></div>
+                <strong>{photoUploadProgress.percent}%</strong>
+                <small>{photoUploadProgress.completed} of {photoUploadProgress.total} photos uploaded</small>
+              </div>
+            )}
           </div>
         )}
-
-        <label className="file-picker">
-          Choose photos
-          <input type="file" accept={acceptedImageTypes} multiple onChange={(event) => {
-            appendPhotoFiles(event.target.files);
-            event.target.value = "";
-          }} />
-        </label>
-        <div className="upload-preview image-upload-list">
-          {photoFiles.map((file) => (
-            <span key={`${file.name}-${file.size}-${file.lastModified}`}>
-              {file.name}
-              <button type="button" aria-label={`Remove ${file.name}`} onClick={() => removeSelectedPhotoFile(file)}>Remove</button>
-            </span>
-          ))}
-          {!photoFiles.length && <small>No photos selected yet.</small>}
-        </div>
-        {photoUploadProgress.total > 0 && (
-          <div className="upload-progress" aria-label="Photo upload progress">
-            <div><span style={{ width: `${photoUploadProgress.percent}%` }} /></div>
-            <strong>{photoUploadProgress.percent}%</strong>
-            <small>{photoUploadProgress.completed} of {photoUploadProgress.total} photos uploaded</small>
+        {galleryWizardStep === 2 && (
+          <div className="wizard-panel">
+            <h3>Review album</h3>
+            <ReviewGrid items={[
+              ["Mode", galleryUploadMode === "new" ? "New album" : "Existing album"],
+              ["Album", galleryUploadMode === "new" ? newAlbum.title : allAlbums.find((album) => album.id === photoAlbumId)?.title],
+              ["Date", newAlbum.eventDate],
+              ["Location", newAlbum.location],
+              ["Category", newAlbum.category],
+              ["Thumbnail", albumThumbnailFile?.name],
+              ["Photos", `${photoFiles.length} selected`]
+            ]} />
           </div>
         )}
-        <button type="submit" disabled={Boolean(uploadStatus) || !photoFiles.length || (galleryUploadMode === "existing" && !photoAlbumId)}>
-          {uploadStatus ? "Uploading..." : "Submit photo bundle"}
-        </button>
+        <WizardControls step={galleryWizardStep} setStep={setGalleryWizardStep} isSubmitting={Boolean(uploadStatus)} submitLabel="Submit photo bundle" canProceed={galleryWizardStep === 0 ? (galleryUploadMode === "existing" ? Boolean(photoAlbumId) : Boolean(newAlbum.title.trim() && newAlbum.eventDate && newAlbum.location.trim() && newAlbum.category.trim())) : galleryWizardStep === 1 ? Boolean(photoFiles.length && (galleryUploadMode === "existing" || albumThumbnailFile)) : true} />
       </form>
       <AlbumLinksTable items={visibleAlbums} onDelete={deleteAlbum} refresh={refresh} canDelete={isAdmin} />
     </div>
@@ -2464,6 +2698,15 @@ export default function AdminDashboardPage() {
           <p>{settingSections.find(([id]) => id === activeSetting)?.[3]}</p>
         </div>
       </div>
+      <div className="settings-card-grid">
+        {settingSections.map(([id, label, Icon, description]) => (
+          <button type="button" key={id} className={activeSetting === id ? "active" : ""} onClick={() => { setActiveSetting(id); setActiveSection(id); }}>
+            <span><Icon size={20} aria-hidden="true" /></span>
+            <strong>{label}</strong>
+            <small>{description}</small>
+          </button>
+        ))}
+      </div>
       {activeSetting === "usersPermissions" && renderChiefs()}
       {activeSetting === "upload" && renderUpload()}
       {activeSetting === "rules" && renderRules()}
@@ -2475,15 +2718,133 @@ export default function AdminDashboardPage() {
     </section>
   );
 
+  const renderApprovalPreviewContent = () => {
+    if (!selectedApproval) {
+      return null;
+    }
+
+    return (
+      <div className="approval-preview-card approval-modal-card">
+        {selectedApproval.contentType === "Blog post" && (
+          <BlogPostPreview post={{ ...selectedApproval, author: selectedApproval.author || getSubmitterName(selectedApproval), authorProfilePictureUrl: selectedApproval.authorProfilePictureUrl || getSubmitterPicture(selectedApproval) }} compact />
+        )}
+        {selectedApproval.currentVersion && (
+          <div className="comparison-grid">
+            <article>
+              <span>Current Published Version</span>
+              <strong>{selectedApproval.currentVersion.title}</strong>
+              <FormattedText text={selectedApproval.currentVersion.excerpt ?? selectedApproval.currentVersion.location ?? ""} />
+            </article>
+            <article>
+              <span>Proposed Changes</span>
+              <strong>{selectedApproval.title}</strong>
+              <FormattedText text={selectedApproval.excerpt ?? selectedApproval.location ?? selectedApproval.description ?? ""} />
+            </article>
+          </div>
+        )}
+        {selectedApproval.contentType === "Profile change" && (
+          <div className="profile-change-preview">
+            <div>
+              <span>Current</span>
+              <UserAvatar name={selectedApproval.name} imageUrl={selectedApproval.profilePictureUrl} size={58} />
+              <strong>{selectedApproval.name}</strong>
+            </div>
+            <div>
+              <span>Requested</span>
+              <UserAvatar name={selectedApproval.pendingName ?? selectedApproval.name} imageUrl={selectedApproval.pendingProfilePictureUrl ?? selectedApproval.profilePictureUrl} size={58} />
+              <strong>{selectedApproval.pendingName ?? selectedApproval.name}</strong>
+            </div>
+          </div>
+        )}
+        {selectedApproval.contentType === "Calendar event" && (
+          <div className="preview-event-meta">
+            <span>{selectedApproval.dateFrom ?? selectedApproval.date}</span>
+            <span>{selectedApproval.startTime || "No start time"}</span>
+            <span>{selectedApproval.visibility}</span>
+          </div>
+        )}
+        {selectedApproval.contentType === "Album" && (
+          <div className="photo-batch-preview">
+            <div className="preview-event-meta">
+              <span>{selectedApproval.eventDate || "No date"}</span>
+              <span>{selectedApproval.location || "No location"}</span>
+              <span>{selectedApproval.photoCount ?? selectedApproval.photos?.length ?? 0} photos</span>
+            </div>
+            <FormattedText text={selectedApproval.description} fallback="No description added yet." />
+            <div className="approval-photo-grid">
+              {(selectedApproval.photos ?? []).slice(0, 6).map((photo) => (
+                <div key={photo.id}>
+                  {photo.thumbnailUrl || photo.url ? <img src={photo.thumbnailUrl ?? photo.url} alt="" /> : <span>Photo</span>}
+                </div>
+              ))}
+              {!(selectedApproval.photos ?? []).length && <div><span>No photos yet</span></div>}
+            </div>
+          </div>
+        )}
+        {selectedApproval.contentType === "Photo" && (
+          <div className="approval-photo-preview">
+            {selectedApproval.url ? <img src={selectedApproval.url} alt="" /> : <span>No image preview</span>}
+          </div>
+        )}
+        {selectedApproval.contentType === "Photo batch" && (
+          <div className="photo-batch-preview">
+            <div className="preview-event-meta">
+              <span>{selectedApproval.albumTitle}</span>
+              <span>{selectedApproval.photoCount} photos</span>
+              <span>{selectedApproval.approvalStatus}</span>
+            </div>
+            <div className="album-admin-actions compact">
+              <span>{selectedApprovalPhotoIds.length} selected</span>
+              <button type="button" className="inline-action" onClick={() => setSelectedApprovalPhotoIds((selectedApproval.photos ?? []).map((photo) => photo.id))}>Select all</button>
+              <button type="button" className="inline-action" onClick={() => setSelectedApprovalPhotoIds([])}>Clear</button>
+              <button type="button" className="inline-action danger-action" disabled={!selectedApprovalPhotoIds.length} onClick={removeSelectedApprovalPhotos}>Remove selected</button>
+            </div>
+            <div className="preview-activity-grid">
+              {(selectedApproval.photos ?? []).slice(0, 12).map((photo) => (
+                <div key={photo.id} className={selectedApprovalPhotoIds.includes(photo.id) ? "selected-preview-photo" : ""}>
+                  <label className="photo-select-checkbox">
+                    <input type="checkbox" checked={selectedApprovalPhotoIds.includes(photo.id)} onChange={() => toggleApprovalPhoto(photo.id)} />
+                    <span>Select</span>
+                  </label>
+                  {photo.thumbnailUrl || photo.url ? <img src={photo.thumbnailUrl ?? photo.url} alt="" /> : <span>Photo</span>}
+                </div>
+              ))}
+              {!(selectedApproval.photos ?? []).length && <div><span>No photos in this batch</span></div>}
+            </div>
+          </div>
+        )}
+        {selectedApproval.contentType !== "Blog post" && (
+          <FormattedText text={selectedApproval.body ?? selectedApproval.excerpt ?? selectedApproval.description ?? selectedApproval.location} fallback="No preview text provided." />
+        )}
+        <dl className="approval-details">
+          <div><dt>Submitted by</dt><dd><span className="approval-submitter"><UserAvatar name={getSubmitterName(selectedApproval)} imageUrl={getSubmitterPicture(selectedApproval)} size={30} />{getSubmitterName(selectedApproval)}</span></dd></div>
+          <div><dt>Created</dt><dd>{selectedApproval.createdAt ?? "Unknown"}</dd></div>
+          <div><dt>Updated</dt><dd>{selectedApproval.updatedAt ?? "Not updated"}</dd></div>
+        </dl>
+      </div>
+    );
+  };
+
   const renderApprovals = () => (
-    <div className="approval-workspace">
-      <div className="table-panel">
+    <div className="approval-workspace approval-list-only">
+      <div className="table-panel approval-table-panel">
         <div className="panel-heading">
           <div>
             <h2>Content Review Queue</h2>
             <p>Search and filter submitted posts, albums, and calendar events across every approval status.</p>
           </div>
           <span>{pendingItems.length} waiting</span>
+        </div>
+        <div className="approval-type-tabs" role="tablist" aria-label="Approval types">
+          {["all", "Blog post", "Album", "Calendar event", "Photo batch", "Photo", "Profile change"].map((type) => {
+            const count = [...reviewItems, ...profileReviewItems].filter((item) => (type === "all" || item.contentType === type) && ["pending", "pending_update", "needs_changes"].includes(item.approvalStatus)).length;
+            return (
+              <button type="button" key={type} className={approvalTypeFilter === type ? "active" : ""} onClick={() => setApprovalTypeFilter(type)}>
+                <span>{type === "all" ? "All" : type.replace("Calendar event", "Events").replace("Blog post", "Blogs").replace("Profile change", "Profiles")}</span>
+                {count > 0 && <small>{count}</small>}
+              </button>
+            );
+          })}
         </div>
         <table>
           <thead><tr><th>Type</th><th>Title</th><th>Status</th><th>Submitted by</th><th>Updated</th><th>Actions</th></tr></thead>
@@ -2503,166 +2864,50 @@ export default function AdminDashboardPage() {
                   }}>
                     Preview
                   </button>
-                  <button type="button" className="inline-action" onClick={() => saveApprovalDecision(item, "approved")}>
-                    Approve
-                  </button>
-                  <button type="button" className="inline-action danger-action" onClick={() => saveApprovalDecision(item, "rejected")}>
-                    Reject
-                  </button>
                 </td>
               </tr>
             )) : <tr><td colSpan="6">No approval requests match the current filters.</td></tr>}
           </tbody>
         </table>
       </div>
-      <aside className="approval-preview-panel">
-        {selectedApproval ? (
-          <>
-            <div className="panel-heading compact">
+      {selectedApproval && (
+        <div className="approval-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedApproval(null); }}>
+          <article className="approval-review-modal" role="dialog" aria-modal="true" aria-labelledby="approval-modal-title">
+            <div className="approval-modal-header">
               <div>
                 <p className="eyebrow">{selectedApproval.contentType}</p>
-                <h2>{selectedApproval.title}</h2>
+                <h2 id="approval-modal-title">{selectedApproval.title}</h2>
               </div>
-              <StatusBadge status={selectedApproval.approvalStatus} />
+              <div className="approval-modal-header-actions">
+                <StatusBadge status={selectedApproval.approvalStatus} />
+                <button type="button" className="modal-close-button" aria-label="Close preview" onClick={() => setSelectedApproval(null)}>
+                  <X size={18} aria-hidden="true" />
+                </button>
+              </div>
             </div>
-            <div className="approval-preview-card">
-              {selectedApproval.contentType === "Blog post" && (
-                <BlogPostPreview post={{ ...selectedApproval, author: selectedApproval.author || getSubmitterName(selectedApproval), authorProfilePictureUrl: selectedApproval.authorProfilePictureUrl || getSubmitterPicture(selectedApproval) }} compact />
-              )}
-              {selectedApproval.currentVersion && (
-                <div className="comparison-grid">
-                  <article>
-                    <span>Current Published Version</span>
-                    <strong>{selectedApproval.currentVersion.title}</strong>
-                    <p>{selectedApproval.currentVersion.excerpt ?? selectedApproval.currentVersion.location ?? ""}</p>
-                  </article>
-                  <article>
-                    <span>Proposed Changes</span>
-                    <strong>{selectedApproval.title}</strong>
-                    <p>{selectedApproval.excerpt ?? selectedApproval.location ?? selectedApproval.description ?? ""}</p>
-                  </article>
-                </div>
-              )}
-              {selectedApproval.contentType === "Profile change" && (
-                <div className="profile-change-preview">
-                  <div>
-                    <span>Current</span>
-                    <UserAvatar name={selectedApproval.name} imageUrl={selectedApproval.profilePictureUrl} size={58} />
-                    <strong>{selectedApproval.name}</strong>
-                  </div>
-                  <div>
-                    <span>Requested</span>
-                    <UserAvatar name={selectedApproval.pendingName ?? selectedApproval.name} imageUrl={selectedApproval.pendingProfilePictureUrl ?? selectedApproval.profilePictureUrl} size={58} />
-                    <strong>{selectedApproval.pendingName ?? selectedApproval.name}</strong>
-                  </div>
-                </div>
-              )}
-              {selectedApproval.contentType === "Calendar event" && (
-                <div className="preview-event-meta">
-                  <span>{selectedApproval.dateFrom ?? selectedApproval.date}</span>
-                  <span>{selectedApproval.startTime || "No start time"}</span>
-                  <span>{selectedApproval.visibility}</span>
-                </div>
-              )}
-              {selectedApproval.contentType === "Album" && (
-                <div className="photo-batch-preview">
-                  <div className="preview-event-meta">
-                    <span>{selectedApproval.eventDate || "No date"}</span>
-                    <span>{selectedApproval.location || "No location"}</span>
-                    <span>{selectedApproval.photoCount ?? selectedApproval.photos?.length ?? 0} photos</span>
-                  </div>
-                  <p>{selectedApproval.description || "No description added yet."}</p>
-                  <div className="approval-photo-grid">
-                    {(selectedApproval.photos ?? []).slice(0, 6).map((photo) => (
-                      <div key={photo.id}>
-                        {photo.thumbnailUrl || photo.url ? <img src={photo.thumbnailUrl ?? photo.url} alt="" /> : <span>Photo</span>}
-                      </div>
-                    ))}
-                    {!(selectedApproval.photos ?? []).length && <div><span>No photos yet</span></div>}
-                  </div>
-                </div>
-              )}
-              {selectedApproval.contentType === "Photo" && (
-                <div className="approval-photo-preview">
-                  {selectedApproval.url ? <img src={selectedApproval.url} alt="" /> : <span>No image preview</span>}
-                </div>
-              )}
-              {selectedApproval.contentType === "Photo batch" && (
-                <div className="photo-batch-preview">
-                  <div className="preview-event-meta">
-                    <span>{selectedApproval.albumTitle}</span>
-                    <span>{selectedApproval.photoCount} photos</span>
-                    <span>{selectedApproval.approvalStatus}</span>
-                  </div>
-                  <div className="album-admin-actions compact">
-                    <span>{selectedApprovalPhotoIds.length} selected</span>
-                    <button type="button" className="inline-action" onClick={() => setSelectedApprovalPhotoIds((selectedApproval.photos ?? []).map((photo) => photo.id))}>
-                      Select all
-                    </button>
-                    <button type="button" className="inline-action" onClick={() => setSelectedApprovalPhotoIds([])}>
-                      Clear
-                    </button>
-                    <button type="button" className="inline-action danger-action" disabled={!selectedApprovalPhotoIds.length} onClick={removeSelectedApprovalPhotos}>
-                      Remove selected
-                    </button>
-                  </div>
-                  <div className="preview-activity-grid">
-                    {(selectedApproval.photos ?? []).slice(0, 12).map((photo) => (
-                      <div key={photo.id} className={selectedApprovalPhotoIds.includes(photo.id) ? "selected-preview-photo" : ""}>
-                        <label className="photo-select-checkbox">
-                          <input type="checkbox" checked={selectedApprovalPhotoIds.includes(photo.id)} onChange={() => toggleApprovalPhoto(photo.id)} />
-                          <span>Select</span>
-                        </label>
-                        {photo.thumbnailUrl || photo.url ? <img src={photo.thumbnailUrl ?? photo.url} alt="" /> : <span>Photo</span>}
-                      </div>
-                    ))}
-                    {!(selectedApproval.photos ?? []).length && <div><span>No photos in this batch</span></div>}
-                  </div>
-                </div>
-              )}
-              <p>{selectedApproval.excerpt ?? selectedApproval.description ?? selectedApproval.location ?? "No preview text provided."}</p>
-              {selectedApproval.body && <p>{selectedApproval.body}</p>}
-              <dl className="approval-details">
-                <div><dt>Submitted by</dt><dd><span className="approval-submitter"><UserAvatar name={getSubmitterName(selectedApproval)} imageUrl={getSubmitterPicture(selectedApproval)} size={30} />{getSubmitterName(selectedApproval)}</span></dd></div>
-                <div><dt>Created</dt><dd>{selectedApproval.createdAt ?? "Unknown"}</dd></div>
-                <div><dt>Updated</dt><dd>{selectedApproval.updatedAt ?? "Not updated"}</dd></div>
-              </dl>
+            <div className="approval-modal-body">
+              {renderApprovalPreviewContent()}
+              <label className="approval-comment-box">
+                Review comments
+                <textarea
+                  rows="4"
+                  placeholder="Explain what changed, why it was rejected, or what the chief should edit."
+                  value={approvalComment}
+                  onChange={(event) => setApprovalComment(event.target.value)}
+                />
+              </label>
             </div>
-            <label className="approval-comment-box">
-              Review comments
-              <textarea
-                rows="4"
-                placeholder="Explain what changed, why it was rejected, or what the chief should edit."
-                value={approvalComment}
-                onChange={(event) => setApprovalComment(event.target.value)}
-              />
-            </label>
-            <div className="approval-action-grid">
-              <button type="button" className="inline-action" onClick={() => saveApprovalDecision(selectedApproval, "approved")}>
-                Approve
-              </button>
-              <button type="button" className="inline-action" onClick={() => saveApprovalDecision(selectedApproval, "needs_changes")}>
-                Send Back
-              </button>
-              <button type="button" className="inline-action danger-action" onClick={() => saveApprovalDecision(selectedApproval, "rejected")}>
-                Reject
-              </button>
-              <button type="button" className="inline-action danger-action" onClick={() => saveApprovalDecision(selectedApproval, "archived")}>
-                Archive
-              </button>
+            <div className="approval-modal-footer">
+              <button type="button" className="inline-action" onClick={() => saveApprovalDecision(selectedApproval, "approved")}>Approve</button>
+              <button type="button" className="inline-action" onClick={() => saveApprovalDecision(selectedApproval, "needs_changes")}>Send Back</button>
+              <button type="button" className="inline-action danger-action" onClick={() => saveApprovalDecision(selectedApproval, "rejected")}>Reject</button>
+              <button type="button" className="inline-action danger-action" onClick={() => saveApprovalDecision(selectedApproval, "archived")}>Archive</button>
             </div>
-          </>
-        ) : (
-          <div className="empty-approval-preview">
-            <CheckCircle2 size={34} aria-hidden="true" />
-            <h2>Select a request</h2>
-            <p>Preview submitted content, add review comments, then approve, reject, archive, or send it back for editing.</p>
-          </div>
-        )}
-      </aside>
+          </article>
+        </div>
+      )}
     </div>
   );
-
   const renderSection = () => {
     if (!canOpenSection(activeSection, user)) {
       return <AccessDenied />;
@@ -2684,18 +2929,20 @@ export default function AdminDashboardPage() {
     if (activeSection === "attendanceSheets") return <AttendanceSheetsManager />;
     if (activeSection === "chiefAttendance") return <ChiefAttendanceManager />;
     if (activeSection === "calendar") return <CalendarManagement />;
-    if (activeSection === "settings") return renderSettings();
     if (activeSection === "reports") return <EmptyAdminSection title="Reports" />;
+    if (activeSection === "documents") return <EmptyAdminSection title="Documents" />;
+    if (activeSection === "archives") return <EmptyAdminSection title="Archived Years" />;
     return <EmptyAdminSection title={selectedSection?.[1] ?? "Section"} />;
   };
 
-  const activeTitle = settingsMode
-    ? settingSections.find(([id]) => id === activeSetting)?.[1] ?? "Settings"
-    : selectedSection?.[1] ?? "Admin";
-  const sidebarItems = settingsMode ? settingSections : visibleSections;
+  const activeTitle = selectedSection?.[1] ?? "Admin";
+  const mobilePrimaryItems = flatSidebarItems.slice(0, 4);
+  const mobileMoreItems = flatSidebarItems.slice(4);
+  const hasMobileMoreItems = mobileMoreItems.length > 0;
+  const isMobilePrimaryActive = (id) => activeSection === id;
 
   return (
-    <section className={`admin-cms-shell sidebar-${sidebarMode} ${settingsMode ? "settings-mode" : ""} ${isMobileSidebarOpen ? "mobile-sidebar-open" : ""} ${showMobileMenuBar ? "mobile-menu-bar-visible" : ""}`}>
+    <section className={`admin-cms-shell sidebar-${sidebarMode} ${isMobileSidebarOpen ? "mobile-sidebar-open" : ""} ${showMobileMenuBar ? "mobile-menu-bar-visible" : ""}`}>
       <div className="dashboard-mobile-reveal-bar" aria-hidden={!showMobileMenuBar}>
         <button type="button" className="dashboard-menu-button" aria-expanded={isMobileSidebarOpen} aria-controls="dashboard-sidebar" onClick={() => setIsMobileSidebarOpen(true)}>
           <Menu size={18} aria-hidden="true" />
@@ -2707,7 +2954,7 @@ export default function AdminDashboardPage() {
       <aside className="admin-sidebar" id="dashboard-sidebar">
         <div className="admin-sidebar-title">
           <div className="sidebar-brand sidebar-brand-expanded">
-            <strong>{settingsMode ? "Settings" : "Scouts Dashboard"}</strong>
+            <strong>Scouts Dashboard</strong>
             <span>{data.registrationImportSettings.scoutYear}</span>
           </div>
           <button type="button" className="sidebar-desktop-toggle" onClick={toggleSidebarMode} title={sidebarMode === "expanded" ? "Collapse sidebar" : "Expand sidebar"} aria-label={sidebarMode === "expanded" ? "Collapse sidebar" : "Expand sidebar"}>
@@ -2717,78 +2964,133 @@ export default function AdminDashboardPage() {
             <X size={18} aria-hidden="true" />
           </button>
         </div>
-        <div className="sidebar-control-stack">
-          {settingsMode && (
-            <button type="button" className="sidebar-control-button" onClick={backToDashboard} title="Back to Dashboard" aria-label="Back to Dashboard">
-              <ArrowLeft size={17} aria-hidden="true" />
-              <span>Back to Dashboard</span>
-            </button>
-          )}
-          <Link className="sidebar-control-button sidebar-website-button" to="/" onClick={() => setIsMobileSidebarOpen(false)} title="Back to Website" aria-label="Back to Website">
-            <ArrowLeft size={17} aria-hidden="true" />
-            <span>Back to Website</span>
-          </Link>
-        </div>
         <nav className="sidebar-navigation">
-          {sidebarItems.map(([id, label, Icon]) => (
-            <button
-              type="button"
-              className={(settingsMode ? activeSetting === id : activeSection === id) ? "active" : ""}
-              onClick={() => {
-    if (settingsMode) {
-                  setActiveSetting(id);
-                  setActiveSection(id);
-                } else {
-                  openDashboardSection(id);
-                }
-                setIsMobileSidebarOpen(false);
-              }}
-              key={id}
-              title={label}
-            >
-              <Icon size={17} aria-hidden="true" />
-              <span>{label}</span>
-              {id === "approvals" && pendingItems.length > 0 && <small className="sidebar-badge">{pendingItems.length}</small>}
-            </button>
-          ))}
+          {sidebarGroups.map((group) => {
+            if (group.type === "item") {
+              const [id, label, Icon] = group.item;
+              return (
+                <button type="button" className={activeSection === id ? "active" : ""} onClick={() => selectSidebarItem(id)} key={id} title={label} aria-label={label}>
+                  <Icon size={17} aria-hidden="true" />
+                  <span>{label}</span>
+                  {id === "approvals" && pendingItems.length > 0 && <small className="sidebar-badge">{pendingItems.length}</small>}
+                </button>
+              );
+            }
+
+            const isOpen = Boolean(openSidebarGroups[group.id]);
+            const isActiveGroup = group.children.some(([id]) => id === activeSection);
+            const GroupIcon = group.Icon;
+            return (
+              <div className={`sidebar-group ${isOpen ? "open" : ""} ${isActiveGroup ? "active-group" : ""}`} key={group.id}>
+                <button type="button" className="sidebar-group-trigger" onClick={() => sidebarMode === "collapsed" ? selectSidebarItem(group.children[0]?.[0]) : toggleSidebarGroup(group.id)} title={group.label} aria-label={group.label} aria-expanded={isOpen}>
+                  <GroupIcon size={17} aria-hidden="true" />
+                  <span>{group.label}</span>
+                  <ChevronDown className="sidebar-chevron" size={16} aria-hidden="true" />
+                </button>
+                <div className="sidebar-subitems">
+                  {group.children.map(([id, label, Icon]) => (
+                    <button type="button" className={activeSection === id ? "active" : ""} onClick={() => selectSidebarItem(id)} key={id} title={label} aria-label={label}>
+                      <Icon size={16} aria-hidden="true" />
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </nav>
-        <div className="sidebar-account">
-          <button type="button" className="sidebar-account-summary" onClick={() => setIsProfileModalOpen(true)} title="Profile settings">
-            <UserAvatar user={user} size={38} />
-            <span>
-              <strong>{user.name}</strong>
-              <small>{user.role === "admin" ? "Admin" : "Chief"}{user.chiefLevel ? ` - ${user.chiefLevel}` : ""}{dashboardGroup?.name ? ` - ${dashboardGroup.name}` : ""}</small>
-            </span>
-          </button>
-          <button type="button" className="sidebar-logout-button" onClick={() => { setIsMobileSidebarOpen(false); logout(); }} title="Logout">
-            <LockKeyhole size={17} aria-hidden="true" />
-            <span>Logout</span>
-          </button>
-        </div>
+        <Link className="sidebar-control-button sidebar-website-button" to="/" onClick={() => setIsMobileSidebarOpen(false)} title="Back to Website" aria-label="Back to Website">
+          <ArrowLeft size={17} aria-hidden="true" />
+          <span>Back to Website</span>
+        </Link>
       </aside>
+      <nav className="dashboard-bottom-tabs" aria-label="Dashboard mobile navigation">
+        {mobilePrimaryItems.map(([id, label, Icon]) => (
+          <button type="button" key={id} className={isMobilePrimaryActive(id) ? "active" : ""} onClick={() => selectSidebarItem(id)}>
+            <Icon size={18} aria-hidden="true" />
+            <span>{label}</span>
+            {id === "approvals" && pendingItems.length > 0 && <small>{pendingItems.length}</small>}
+          </button>
+        ))}
+        {hasMobileMoreItems && (
+          <button type="button" className={isMobileMoreOpen ? "active" : ""} onClick={() => setIsMobileMoreOpen((current) => !current)}>
+            <MoreHorizontal size={18} aria-hidden="true" />
+            <span>More</span>
+          </button>
+        )}
+      </nav>
+      {hasMobileMoreItems && isMobileMoreOpen && (
+        <div className="dashboard-more-sheet-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setIsMobileMoreOpen(false); }}>
+          <div className="dashboard-more-sheet" role="dialog" aria-modal="true" aria-label="More dashboard sections">
+            <div className="panel-heading compact">
+              <div>
+                <p className="eyebrow">More</p>
+                <h2>Dashboard Sections</h2>
+              </div>
+              <button type="button" className="modal-close-button" aria-label="Close more menu" onClick={() => setIsMobileMoreOpen(false)}>
+                <X size={18} aria-hidden="true" />
+              </button>
+            </div>
+            <div className="dashboard-more-grid">
+              {sidebarGroups.map((group) => {
+                if (group.type === "item") {
+                  const [id, label, Icon] = group.item;
+                  return (
+                    <button type="button" key={id} className={isMobilePrimaryActive(id) ? "active" : ""} onClick={() => selectSidebarItem(id)}>
+                      <Icon size={18} aria-hidden="true" />
+                      <span>{label}</span>
+                      {id === "approvals" && pendingItems.length > 0 && <small>{pendingItems.length}</small>}
+                    </button>
+                  );
+                }
+
+                const isOpen = Boolean(openSidebarGroups[group.id]);
+                const isActiveGroup = group.children.some(([id]) => id === activeSection);
+                const GroupIcon = group.Icon;
+                return (
+                  <div className={`dashboard-more-group ${isOpen ? "open" : ""} ${isActiveGroup ? "active-group" : ""}`} key={group.id}>
+                    <button type="button" className="dashboard-more-group-trigger" onClick={() => toggleSidebarGroup(group.id)} aria-expanded={isOpen}>
+                      <GroupIcon size={18} aria-hidden="true" />
+                      <span>{group.label}</span>
+                      <ChevronDown size={16} aria-hidden="true" />
+                    </button>
+                    {isOpen && (
+                      <div className="dashboard-more-subitems">
+                        {group.children.map(([id, label, Icon]) => (
+                          <button type="button" key={id} className={isMobilePrimaryActive(id) ? "active" : ""} onClick={() => selectSidebarItem(id)}>
+                            <Icon size={18} aria-hidden="true" />
+                            <span>{label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
       <main className="admin-main">
         <div className="dashboard-topbar">
-          <button type="button" className="dashboard-menu-button" aria-expanded={isMobileSidebarOpen} aria-controls="dashboard-sidebar" onClick={() => setIsMobileSidebarOpen(true)}>
-            <Menu size={18} aria-hidden="true" />
-            <span>Menu</span>
-          </button>
-          <span className="dashboard-topbar-label">{activeTitle}</span>
-        </div>
-        <div className="admin-main-header">
-          <div>
-            <p className="eyebrow">Built-in CMS</p>
-            <h1>{activeTitle}</h1>
-          </div>
-          <div className="admin-header-actions">
-            <button type="button" className="inline-action live-refresh-button" onClick={async () => {
-              await refresh();
-              setLastLiveUpdate(new Date());
-            }}>
-              <RefreshCw size={16} aria-hidden="true" />
-              {lastLiveUpdate ? "Updated just now" : "Refresh"}
+          <div className="dashboard-topbar-title-group">
+            <button type="button" className="dashboard-menu-button" aria-expanded={isMobileSidebarOpen} aria-controls="dashboard-sidebar" onClick={() => setIsMobileSidebarOpen(true)}>
+              <Menu size={18} aria-hidden="true" />
+              <span>Menu</span>
             </button>
+            <div>
+              <span className="dashboard-topbar-kicker">{settingSections.some(([id]) => id === activeSection) ? "Settings" : "Dashboard"}</span>
+              <strong className="dashboard-topbar-title">{activeTitle}</strong>
+            </div>
+          </div>
+          <div className="dashboard-topbar-search">
             <input placeholder="Search current section" value={search} onChange={(event) => setSearch(event.target.value)} />
-            {["posts", "gallery", "approvals", "contactMessages"].includes(activeSection) && (
+            {[
+              "posts",
+              "gallery",
+              "approvals",
+              "contactMessages"
+            ].includes(activeSection) && (
               <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
                 <option value="all">All statuses</option>
                 {(activeSection === "contactMessages"
@@ -2798,8 +3100,39 @@ export default function AdminDashboardPage() {
               </select>
             )}
           </div>
+          <div className="dashboard-topbar-actions">
+            <button type="button" className="dashboard-refresh-button" onClick={async () => {
+              await refresh();
+              setLastLiveUpdate(new Date());
+            }} title="Refresh dashboard data" aria-label="Refresh dashboard data">
+              <RefreshCw size={16} aria-hidden="true" />
+            </button>
+            <button type="button" className="dashboard-notification-button" onClick={() => openDashboardSection(canOpenSection("approvals", user) ? "approvals" : "overview")} title={canOpenSection("approvals", user) ? "Pending approvals" : "My pending work"}>
+              <Bell size={18} aria-hidden="true" />
+              {dashboardNotificationCount > 0 && <small>{dashboardNotificationCount}</small>}
+            </button>
+            <div className="dashboard-profile-menu">
+              <button type="button" className="dashboard-profile-button" onClick={() => setIsProfileMenuOpen((current) => !current)} aria-expanded={isProfileMenuOpen}>
+                <UserAvatar user={user} size={36} />
+                <span>{user.name}</span>
+                <ChevronDown size={15} aria-hidden="true" />
+              </button>
+              {isProfileMenuOpen && (
+                <div className="dashboard-profile-dropdown">
+                  <button type="button" onClick={() => { setIsProfileModalOpen(true); setIsProfileMenuOpen(false); }}>My Profile</button>
+                  <button type="button" className="danger-action" onClick={() => { setIsProfileMenuOpen(false); logout(); }}>Log Out</button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-        {saveMessage && <p className="helper-text">{saveMessage}</p>}
+        <div className="admin-main-header dashboard-context-header">
+          <div>
+            <p className="eyebrow">{settingSections.some(([id]) => id === activeSection) ? "Settings" : "Built-in CMS"}</p>
+            <h1>{activeTitle}</h1>
+          </div>
+        </div>
+        {saveMessage && <p className="helper-text dashboard-save-message">{saveMessage}</p>}
         {isDashboardLoading && <UploadLoadingState message="Loading dashboard data..." />}
         {dashboardError && (
           <div className="dashboard-error-banner" role="alert">
@@ -3089,41 +3422,6 @@ function AccessDenied({ message = "Your role, chief level, assigned group, and p
     </article>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

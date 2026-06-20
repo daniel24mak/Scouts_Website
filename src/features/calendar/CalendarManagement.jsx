@@ -27,6 +27,7 @@ import RichTextEditor from "../../components/RichTextEditor.jsx";
 import { subscribeDashboardRealtime } from "../../services/realtimeService.js";
 
 const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const wizardSteps = ["Details", "Media", "Review"];
 const monthFormatter = new Intl.DateTimeFormat("en", { month: "long", year: "numeric" });
 const fullDateFormatter = new Intl.DateTimeFormat("en", {
   weekday: "long",
@@ -159,6 +160,51 @@ function groupEventsByDate(events) {
   }, {});
 }
 
+function WizardStepper({ step }) {
+  return (
+    <div className="wizard-stepper" aria-label={`Step ${step + 1} of ${wizardSteps.length}`}>
+      <div className="wizard-stepper-desktop">
+        {wizardSteps.map((label, index) => (
+          <span className={`wizard-step ${index < step ? "complete" : ""} ${index === step ? "current" : ""}`} key={label}>
+            <i>{index + 1}</i>
+            <small>{label}</small>
+          </span>
+        ))}
+      </div>
+      <div className="wizard-stepper-mobile">
+        <strong>Step {step + 1} of {wizardSteps.length}</strong>
+        <div><span style={{ width: `${((step + 1) / wizardSteps.length) * 100}%` }} /></div>
+      </div>
+    </div>
+  );
+}
+
+function WizardControls({ step, setStep, submitLabel, canProceed = true }) {
+  return (
+    <div className="wizard-actions">
+      {step > 0 && <button type="button" className="secondary-action" onClick={() => setStep((current) => Math.max(0, current - 1))}>Back</button>}
+      {step < 2 ? (
+        <button type="button" className="primary-action" disabled={!canProceed} onClick={() => setStep((current) => Math.min(2, current + 1))}>Next</button>
+      ) : (
+        <button type="submit" className="primary-action"><Plus size={18} aria-hidden="true" />{submitLabel}</button>
+      )}
+    </div>
+  );
+}
+
+function ReviewGrid({ items }) {
+  return (
+    <div className="review-grid">
+      {items.map(([label, value]) => (
+        <span key={label}>
+          <small>{label}</small>
+          <strong>{value || "Not set"}</strong>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function CalendarManagement() {
   const { user } = useAuth();
   const { data, refresh } = useBootstrap();
@@ -178,6 +224,7 @@ export default function CalendarManagement() {
     location: "Scout Hall",
     description: ""
   });
+  const [groupMeetingStep, setGroupMeetingStep] = useState(0);
   const [adminEvent, setAdminEvent] = useState({
     title: "",
     dateFrom: "",
@@ -191,6 +238,7 @@ export default function CalendarManagement() {
     linkedBlogId: "",
     linkedAlbumId: ""
   });
+  const [adminEventStep, setAdminEventStep] = useState(0);
   const [saveMessage, setSaveMessage] = useState("");
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [editingEvent, setEditingEvent] = useState(null);
@@ -225,11 +273,12 @@ export default function CalendarManagement() {
     () => (data.galleryAlbums ?? []).filter((album) => (album.approvalStatus ?? album.status) === "approved"),
     [data.galleryAlbums]
   );
+  const canCreateAdminEvent = user?.role === "admin";
   const canCreateGroupMeeting =
+    !canCreateAdminEvent &&
     hasChiefAccess(user) &&
     ["head", "vice"].includes(user.chiefLevel) &&
     user.permissions.canCreateGroupMeetings;
-  const canCreateAdminEvent = user?.role === "admin";
   const canEditSelectedEvent =
     selectedEvent &&
     user &&
@@ -311,6 +360,7 @@ export default function CalendarManagement() {
       location: "Scout Hall",
       description: ""
     });
+    setGroupMeetingStep(0);
     await refresh();
     setLastCalendarUpdate(new Date());
   };
@@ -344,6 +394,7 @@ export default function CalendarManagement() {
       linkedBlogId: "",
       linkedAlbumId: ""
     });
+    setAdminEventStep(0);
     await refresh();
     setLastCalendarUpdate(new Date());
   };
@@ -452,35 +503,65 @@ export default function CalendarManagement() {
       {(canCreateGroupMeeting || canCreateAdminEvent) && (
         <div className="calendar-tools">
           {canCreateGroupMeeting && (
-            <form className="calendar-create-panel" onSubmit={handleCreateGroupMeeting}>
+            <form className="calendar-create-panel wizard-form" onSubmit={handleCreateGroupMeeting}>
               <h2>Create group meeting</h2>
               <p>Head chiefs and vice chiefs can create meetings for chiefs in their group only.</p>
-              <label>Title<input type="text" placeholder={`${user.groupId} meeting`} value={groupMeeting.title} onChange={(event) => setGroupMeeting((current) => ({ ...current, title: event.target.value }))} /></label>
-              <label>Date from<input type="date" required value={groupMeeting.dateFrom} onChange={(event) => setGroupMeeting((current) => ({ ...current, dateFrom: event.target.value, dateTo: current.dateTo || event.target.value }))} /></label>
-              <label>Date to<input type="date" required value={groupMeeting.dateTo} onChange={(event) => setGroupMeeting((current) => ({ ...current, dateTo: event.target.value }))} /></label>
-              <RichTextEditor label="Description" required value={groupMeeting.description} onChange={(value) => setGroupMeeting((current) => ({ ...current, description: value }))} minHeight={170} placeholder="Add meeting details, links, formatting, and emojis..." />
-              <label>Start time<input type="time" value={groupMeeting.startTime} onChange={(event) => setGroupMeeting((current) => ({ ...current, startTime: event.target.value }))} /></label>
-              <label>End time<input type="time" value={groupMeeting.endTime} onChange={(event) => setGroupMeeting((current) => ({ ...current, endTime: event.target.value }))} /></label>
-              <label>Location<input type="text" required value={groupMeeting.location} onChange={(event) => setGroupMeeting((current) => ({ ...current, location: event.target.value }))} /></label>
-              <button type="submit"><Plus size={18} aria-hidden="true" />Add group meeting</button>
+              <WizardStepper step={groupMeetingStep} />
+              {groupMeetingStep === 0 && (
+                <div className="wizard-panel">
+                  <label>Title<input type="text" placeholder={`${user.groupId} meeting`} value={groupMeeting.title} onChange={(event) => setGroupMeeting((current) => ({ ...current, title: event.target.value }))} /></label>
+                  <label>Date from<input type="date" required value={groupMeeting.dateFrom} onChange={(event) => setGroupMeeting((current) => ({ ...current, dateFrom: event.target.value, dateTo: current.dateTo || event.target.value }))} /></label>
+                  <label>Date to<input type="date" required value={groupMeeting.dateTo} onChange={(event) => setGroupMeeting((current) => ({ ...current, dateTo: event.target.value }))} /></label>
+                  <RichTextEditor label="Description" required value={groupMeeting.description} onChange={(value) => setGroupMeeting((current) => ({ ...current, description: value }))} minHeight={170} placeholder="Add meeting details, links, formatting, and emojis..." />
+                </div>
+              )}
+              {groupMeetingStep === 1 && (
+                <div className="wizard-panel">
+                  <label>Start time<input type="time" value={groupMeeting.startTime} onChange={(event) => setGroupMeeting((current) => ({ ...current, startTime: event.target.value }))} /></label>
+                  <label>End time<input type="time" value={groupMeeting.endTime} onChange={(event) => setGroupMeeting((current) => ({ ...current, endTime: event.target.value }))} /></label>
+                  <label>Location<input type="text" required value={groupMeeting.location} onChange={(event) => setGroupMeeting((current) => ({ ...current, location: event.target.value }))} /></label>
+                </div>
+              )}
+              {groupMeetingStep === 2 && (
+                <div className="wizard-panel">
+                  <h3>Review event</h3>
+                  <ReviewGrid items={[["Title", groupMeeting.title || `${user.groupId} meeting`], ["Date from", groupMeeting.dateFrom], ["Date to", groupMeeting.dateTo], ["Time", [groupMeeting.startTime, groupMeeting.endTime].filter(Boolean).join(" - ")], ["Location", groupMeeting.location]]} />
+                </div>
+              )}
+              <WizardControls step={groupMeetingStep} setStep={setGroupMeetingStep} submitLabel="Add group meeting" canProceed={groupMeetingStep === 0 ? Boolean(groupMeeting.dateFrom && groupMeeting.dateTo && groupMeeting.description.trim()) : groupMeetingStep === 1 ? Boolean(groupMeeting.location.trim()) : true} />
             </form>
           )}
           {canCreateAdminEvent && (
-            <form className="calendar-create-panel" onSubmit={handleCreateAdminEvent}>
+            <form className="calendar-create-panel wizard-form" onSubmit={handleCreateAdminEvent}>
               <h2>Create calendar event</h2>
               <p>Admins can publish to everyone, logged-in users, or selected logged-in groups.</p>
-              <label>Title<input type="text" required placeholder="Group activity" value={adminEvent.title} onChange={(event) => setAdminEvent((current) => ({ ...current, title: event.target.value }))} /></label>
-              <label>Date from<input type="date" required value={adminEvent.dateFrom} onChange={(event) => setAdminEvent((current) => ({ ...current, dateFrom: event.target.value, dateTo: current.dateTo || event.target.value }))} /></label>
-              <label>Date to<input type="date" required value={adminEvent.dateTo} onChange={(event) => setAdminEvent((current) => ({ ...current, dateTo: event.target.value }))} /></label>
-              <RichTextEditor label="Description" required value={adminEvent.description} onChange={(value) => setAdminEvent((current) => ({ ...current, description: value }))} minHeight={170} placeholder="Add event details, links, formatting, and emojis..." />
-              <label>Start time<input type="time" value={adminEvent.startTime} onChange={(event) => setAdminEvent((current) => ({ ...current, startTime: event.target.value }))} /></label>
-              <label>End time<input type="time" value={adminEvent.endTime} onChange={(event) => setAdminEvent((current) => ({ ...current, endTime: event.target.value }))} /></label>
-              <label>Location<input type="text" required value={adminEvent.location} onChange={(event) => setAdminEvent((current) => ({ ...current, location: event.target.value }))} /></label>
-              <label>Visibility<select value={adminEvent.visibility} onChange={(event) => setAdminEvent((current) => ({ ...current, visibility: event.target.value }))}><option value="public">Everyone</option><option value="logged-in">Logged-in users</option><option value="group">Specific logged-in groups</option></select></label>
-              <label>Linked blog<select value={adminEvent.linkedBlogId} onChange={(event) => setAdminEvent((current) => ({ ...current, linkedBlogId: event.target.value }))}><option value="">No linked blog</option>{linkablePosts.map((post) => <option key={post.id} value={post.id}>{post.title}</option>)}</select></label>
-              <label>Linked gallery<select value={adminEvent.linkedAlbumId} onChange={(event) => setAdminEvent((current) => ({ ...current, linkedAlbumId: event.target.value }))}><option value="">No linked gallery</option>{linkableAlbums.map((album) => <option key={album.id} value={album.id}>{album.title}</option>)}</select></label>
-              <label>Groups<select multiple value={adminEvent.visibleGroupIds} onChange={(event) => setAdminEvent((current) => ({ ...current, visibleGroupIds: [...event.target.selectedOptions].map((option) => option.value) }))}>{scoutGroups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}</select></label>
-              <button type="submit"><Plus size={18} aria-hidden="true" />Add event</button>
+              <WizardStepper step={adminEventStep} />
+              {adminEventStep === 0 && (
+                <div className="wizard-panel">
+                  <label>Title<input type="text" required placeholder="Group activity" value={adminEvent.title} onChange={(event) => setAdminEvent((current) => ({ ...current, title: event.target.value }))} /></label>
+                  <label>Date from<input type="date" required value={adminEvent.dateFrom} onChange={(event) => setAdminEvent((current) => ({ ...current, dateFrom: event.target.value, dateTo: current.dateTo || event.target.value }))} /></label>
+                  <label>Date to<input type="date" required value={adminEvent.dateTo} onChange={(event) => setAdminEvent((current) => ({ ...current, dateTo: event.target.value }))} /></label>
+                  <RichTextEditor label="Description" required value={adminEvent.description} onChange={(value) => setAdminEvent((current) => ({ ...current, description: value }))} minHeight={170} placeholder="Add event details, links, formatting, and emojis..." />
+                </div>
+              )}
+              {adminEventStep === 1 && (
+                <div className="wizard-panel">
+                  <label>Start time<input type="time" value={adminEvent.startTime} onChange={(event) => setAdminEvent((current) => ({ ...current, startTime: event.target.value }))} /></label>
+                  <label>End time<input type="time" value={adminEvent.endTime} onChange={(event) => setAdminEvent((current) => ({ ...current, endTime: event.target.value }))} /></label>
+                  <label>Location<input type="text" required value={adminEvent.location} onChange={(event) => setAdminEvent((current) => ({ ...current, location: event.target.value }))} /></label>
+                  <label>Visibility<select value={adminEvent.visibility} onChange={(event) => setAdminEvent((current) => ({ ...current, visibility: event.target.value }))}><option value="public">Public</option><option value="logged-in">All Chiefs</option><option value="group">Specific Group/s</option></select></label>
+                  {adminEvent.visibility === "group" && <label>Groups<select multiple value={adminEvent.visibleGroupIds} onChange={(event) => setAdminEvent((current) => ({ ...current, visibleGroupIds: [...event.target.selectedOptions].map((option) => option.value) }))}>{scoutGroups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}</select></label>}
+                  <label>Linked blog<select value={adminEvent.linkedBlogId} onChange={(event) => setAdminEvent((current) => ({ ...current, linkedBlogId: event.target.value }))}><option value="">No linked blog</option>{linkablePosts.map((post) => <option key={post.id} value={post.id}>{post.title}</option>)}</select></label>
+                  <label>Linked gallery<select value={adminEvent.linkedAlbumId} onChange={(event) => setAdminEvent((current) => ({ ...current, linkedAlbumId: event.target.value }))}><option value="">No linked gallery</option>{linkableAlbums.map((album) => <option key={album.id} value={album.id}>{album.title}</option>)}</select></label>
+                </div>
+              )}
+              {adminEventStep === 2 && (
+                <div className="wizard-panel">
+                  <h3>Review event</h3>
+                  <ReviewGrid items={[["Title", adminEvent.title], ["Date from", adminEvent.dateFrom], ["Date to", adminEvent.dateTo], ["Visibility", adminEvent.visibility], ["Location", adminEvent.location], ["Linked blog", linkablePosts.find((post) => post.id === adminEvent.linkedBlogId)?.title], ["Linked gallery", linkableAlbums.find((album) => album.id === adminEvent.linkedAlbumId)?.title]]} />
+                </div>
+              )}
+              <WizardControls step={adminEventStep} setStep={setAdminEventStep} submitLabel="Add event" canProceed={adminEventStep === 0 ? Boolean(adminEvent.title.trim() && adminEvent.dateFrom && adminEvent.dateTo && adminEvent.description.trim()) : adminEventStep === 1 ? Boolean(adminEvent.location.trim()) : true} />
             </form>
           )}
         </div>
@@ -534,9 +615,9 @@ export default function CalendarManagement() {
                   {event.imageUrl && <img src={event.imageUrl} alt="" loading="lazy" />}
                   <span>
                     <strong>{event.title}</strong>
-                    <small>{formatEventDateRange(event)} · {formatEventTime(event)}</small>
+                    <small>{formatEventDateRange(event)} - {formatEventTime(event)}</small>
                     {event.location && <small>{event.location}</small>}
-                    <small>{getVisibilityLabel(event)}{group ? ` · ${group.name}` : ""}</small>
+                    <small>{getVisibilityLabel(event)}{group ? ` - ${group.name}` : ""}</small>
                   </span>
                 </button>
               );
@@ -557,7 +638,7 @@ export default function CalendarManagement() {
                         <strong>{event.title}</strong>
                         <small>{formatEventTime(event)}</small>
                         {event.location && <small>{event.location}</small>}
-                        <small>{getVisibilityLabel(event)}{group ? ` · ${group.name}` : ""}</small>
+                        <small>{getVisibilityLabel(event)}{group ? ` - ${group.name}` : ""}</small>
                       </span>
                     </button>
                   );
@@ -599,7 +680,7 @@ export default function CalendarManagement() {
                   <label>Linked gallery<select value={editingEvent.linkedAlbumId ?? ""} onChange={(event) => setEditingEvent((current) => ({ ...current, linkedAlbumId: event.target.value }))}><option value="">No linked gallery</option>{linkableAlbums.map((album) => <option key={album.id} value={album.id}>{album.title}</option>)}</select></label>
                   {user?.role === "admin" && (
                     <>
-                      <label>Visibility<select value={editingEvent.visibility} onChange={(event) => setEditingEvent((current) => ({ ...current, visibility: event.target.value }))}><option value="public">Everyone</option><option value="logged-in">Logged-in users</option><option value="group">Specific logged-in groups</option></select></label>
+                      <label>Visibility<select value={editingEvent.visibility} onChange={(event) => setEditingEvent((current) => ({ ...current, visibility: event.target.value }))}><option value="public">Public</option><option value="logged-in">All Chiefs</option><option value="group">Specific Group/s</option></select></label>
                       <label>Status<select value={editingEvent.approvalStatus} onChange={(event) => setEditingEvent((current) => ({ ...current, approvalStatus: event.target.value }))}><option value="pending">pending</option><option value="approved">approved</option><option value="needs_changes">needs changes</option><option value="rejected">rejected</option><option value="archived">archived</option></select></label>
                     </>
                   )}
@@ -651,6 +732,5 @@ export default function CalendarManagement() {
     </section>
   );
 }
-
 
 
