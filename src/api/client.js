@@ -49,6 +49,7 @@ import {
   updateContactMessage,
   updateFaq
 } from "../services/publicEngagementService.js";
+import { updateCurrentUserPassword } from "../services/authService.js";
 import { isSupabaseConfigured } from "../services/supabaseClient.js";
 import {
   createLeader,
@@ -58,7 +59,7 @@ import {
   saveSiteContentItem,
   updateLeader
 } from "../services/siteContentService.js";
-import { createProfile, getProfiles, updateProfile } from "../services/userService.js";
+import { adminResetUserPassword, createDashboardUser, createProfile, getProfiles, reviewProfileChangeRequest, submitProfileChangeRequest, updateProfile } from "../services/userService.js";
 
 export const fallbackData = {
   users: demoUsers,
@@ -417,11 +418,43 @@ export function addRegisteredScout(payload) {
 
 export function addChief(payload) {
   if (isSupabaseConfigured) {
-    return createProfile(payload);
+    return createDashboardUser(payload);
   }
 
   return request("/admin/chiefs", { method: "POST", body: JSON.stringify(payload) });
 }
+
+export function requestProfileChange(user, payload) {
+  if (isSupabaseConfigured) {
+    return submitProfileChangeRequest(user, payload);
+  }
+
+  return Promise.resolve(payload);
+}
+
+export function reviewProfileChange(profile, status, comment) {
+  if (isSupabaseConfigured) {
+    return reviewProfileChangeRequest(profile, status, comment);
+  }
+
+  return Promise.resolve(profile);
+}
+
+export function changeOwnPassword(newPassword) {
+  if (isSupabaseConfigured) {
+    return updateCurrentUserPassword(newPassword);
+  }
+
+  return Promise.resolve();
+}
+export function resetUserPassword(userId, temporaryPassword) {
+  if (isSupabaseConfigured) {
+    return adminResetUserPassword(userId, temporaryPassword);
+  }
+
+  return Promise.resolve();
+}
+
 
 export function updateChief(chiefId, payload) {
   if (isSupabaseConfigured) {
@@ -560,4 +593,8 @@ export function assignEquipeScouts(payload) {
 
   return Promise.resolve(payload);
 }
+
+
+
+
 

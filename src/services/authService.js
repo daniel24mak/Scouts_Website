@@ -24,6 +24,11 @@ function authUserToProfile(authUser, profile) {
     groupId: profile?.groupId ?? authUser.user_metadata?.group_id ?? null,
     chiefLevel: profile?.chiefLevel ?? authUser.user_metadata?.chief_level ?? "chief",
     accountStatus: profile?.accountStatus ?? "active",
+    profilePictureUrl: profile?.profilePictureUrl ?? null,
+    pendingName: profile?.pendingName ?? null,
+    pendingProfilePictureUrl: profile?.pendingProfilePictureUrl ?? null,
+    profileChangeStatus: profile?.profileChangeStatus ?? null,
+    profileChangeComment: profile?.profileChangeComment ?? "",
     permissions: profile?.permissions ?? {
       canPublish: false,
       canCreateGroupMeetings: false,
@@ -62,6 +67,19 @@ export async function signInWithPassword(email, password) {
   return authUserToProfile(response.user, profile);
 }
 
+export async function updateCurrentUserPassword(newPassword) {
+  const session = getStoredSupabaseSession();
+
+  if (!session?.access_token) {
+    throw new Error("You must be logged in to change your password.");
+  }
+
+  await callSupabaseAuth("user", { password: newPassword }, {
+    method: "PUT",
+    accessToken: session.access_token
+  });
+}
+
 export async function signOut() {
   const session = getStoredSupabaseSession();
 
@@ -86,3 +104,5 @@ export async function signUpInternalUser({ email, password, name, role, groupId,
 
   return response.user;
 }
+
+

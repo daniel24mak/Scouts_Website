@@ -1,4 +1,5 @@
-﻿import { normalizePost, normalizePostRevision } from "./supabaseMappers.js";
+import { normalizePost, normalizePostRevision } from "./supabaseMappers.js";
+import { getProfileById } from "./userService.js";
 import {
   deleteSupabaseFile,
   deleteSupabaseRows,
@@ -18,22 +19,69 @@ function slugify(value) {
 }
 
 
-const publicPostSelect = "select=id,slug,title,author_name,thumbnail_color,thumbnail_url,thumbnail_path,linked_album_id,excerpt,body,status,published_at,created_at,updated_at";
+const publicPostSelect = "select=id,slug,title,content_type,category,author_name,author_profile_picture_url,thumbnail_color,thumbnail_url,thumbnail_path,linked_album_id,excerpt,body,status,submitted_by,published_at,created_at,updated_at";
+const legacyPublicPostSelect = "select=id,slug,title,author_name,thumbnail_color,thumbnail_url,thumbnail_path,linked_album_id,excerpt,body,status,submitted_by,published_at,created_at,updated_at";
+
+function isMissingPostMetadataColumns(error) {
+  const message = String(error?.message ?? error ?? "").toLowerCase();
+  return message.includes("content_type") || message.includes("category") || message.includes("author_profile_picture_url") || message.includes("pgrst204") || message.includes("42703");
+}
+
+function stripPostMetadataColumns(row) {
+  const { content_type, category, author_profile_picture_url, ...rest } = row;
+  return rest;
+}
+
+async function insertPostRow(row) {
+  try {
+    return await insertSupabaseRow("posts", row);
+  } catch (error) {
+    if (!isMissingPostMetadataColumns(error)) throw error;
+    return insertSupabaseRow("posts", stripPostMetadataColumns(row));
+  }
+}
+
+async function patchPostRows(filter, row) {
+  try {
+    return await patchSupabaseRows("posts", filter, row);
+  } catch (error) {
+    if (!isMissingPostMetadataColumns(error)) throw error;
+    return patchSupabaseRows("posts", filter, stripPostMetadataColumns(row));
+  }
+}
 
 export async function getPublicPosts({ limit = 12, offset = 0 } = {}) {
-  const rows = await getSupabaseRows(
-    "posts",
-    `${publicPostSelect}&status=eq.approved&order=published_at.desc,created_at.desc&limit=${Number(limit)}&offset=${Number(offset)}`
-  );
+  let rows;
+  try {
+    rows = await getSupabaseRows(
+      "posts",
+      `${publicPostSelect}&status=eq.approved&order=published_at.desc,created_at.desc&limit=${Number(limit)}&offset=${Number(offset)}`
+    );
+  } catch (error) {
+    if (!isMissingPostMetadataColumns(error)) throw error;
+    rows = await getSupabaseRows(
+      "posts",
+      `${legacyPublicPostSelect}&status=eq.approved&order=published_at.desc,created_at.desc&limit=${Number(limit)}&offset=${Number(offset)}`
+    );
+  }
 
   return rows.map(normalizePost);
 }
 
 export async function getPublicPostBySlug(slug) {
-  const rows = await getSupabaseRows(
-    "posts",
-    `${publicPostSelect}&slug=eq.${encodeURIComponent(slug)}&status=eq.approved&limit=1`
-  );
+  let rows;
+  try {
+    rows = await getSupabaseRows(
+      "posts",
+      `${publicPostSelect}&slug=eq.${encodeURIComponent(slug)}&status=eq.approved&limit=1`
+    );
+  } catch (error) {
+    if (!isMissingPostMetadataColumns(error)) throw error;
+    rows = await getSupabaseRows(
+      "posts",
+      `${legacyPublicPostSelect}&slug=eq.${encodeURIComponent(slug)}&status=eq.approved&limit=1`
+    );
+  }
 
   return rows[0] ? normalizePost(rows[0]) : null;
 }
@@ -76,6 +124,8 @@ async function preparePostData(post, options = {}) {
       ? await createUniqueSlug(post.slug || post.title, options.currentPostId)
       : post.slug || slugify(post.title),
     title: post.title,
+    content_type: post.postType ?? post.contentType ?? "blog",
+    category: post.category ?? "general",
     author_name: post.author,
     thumbnail_color: post.thumbnailColor ?? "#2f7d6d",
     thumbnail_url: thumbnailUrl,
@@ -108,9 +158,11 @@ export async function getPosts() {
 export async function createPost(post) {
   const currentUserId = getCurrentSupabaseUserId();
   const postData = await preparePostData(post, { ensureUniqueSlug: true });
+  const authorProfile = currentUserId ? await getProfileById(currentUserId).catch(() => null) : null;
 
-  return insertSupabaseRow("posts", {
+  return insertPostRow({
     ...postData,
+    author_profile_picture_url: authorProfile?.profilePictureUrl ?? null,
     status: post.approvalStatus ?? "pending",
     submitted_by: currentUserId,
     published_at: (post.approvalStatus ?? "pending") === "approved" ? new Date().toISOString() : null
@@ -132,7 +184,7 @@ export async function updatePost(postId, post) {
     const revisionId = post.revisionId ?? postId;
 
     if (post.approvalStatus === "approved") {
-      return patchSupabaseRows("posts", `id=eq.${encodeURIComponent(post.originalId)}`, {
+      return patchPostRows(`id=eq.${encodeURIComponent(post.originalId)}`, {
         ...postData,
         status: "approved",
         reviewer_comment: post.reviewerComment ?? "",
@@ -176,7 +228,7 @@ export async function updatePost(postId, post) {
     });
   }
 
-  const saved = await patchSupabaseRows("posts", `id=eq.${encodeURIComponent(postId)}`, {
+  const saved = await patchPostRows(`id=eq.${encodeURIComponent(postId)}`, {
     ...postData,
     status: post.approvalStatus ?? "pending",
     reviewer_comment: post.reviewerComment ?? "",
@@ -202,4 +254,12 @@ export async function deletePost(postId) {
 
   return deleted;
 }
+
+
+
+
+
+
+
+
 

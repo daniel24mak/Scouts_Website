@@ -37,6 +37,13 @@ CREATE TABLE user_profiles (
   group_id text,
   chief_level text CHECK (chief_level IN ('head', 'vice', 'chief')),
   account_status text NOT NULL DEFAULT 'active',
+  profile_picture_url text,
+  pending_name text,
+  pending_profile_picture_url text,
+  profile_change_status text CHECK (profile_change_status IN ('pending', 'approved', 'rejected')),
+  profile_change_comment text,
+  profile_change_submitted_at timestamptz,
+  must_change_password boolean NOT NULL DEFAULT false,
   can_publish boolean NOT NULL DEFAULT false,
   can_create_group_meetings boolean NOT NULL DEFAULT false,
   can_edit_scouts boolean NOT NULL DEFAULT false,
@@ -211,7 +218,10 @@ CREATE TABLE posts (
   scout_year_id uuid REFERENCES scout_years(id),
   slug text NOT NULL UNIQUE,
   title text NOT NULL,
+  content_type text NOT NULL DEFAULT 'blog' CHECK (content_type IN ('blog', 'news')),
+  category text NOT NULL DEFAULT 'general' CHECK (category IN ('camp', 'weekly_meeting', 'general', 'church_mass', 'celebration', 'outdoor_activity', 'volunteering_work')),
   author_name text,
+  author_profile_picture_url text,
   thumbnail_color text NOT NULL DEFAULT '#2f7d6d',
   thumbnail_url text,
   thumbnail_path text,
@@ -821,12 +831,13 @@ VALUES
   ('gallery', 'gallery', true),
   ('blog-thumbnails', 'blog-thumbnails', true),
   ('event-images', 'event-images', true),
-  ('album-thumbnails', 'album-thumbnails', true)
+  ('album-thumbnails', 'album-thumbnails', true),
+  ('profile-pictures', 'profile-pictures', true)
 ON CONFLICT (id) DO NOTHING;
 
 UPDATE storage.buckets
 SET public = true
-WHERE id IN ('scouts-files', 'site-images', 'leader-headshots', 'gallery', 'blog-thumbnails', 'event-images', 'album-thumbnails');
+WHERE id IN ('scouts-files', 'site-images', 'leader-headshots', 'gallery', 'blog-thumbnails', 'event-images', 'album-thumbnails', 'profile-pictures');
 
 CREATE POLICY "admins upload scouts files" ON storage.objects
   FOR INSERT WITH CHECK (bucket_id = 'scouts-files' AND public.is_admin());
@@ -838,16 +849,23 @@ CREATE POLICY "public read scouts files" ON storage.objects
   FOR SELECT USING (bucket_id = 'scouts-files');
 
 CREATE POLICY "admins upload site images" ON storage.objects
-  FOR INSERT WITH CHECK (bucket_id IN ('site-images', 'leader-headshots', 'blog-thumbnails', 'event-images', 'album-thumbnails') AND public.is_admin());
+  FOR INSERT WITH CHECK (bucket_id IN ('site-images', 'leader-headshots', 'blog-thumbnails', 'event-images', 'album-thumbnails', 'profile-pictures') AND public.is_admin());
 
 CREATE POLICY "admins delete replaced site images" ON storage.objects
   FOR DELETE USING (bucket_id IN ('site-images', 'leader-headshots', 'gallery', 'blog-thumbnails', 'event-images', 'album-thumbnails') AND public.is_admin());
 
 CREATE POLICY "logged in users delete own publishable images" ON storage.objects
-  FOR DELETE USING (bucket_id IN ('gallery', 'blog-thumbnails', 'album-thumbnails') AND owner = auth.uid());
+  FOR DELETE USING (bucket_id IN ('gallery', 'blog-thumbnails', 'album-thumbnails', 'profile-pictures') AND owner = auth.uid());
 
 CREATE POLICY "logged in users upload publishable images" ON storage.objects
-  FOR INSERT WITH CHECK (bucket_id IN ('gallery', 'blog-thumbnails', 'album-thumbnails') AND auth.uid() IS NOT NULL);
+  FOR INSERT WITH CHECK (bucket_id IN ('gallery', 'blog-thumbnails', 'album-thumbnails', 'profile-pictures') AND auth.uid() IS NOT NULL);
 
 CREATE POLICY "public read site images" ON storage.objects
   FOR SELECT USING (bucket_id IN ('site-images', 'leader-headshots', 'gallery', 'blog-thumbnails', 'event-images', 'album-thumbnails'));
+
+
+
+
+
+
+

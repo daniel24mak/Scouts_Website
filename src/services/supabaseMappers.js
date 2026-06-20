@@ -12,6 +12,13 @@ export function normalizeProfile(profile) {
     groupId: profile.group_id ?? profile.groupId ?? null,
     chiefLevel,
     accountStatus: profile.account_status ?? profile.accountStatus ?? "active",
+    profilePictureUrl: profile.profile_picture_url ?? profile.profilePictureUrl ?? null,
+    pendingName: profile.pending_name ?? profile.pendingName ?? null,
+    pendingProfilePictureUrl: profile.pending_profile_picture_url ?? profile.pendingProfilePictureUrl ?? null,
+    profileChangeStatus: profile.profile_change_status ?? profile.profileChangeStatus ?? null,
+    profileChangeComment: profile.profile_change_comment ?? profile.profileChangeComment ?? "",
+    profileChangeSubmittedAt: profile.profile_change_submitted_at ?? profile.profileChangeSubmittedAt ?? null,
+    mustChangePassword: Boolean(profile.must_change_password ?? profile.mustChangePassword),
     createdAt: profile.created_at ?? profile.createdAt ?? null,
     updatedAt: profile.updated_at ?? profile.updatedAt ?? null,
     lastLogin: profile.last_login ?? profile.lastLogin ?? null,
@@ -91,8 +98,12 @@ export function normalizePost(post) {
     id: post.id,
     slug: post.slug,
     title: post.title,
+    postType: post.content_type ?? post.postType ?? post.type ?? "blog",
+    contentType: post.content_type ?? post.postType ?? post.type ?? "blog",
+    category: post.category ?? "general",
     date: post.published_at?.slice(0, 10) ?? post.date ?? post.created_at?.slice(0, 10) ?? "",
     author: post.author_name ?? post.author ?? "Scouts Group",
+    authorProfilePictureUrl: post.author_profile_picture_url ?? post.authorProfilePictureUrl ?? null,
     thumbnailColor: post.thumbnail_color ?? post.thumbnailColor ?? "#2f7d6d",
     thumbnailUrl: post.thumbnail_url ?? post.thumbnailUrl ?? null,
     thumbnailPath: post.thumbnail_path ?? post.thumbnailPath ?? null,
@@ -253,3 +264,10 @@ export function normalizeEvent(event) {
     updatedAt: event.updated_at ?? event.updatedAt ?? null
   };
 }
+
+
+
+
+
+
+

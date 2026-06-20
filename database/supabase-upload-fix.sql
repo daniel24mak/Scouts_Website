@@ -39,6 +39,22 @@ EXCEPTION
   WHEN undefined_object THEN NULL;
 END $$;
 
+ALTER TABLE user_profiles
+ADD COLUMN IF NOT EXISTS profile_picture_url text,
+ADD COLUMN IF NOT EXISTS pending_name text,
+ADD COLUMN IF NOT EXISTS pending_profile_picture_url text,
+ADD COLUMN IF NOT EXISTS profile_change_status text,
+ADD COLUMN IF NOT EXISTS profile_change_comment text,
+ADD COLUMN IF NOT EXISTS profile_change_submitted_at timestamptz,
+ADD COLUMN IF NOT EXISTS must_change_password boolean NOT NULL DEFAULT false;
+
+DO $$
+BEGIN
+  ALTER TABLE public.user_profiles DROP CONSTRAINT IF EXISTS user_profiles_profile_change_status_check;
+  ALTER TABLE public.user_profiles ADD CONSTRAINT user_profiles_profile_change_status_check CHECK (profile_change_status IN ('pending', 'approved', 'rejected'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 ALTER TABLE scout_years ENABLE ROW LEVEL SECURITY;
 
 -- Scouting years are created with only a label/name. These date columns are optional
@@ -141,6 +157,26 @@ ADD COLUMN IF NOT EXISTS public_url text;
 
 ALTER TABLE posts
 ADD COLUMN IF NOT EXISTS reviewer_comment text;
+ALTER TABLE posts
+ADD COLUMN IF NOT EXISTS content_type text NOT NULL DEFAULT 'blog',
+ADD COLUMN IF NOT EXISTS category text NOT NULL DEFAULT 'general',
+ADD COLUMN IF NOT EXISTS author_profile_picture_url text;
+
+DO $$
+BEGIN
+  ALTER TABLE public.posts DROP CONSTRAINT IF EXISTS posts_content_type_check;
+  ALTER TABLE public.posts ADD CONSTRAINT posts_content_type_check CHECK (content_type IN ('blog', 'news'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  ALTER TABLE public.posts DROP CONSTRAINT IF EXISTS posts_category_check;
+  ALTER TABLE public.posts ADD CONSTRAINT posts_category_check CHECK (category IN ('camp', 'weekly_meeting', 'general', 'church_mass', 'celebration', 'outdoor_activity', 'volunteering_work'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 ALTER TABLE posts
 ADD COLUMN IF NOT EXISTS thumbnail_url text,
@@ -603,12 +639,13 @@ VALUES
   ('gallery', 'gallery', true),
   ('blog-thumbnails', 'blog-thumbnails', true),
   ('event-images', 'event-images', true),
-  ('album-thumbnails', 'album-thumbnails', true)
+  ('album-thumbnails', 'album-thumbnails', true),
+  ('profile-pictures', 'profile-pictures', true)
 ON CONFLICT (id) DO NOTHING;
 
 UPDATE storage.buckets
 SET public = true
-WHERE id IN ('scouts-files', 'site-images', 'leader-headshots', 'gallery', 'blog-thumbnails', 'event-images', 'album-thumbnails');
+WHERE id IN ('scouts-files', 'site-images', 'leader-headshots', 'gallery', 'blog-thumbnails', 'event-images', 'album-thumbnails', 'profile-pictures');
 
 DROP POLICY IF EXISTS "admins upload scouts files" ON storage.objects;
 CREATE POLICY "admins upload scouts files" ON storage.objects
@@ -624,20 +661,30 @@ CREATE POLICY "public read scouts files" ON storage.objects
 
 DROP POLICY IF EXISTS "admins upload site images" ON storage.objects;
 CREATE POLICY "admins upload site images" ON storage.objects
-  FOR INSERT WITH CHECK (bucket_id IN ('site-images', 'leader-headshots', 'blog-thumbnails', 'event-images', 'album-thumbnails') AND public.is_admin());
+  FOR INSERT WITH CHECK (bucket_id IN ('site-images', 'leader-headshots', 'blog-thumbnails', 'event-images', 'album-thumbnails', 'profile-pictures') AND public.is_admin());
 
 DROP POLICY IF EXISTS "admins delete replaced site images" ON storage.objects;
 CREATE POLICY "admins delete replaced site images" ON storage.objects
-  FOR DELETE USING (bucket_id IN ('site-images', 'leader-headshots', 'gallery', 'blog-thumbnails', 'event-images', 'album-thumbnails') AND public.is_admin());
+  FOR DELETE USING (bucket_id IN ('site-images', 'leader-headshots', 'gallery', 'blog-thumbnails', 'event-images', 'album-thumbnails', 'profile-pictures') AND public.is_admin());
 
 DROP POLICY IF EXISTS "logged in users delete own publishable images" ON storage.objects;
 CREATE POLICY "logged in users delete own publishable images" ON storage.objects
-  FOR DELETE USING (bucket_id IN ('gallery', 'blog-thumbnails', 'album-thumbnails') AND owner = auth.uid());
+  FOR DELETE USING (bucket_id IN ('gallery', 'blog-thumbnails', 'album-thumbnails', 'profile-pictures') AND owner = auth.uid());
 
 DROP POLICY IF EXISTS "logged in users upload publishable images" ON storage.objects;
 CREATE POLICY "logged in users upload publishable images" ON storage.objects
-  FOR INSERT WITH CHECK (bucket_id IN ('gallery', 'blog-thumbnails', 'album-thumbnails') AND auth.uid() IS NOT NULL);
+  FOR INSERT WITH CHECK (bucket_id IN ('gallery', 'blog-thumbnails', 'album-thumbnails', 'profile-pictures') AND auth.uid() IS NOT NULL);
 
 DROP POLICY IF EXISTS "public read site images" ON storage.objects;
 CREATE POLICY "public read site images" ON storage.objects
-  FOR SELECT USING (bucket_id IN ('site-images', 'leader-headshots', 'gallery', 'blog-thumbnails', 'event-images', 'album-thumbnails'));
+  FOR SELECT USING (bucket_id IN ('site-images', 'leader-headshots', 'gallery', 'blog-thumbnails', 'event-images', 'album-thumbnails', 'profile-pictures'));
+
+
+
+
+
+
+
+
+
+

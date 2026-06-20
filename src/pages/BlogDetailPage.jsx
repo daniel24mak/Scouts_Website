@@ -1,9 +1,10 @@
-import { Images } from "lucide-react";
+import { Copy, Images, Mail, Share2 } from "lucide-react";
 import SafeImage from "../components/SafeImage.jsx";
+import UserAvatar from "../components/UserAvatar.jsx";
 import { Link, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { updateBlog } from "../api/client.js";
-import { getPublicBlogDetailPage } from "../api/publicClient.js";
+import { getPublicBlogDetailPage, getPublicBlogsPage } from "../api/publicClient.js";
 import { usePublicData } from "../api/usePublicData.js";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import { useToast } from "../components/ToastProvider.jsx";
@@ -13,6 +14,20 @@ import { canManageSystem, canPublishContent } from "../services/permissions.js";
 
 const acceptedImageTypes = ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif";
 
+function formatPostCategory(value) {
+  return String(value || "general")
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function getPostCategory(post) {
+  return formatPostCategory(post?.category || post?.categoryName || "general");
+}
+
+function getPostDate(post) {
+  return post?.date || post?.createdAt || post?.updatedAt || "";
+}
+
 export default function BlogDetailPage() {
   const { slug } = useParams();
   const { data, isLoading, setData } = usePublicData(
@@ -21,10 +36,17 @@ export default function BlogDetailPage() {
     { post: null, linkedAlbum: null },
     ["blog-detail", slug]
   );
+  const { data: relatedData } = usePublicData(
+    () => getPublicBlogsPage({ limit: 6, offset: 0 }),
+    [slug],
+    { blogPosts: [], hasMore: false },
+    ["blog-related", slug]
+  );
   const { user } = useAuth();
   const { showToast } = useToast();
   const post = data?.post ?? null;
   const linkedAlbum = data?.linkedAlbum ?? null;
+  const relatedPosts = (relatedData?.blogPosts ?? []).filter((item) => item.slug !== slug).slice(0, 3);
   const [isEditing, setIsEditing] = useState(false);
   const [editPost, setEditPost] = useState(null);
   const [message, setMessage] = useState("");
@@ -35,7 +57,8 @@ export default function BlogDetailPage() {
       showToast(message);
     }
   }, [message, showToast]);
-if (isLoading) {
+
+  if (isLoading) {
     return (
       <section className="page-section narrow">
         <p className="eyebrow">Blog</p>
@@ -43,7 +66,8 @@ if (isLoading) {
       </section>
     );
   }
-if (!post) {
+
+  if (!post) {
     return (
       <section className="page-section narrow">
         <p className="eyebrow">Blog</p>
@@ -57,10 +81,39 @@ if (!post) {
 
   const albumOptions = linkedAlbum ? [linkedAlbum] : [];
   const canEditPost = Boolean(user && (canManageSystem(user) || (canPublishContent(user) && post.submittedBy === user.id)));
+  const shareUrl = typeof window !== "undefined" ? window.location.href : "";
+  const encodedShareUrl = encodeURIComponent(shareUrl);
+  const encodedShareTitle = encodeURIComponent(post.title ?? "Scout blog post");
+  const mailShareUrl = `mailto:?subject=${encodedShareTitle}&body=${encodedShareUrl}`;
+
+  const copyShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setMessage("Blog link copied.");
+    } catch (error) {
+      setMessage(`Could not copy link: ${error.message}`);
+    }
+  };
+
+  const sharePost = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: post.title, url: shareUrl });
+        return;
+      } catch (error) {
+        if (error.name === "AbortError") return;
+      }
+    }
+
+    await copyShareLink();
+  };
+
   const beginEdit = () => {
     setEditPost({
       title: post.title ?? "",
       slug: post.slug ?? "",
+      postType: post.postType ?? post.contentType ?? "blog",
+      category: post.category ?? "general",
       author: post.author ?? user?.name ?? "",
       excerpt: post.excerpt ?? "",
       body: post.body ?? "",
@@ -76,6 +129,7 @@ if (!post) {
     });
     setIsEditing(true);
   };
+
   const saveEdit = async (event) => {
     event.preventDefault();
     const requestedStatus = event.nativeEvent.submitter?.value ?? "pending";
@@ -102,7 +156,7 @@ if (!post) {
   };
 
   return (
-    <article className="page-section narrow">
+    <article className="page-section blog-detail-page">
       {canEditPost && !isEditing && (
         <div className="floating-editor-actions">
           <button type="button" className="inline-action" onClick={beginEdit}>
@@ -116,30 +170,64 @@ if (!post) {
         <SafeImage
           src={post.thumbnailUrl}
           alt={post.title}
-          className="blog-hero-image-frame"
-          imageClassName="blog-hero-image"
+          className="blog-detail-banner-image-frame"
+          imageClassName="blog-detail-banner-image"
           loading="eager"
           fetchPriority="high"
-          sizes="(max-width: 768px) 100vw, 760px"
+          sizes="100vw"
         />
       ) : (
-        <div className="blog-hero-thumb" style={{ "--tile-color": post.thumbnailColor }}>
+        <div className="blog-detail-banner-fallback" style={{ "--tile-color": post.thumbnailColor }}>
           <span>{post.title}</span>
         </div>
       )}
-      <p className="eyebrow">Blog</p>
-      <h1>{post.title}</h1>
-      <div className="card-meta">
-        <span>{post.date}</span>
-        <span>{post.author}</span>
-        {post.approvalStatus && <StatusText status={post.approvalStatus} />}
-      </div>
+      <header className="blog-detail-header">
+        <Link className="blog-back-link" to="/blogs">Back to News &amp; Blog</Link>
+        <h1>{post.title}</h1>
+        <div className="blog-detail-meta">
+          <span className="blog-category-badge detail">{getPostCategory(post)}</span>
+          <span>{getPostDate(post)}</span>
+          {post.author && <span className="blog-author-byline"><UserAvatar name={post.author} imageUrl={post.authorProfilePictureUrl} size={30} />{post.author}</span>}
+        </div>
+        <div className="blog-share-row" aria-label="Share this blog post">
+          <button type="button" className="blog-share-button" onClick={sharePost} aria-label="Share post">
+            <Share2 size={18} aria-hidden="true" />
+          </button>
+          <button type="button" className="blog-share-button" onClick={copyShareLink} aria-label="Copy blog link">
+            <Copy size={18} aria-hidden="true" />
+          </button>
+          <a className="blog-share-button" href={mailShareUrl} aria-label="Share by email">
+            <Mail size={18} aria-hidden="true" />
+          </a>
+        </div>
+      </header>
       {isEditing && editPost ? (
         <form className="editor-panel blog-detail-editor" onSubmit={saveEdit}>
           <label>
             Title
             <input required value={editPost.title} onChange={(event) => setEditPost((current) => ({ ...current, title: event.target.value }))} />
           </label>
+          <div className="inline-editor-grid compact">
+            <label>
+              Type
+              <select value={editPost.postType ?? "blog"} onChange={(event) => setEditPost((current) => ({ ...current, postType: event.target.value }))}>
+                <option value="blog">Blog</option>
+                <option value="news">News</option>
+              </select>
+            </label>
+            <label>
+              Category
+              <select value={editPost.category ?? "general"} onChange={(event) => setEditPost((current) => ({ ...current, category: event.target.value }))}>
+                <option value="general">General</option>
+                <option value="camp">Camp</option>
+                <option value="weekly_meeting">Weekly meeting</option>
+                <option value="church_mass">Church mass</option>
+                <option value="celebration">Celebration</option>
+                <option value="outdoor_activity">Outdoor activity</option>
+                <option value="volunteering_work">Volunteering work</option>
+              </select>
+            </label>
+          </div>
           <label>
             Excerpt
             <textarea rows="3" value={editPost.excerpt} onChange={(event) => setEditPost((current) => ({ ...current, excerpt: event.target.value }))} />
@@ -180,13 +268,52 @@ if (!post) {
           </div>
         </form>
       ) : (
-        <FormattedText text={post.body} className="detail-copy formatted-text" />
+        <div className="blog-reading-column">
+          <FormattedText text={post.body} className="detail-copy formatted-text" />
+          {linkedAlbum && (
+            <Link className="linked-album" to={`/gallery/${linkedAlbum.id}`}>
+              <Images size={20} aria-hidden="true" />
+              View linked album: {linkedAlbum.title}
+            </Link>
+          )}
+        </div>
       )}
-      {linkedAlbum && (
-        <Link className="linked-album" to={`/gallery/${linkedAlbum.id}`}>
-          <Images size={20} aria-hidden="true" />
-          View linked album: {linkedAlbum.title}
-        </Link>
+      {relatedPosts.length > 0 && (
+        <section className="blog-related-section">
+          <div className="blog-related-inner">
+            <h2>You May Also Like</h2>
+            <div className="blog-card-grid related">
+              {relatedPosts.map((relatedPost) => (
+                <Link className="blog-card" to={`/blogs/${relatedPost.slug}`} key={relatedPost.id}>
+                  <div className="blog-card-media">
+                    {relatedPost.thumbnailUrl ? (
+                      <SafeImage
+                        src={relatedPost.thumbnailUrl}
+                        alt={relatedPost.title}
+                        className="blog-card-image-frame"
+                        imageClassName="blog-card-image"
+                        loading="lazy"
+                        sizes="(max-width: 680px) 100vw, 33vw"
+                      />
+                    ) : (
+                      <div className="blog-card-fallback" style={{ "--tile-color": relatedPost.thumbnailColor }}>
+                        <Images size={34} aria-hidden="true" />
+                      </div>
+                    )}
+                    <span className="blog-category-badge">{getPostCategory(relatedPost)}</span>
+                  </div>
+                  <div className="blog-card-body">
+                    <h3>{relatedPost.title}</h3>
+                    <div className="blog-card-meta">
+                      <span>{getPostDate(relatedPost)}</span>
+                    </div>
+                    <p>{relatedPost.excerpt}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
       )}
     </article>
   );
@@ -207,3 +334,9 @@ function UploadLoadingState({ message }) {
 function StatusText({ status }) {
   return <span>{String(status).replace("_", " ")}</span>;
 }
+
+
+
+
+
+

@@ -31,6 +31,8 @@ import {
   addFaq,
   addLeader,
   addRegisteredScout,
+  changeOwnPassword,
+  resetUserPassword,
   assignEquipeScouts,
   createAlbum,
   createBlog,
@@ -48,6 +50,8 @@ import {
   removeContactMessage,
   removeFaq,
   removeLeader,
+  requestProfileChange,
+  reviewProfileChange,
   activateScoutingYear,
   createScoutingYear,
   updateAlbum,
@@ -67,8 +71,8 @@ import CalendarManagement from "../features/calendar/CalendarManagement.jsx";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import { useToast } from "../components/ToastProvider.jsx";
 import RichTextEditor from "../components/RichTextEditor.jsx";
+import UserAvatar from "../components/UserAvatar.jsx";
 import { logAuditEvent } from "../services/auditService.js";
-import { signUpInternalUser } from "../services/authService.js";
 import {
   canCreateGroupMeetings,
   canEditScouts,
@@ -100,14 +104,33 @@ const emptyChief = {
   chiefLevel: "chief",
   accountStatus: "active",
   temporaryPassword: "",
+  profilePictureFile: null,
+  profilePictureUrl: "",
   canPublish: false,
   canCreateGroupMeetings: false,
   canEditScouts: false
 };
 
+const postTypeOptions = [
+  ["blog", "Blog"],
+  ["news", "News"]
+];
+
+const postCategoryOptions = [
+  ["general", "General"],
+  ["camp", "Camp"],
+  ["weekly_meeting", "Weekly meeting"],
+  ["church_mass", "Church mass"],
+  ["celebration", "Celebration"],
+  ["outdoor_activity", "Outdoor activity"],
+  ["volunteering_work", "Volunteering work"]
+];
+
 const emptyPost = {
   title: "",
   slug: "",
+  postType: "blog",
+  category: "general",
   author: "Group Admin",
   excerpt: "",
   body: "",
@@ -246,7 +269,10 @@ function toChiefForm(user) {
     accountStatus: user.accountStatus ?? "active",
     canPublish: Boolean(user.permissions.canPublish),
     canCreateGroupMeetings: Boolean(user.permissions.canCreateGroupMeetings),
-    canEditScouts: Boolean(user.permissions.canEditScouts)
+    canEditScouts: Boolean(user.permissions.canEditScouts),
+    profilePictureUrl: user.profilePictureUrl ?? null,
+    profilePictureFile: null,
+    profilePicturePreview: ""
   };
 }
 
@@ -337,7 +363,7 @@ function canOpenSection(sectionId, user) {
 }
 
 export default function AdminDashboardPage() {
-  const { user, logout } = useAuth();
+  const { user, logout, loginWithPassword, refreshUsers } = useAuth();
   const { showToast } = useToast();
   const { data, isLoading: isDashboardLoading, error: dashboardError, refresh } = useBootstrap();
   const [activeSection, setActiveSection] = useState("overview");
@@ -358,6 +384,12 @@ export default function AdminDashboardPage() {
   const [assignmentPreview, setAssignmentPreview] = useState(null);
   const [chiefEdits, setChiefEdits] = useState({});
   const [newChief, setNewChief] = useState({ ...emptyChief, groupId: data.groups[0]?.id ?? "" });
+  const [newChiefPreview, setNewChiefPreview] = useState("");
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [profileEdit, setProfileEdit] = useState({ name: user?.name ?? "", profilePictureFile: null, profilePicturePreview: "", currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [profileMessage, setProfileMessage] = useState("");
+  const [passwordResetUser, setPasswordResetUser] = useState(null);
+  const [passwordResetValue, setPasswordResetValue] = useState("");
   const [postEdits, setPostEdits] = useState({});
   const [newPost, setNewPost] = useState(emptyPost);
   const [albumEdits, setAlbumEdits] = useState({});
@@ -416,7 +448,19 @@ export default function AdminDashboardPage() {
     ...allPhotoBatches.map((batch) => ({ ...batch, contentType: "Photo batch" })),
     ...data.plannedEvents.map((event) => ({ ...event, contentType: "Calendar event" }))
   ];
-  const pendingItems = reviewItems.filter((item) => ["pending", "pending_update", "needs_changes"].includes(item.approvalStatus));
+  const profileReviewItems = (data.users ?? [])
+    .filter((profile) => profile.profileChangeStatus === "pending")
+    .map((profile) => ({
+      ...profile,
+      id: profile.id,
+      title: profile.pendingName ? `Profile change for ${profile.name} -> ${profile.pendingName}` : `Profile picture change for ${profile.name}`,
+      contentType: "Profile change",
+      approvalStatus: "pending",
+      submittedBy: profile.name,
+      updatedAt: profile.profileChangeSubmittedAt ?? profile.updatedAt,
+      description: profile.profileChangeComment ?? ""
+    }));
+  const pendingItems = [...reviewItems, ...profileReviewItems].filter((item) => ["pending", "pending_update", "needs_changes"].includes(item.approvalStatus));
   const selectedSection = sections.find(([id]) => id === activeSection);
 
   useEffect(() => {
@@ -531,7 +575,7 @@ export default function AdminDashboardPage() {
       statusFilter === "all"
         ? availablePosts
         : availablePosts.filter((post) => post.approvalStatus === statusFilter);
-    return filterBySearch(byStatus, search, ["title", "author", "excerpt", "approvalStatus"]);
+    return filterBySearch(byStatus, search, ["title", "author", "excerpt", "postType", "category", "approvalStatus"]);
   }, [allPosts, isAdmin, search, statusFilter, user?.id]);
   const visibleAlbums = useMemo(() => {
     const availableAlbums = isAdmin ? allAlbums : allAlbums.filter((album) => album.submittedBy === user?.id);
@@ -557,7 +601,7 @@ export default function AdminDashboardPage() {
         ? reviewItems
         : reviewItems.filter((item) => item.approvalStatus === statusFilter);
     return filterBySearch(byStatus, search, ["title", "contentType", "approvalStatus", "submittedBy"]);
-  }, [reviewItems, search, statusFilter]);
+  }, [reviewItems, profileReviewItems, search, statusFilter]);
 
   const updateRule = (groupId, field, value) => {
     setRules((current) =>
@@ -851,28 +895,89 @@ export default function AdminDashboardPage() {
   const createChief = async (event) => {
     event.preventDefault();
     try {
-    if (isSupabaseConfigured && !newChief.id && !newChief.temporaryPassword) {
-        throw new Error("Enter a temporary password for a new Auth user, or paste an existing Auth user ID to create only the profile.");
+      if (!newChief.name.trim()) {
+        throw new Error("Enter the user's full name.");
       }
-    if (isSupabaseConfigured && newChief.email && newChief.temporaryPassword && !newChief.id) {
-        const authUser = await signUpInternalUser({
-          email: newChief.email,
-          password: newChief.temporaryPassword,
-          name: newChief.name,
-          role: newChief.role,
-          groupId: newChief.groupId,
-          chiefLevel: newChief.chiefLevel
-        });
-        await addChief({ ...newChief, id: authUser.id, temporaryPassword: undefined });
-      } else {
-        await addChief({ ...newChief, temporaryPassword: undefined });
+      if (!newChief.email.trim()) {
+        throw new Error("Enter the user's email address.");
+      }
+      if (!newChief.temporaryPassword) {
+        throw new Error("Enter a temporary password for the new user.");
+      }
+      if (newChief.role !== "admin" && !newChief.groupId) {
+        throw new Error("Select a group for this user.");
       }
 
+      await addChief(newChief);
       setNewChief({ ...emptyChief, groupId: data.groups[0]?.id ?? "" });
-      setSaveMessage("User added. Temporary passwords are handled by Supabase Auth and are not saved.");
+      setSaveMessage("User created in Supabase Auth and added to Users & Permissions.");
       await refresh();
     } catch (error) {
       setSaveMessage(`User was not fully created: ${error.message}`);
+    }
+  };
+  const submitOwnProfileChange = async (event) => {
+    event.preventDefault();
+    try {
+      setProfileMessage("Submitting profile change for approval...");
+      await requestProfileChange(user, {
+        name: profileEdit.name,
+        profilePictureFile: profileEdit.profilePictureFile
+      });
+      setProfileEdit((current) => ({ ...current, profilePictureFile: null, profilePicturePreview: "" }));
+      setProfileMessage("Profile change submitted for admin approval.");
+      await refresh();
+    } catch (error) {
+      setProfileMessage(`Profile change failed: ${error.message}`);
+    }
+  };
+
+  const changePassword = async (event) => {
+    event.preventDefault();
+    if (!profileEdit.currentPassword) {
+      setProfileMessage("Enter your current password before changing it.");
+      return;
+    }
+    if (profileEdit.newPassword.length < 8) {
+      setProfileMessage("New password must be at least 8 characters.");
+      return;
+    }
+    if (profileEdit.newPassword !== profileEdit.confirmPassword) {
+      setProfileMessage("New password confirmation does not match.");
+      return;
+    }
+
+    try {
+      setProfileMessage("Confirming current password...");
+      await loginWithPassword(user.email, profileEdit.currentPassword);
+      setProfileMessage("Updating password...");
+      await changeOwnPassword(profileEdit.newPassword);
+      setProfileEdit((current) => ({ ...current, currentPassword: "", newPassword: "", confirmPassword: "" }));
+      setProfileMessage("Password updated.");
+    } catch (error) {
+      setProfileMessage(`Password update failed: ${error.message}`);
+    }
+  };
+
+  const submitPasswordReset = async (event) => {
+    event.preventDefault();
+    if (!passwordResetUser?.id) {
+      setSaveMessage("Choose a user before resetting a password.");
+      return;
+    }
+    if (passwordResetValue.length < 6) {
+      setSaveMessage("Temporary password must be at least 6 characters.");
+      return;
+    }
+
+    try {
+      await resetUserPassword(passwordResetUser.id, passwordResetValue);
+      setPasswordResetUser(null);
+      setPasswordResetValue("");
+      setSaveMessage(`Temporary password reset for ${passwordResetUser.name}.`);
+      await refresh();
+    } catch (error) {
+      setSaveMessage(`Password reset failed: ${error.message}`);
     }
   };
   const createPost = async (event) => {
@@ -2094,24 +2199,54 @@ export default function AdminDashboardPage() {
   const renderChiefs = () => (
     <div className="cms-panel-stack">
       <form className="inline-editor-grid chief-add-form" onSubmit={createChief}>
-        <input placeholder="Existing Auth user ID" value={newChief.id} onChange={(event) => setNewChief((current) => ({ ...current, id: event.target.value }))} />
         <input required placeholder="Full name" value={newChief.name} onChange={(event) => setNewChief((current) => ({ ...current, name: event.target.value }))} />
-        <input type="email" placeholder="Email / username" value={newChief.email} onChange={(event) => setNewChief((current) => ({ ...current, email: event.target.value }))} />
-        <input type="password" placeholder="Temporary password" value={newChief.temporaryPassword} onChange={(event) => setNewChief((current) => ({ ...current, temporaryPassword: event.target.value }))} />
+        <input required type="email" placeholder="Email / username" value={newChief.email} onChange={(event) => setNewChief((current) => ({ ...current, email: event.target.value }))} />
+        <input required type="password" placeholder="Temporary password" value={newChief.temporaryPassword} onChange={(event) => setNewChief((current) => ({ ...current, temporaryPassword: event.target.value }))} />
+        <label className="profile-picture-picker">
+          <span>Profile picture</span>
+          <input type="file" accept={acceptedImageTypes} onChange={(event) => setNewChief((current) => ({ ...current, profilePictureFile: event.target.files?.[0] ?? null }))} />
+          <div className="profile-picture-preview">
+            <UserAvatar name={newChief.name || "New user"} imageUrl={newChiefPreview} size={48} />
+            {newChief.profilePictureFile ? <small>{newChief.profilePictureFile.name}</small> : <small>Optional image</small>}
+          </div>
+          {newChief.profilePictureFile && <button type="button" className="inline-action" onClick={() => setNewChief((current) => ({ ...current, profilePictureFile: null }))}>Remove image</button>}
+        </label>
         <select value={newChief.role} onChange={(event) => setNewChief((current) => ({ ...current, role: event.target.value }))}><option value="chief">Chief</option><option value="admin">Admin + chief</option></select>
         <select value={newChief.groupId} onChange={(event) => setNewChief((current) => ({ ...current, groupId: event.target.value }))}>{data.groups.map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}</select>
         <select value={newChief.chiefLevel} onChange={(event) => setNewChiefLevel(event.target.value)}><option value="chief">Chief</option><option value="vice">Vice head chief</option><option value="head">Head chief</option></select>
         <button type="submit">Add user</button>
       </form>
       <div className="table-panel">
-        <table className="editable-table">
-          <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Group</th><th>Level</th><th>Status</th><th>Post/photos</th><th>Meetings</th><th>Edit scouts</th><th>Password</th><th>Save</th></tr></thead>
+        <table className="editable-table users-permissions-table">
+          <thead><tr><th>Profile</th><th>Name</th><th>Email</th><th>Role</th><th>Group</th><th>Level</th><th>Status</th><th>Post/photos</th><th>Meetings</th><th>Edit scouts</th><th>Password</th><th>Save</th></tr></thead>
           <tbody>
             {chiefs.map((chief) => {
               const edit = chiefEdits[chief.id] ?? toChiefForm(chief);
               const setEdit = (field, value) => setChiefEdits((current) => ({ ...current, [chief.id]: { ...edit, [field]: value } }));
+              const setProfileImage = (file) => {
+                if (edit.profilePicturePreview) {
+                  URL.revokeObjectURL(edit.profilePicturePreview);
+                }
+                setChiefEdits((current) => ({
+                  ...current,
+                  [chief.id]: {
+                    ...edit,
+                    profilePictureFile: file ?? null,
+                    profilePicturePreview: file ? URL.createObjectURL(file) : ""
+                  }
+                }));
+              };
               return (
                 <tr key={chief.id}>
+                  <td>
+                    <div className="user-profile-cell">
+                      <UserAvatar name={edit.name || chief.name} imageUrl={edit.profilePicturePreview || edit.profilePictureUrl} size={42} />
+                      <label className="avatar-replace-control">
+                        <span>Change</span>
+                        <input type="file" accept={acceptedImageTypes} onChange={(event) => setProfileImage(event.target.files?.[0] ?? null)} />
+                      </label>
+                    </div>
+                  </td>
                   <td><input value={edit.name} onChange={(event) => setEdit("name", event.target.value)} /></td>
                   <td><input value={edit.email} onChange={(event) => setEdit("email", event.target.value)} /></td>
                   <td><select value={edit.role} onChange={(event) => setEdit("role", event.target.value)}><option value="chief">Chief</option><option value="admin">Admin + chief</option></select></td>
@@ -2121,7 +2256,7 @@ export default function AdminDashboardPage() {
                   {["canPublish", "canCreateGroupMeetings", "canEditScouts"].map((field) => (
                     <td key={field}><label className="checkbox-cell"><input type="checkbox" checked={Boolean(edit[field])} onChange={(event) => setEdit(field, event.target.checked)} /></label></td>
                   ))}
-                  <td><button type="button" className="inline-action" disabled>Supabase reset</button></td>
+                  <td><button type="button" className="inline-action" onClick={() => { setPasswordResetUser(chief); setPasswordResetValue(""); }}>Reset</button></td>
                   <td><button type="button" className="inline-action" onClick={() => saveChief(chief.id)}>Save</button></td>
                 </tr>
               );
@@ -2131,12 +2266,25 @@ export default function AdminDashboardPage() {
       </div>
     </div>
   );
-
   const renderPosts = () => (
     <div className="cms-panel-stack">
       <form className="cms-form" onSubmit={createPost}>
         <h2>Create post</h2>
         <input required placeholder="Title" value={newPost.title} onChange={(event) => setNewPost((current) => ({ ...current, title: event.target.value }))} />
+        <div className="inline-editor-grid compact">
+          <label>
+            Type
+            <select value={newPost.postType} onChange={(event) => setNewPost((current) => ({ ...current, postType: event.target.value }))}>
+              {postTypeOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
+            </select>
+          </label>
+          <label>
+            Category
+            <select value={newPost.category} onChange={(event) => setNewPost((current) => ({ ...current, category: event.target.value }))}>
+              {postCategoryOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
+            </select>
+          </label>
+        </div>
         <textarea rows="3" placeholder="Excerpt" value={newPost.excerpt} onChange={(event) => setNewPost((current) => ({ ...current, excerpt: event.target.value }))} />
         <RichTextEditor label="Full blog content" required value={newPost.body} onChange={(value) => setNewPost((current) => ({ ...current, body: value }))} minHeight={220} placeholder="Write the full blog post with links, headings, colors, and lists..." />
         <label className="file-picker">
@@ -2329,6 +2477,20 @@ export default function AdminDashboardPage() {
                     <strong>{selectedApproval.title}</strong>
                     <p>{selectedApproval.excerpt ?? selectedApproval.location ?? selectedApproval.description ?? ""}</p>
                   </article>
+                </div>
+              )}
+              {selectedApproval.contentType === "Profile change" && (
+                <div className="profile-change-preview">
+                  <div>
+                    <span>Current</span>
+                    <UserAvatar name={selectedApproval.name} imageUrl={selectedApproval.profilePictureUrl} size={58} />
+                    <strong>{selectedApproval.name}</strong>
+                  </div>
+                  <div>
+                    <span>Requested</span>
+                    <UserAvatar name={selectedApproval.pendingName ?? selectedApproval.name} imageUrl={selectedApproval.pendingProfilePictureUrl ?? selectedApproval.profilePictureUrl} size={58} />
+                    <strong>{selectedApproval.pendingName ?? selectedApproval.name}</strong>
+                  </div>
                 </div>
               )}
               {selectedApproval.contentType === "Calendar event" && (
@@ -2586,7 +2748,22 @@ export default function AdminDashboardPage() {
         {uploadStatus && <UploadLoadingState message={uploadStatus} progress={photoUploadProgress.total ? photoUploadProgress : null} />}
         {renderSection()}
       </main>
-    </section>
+      {passwordResetUser && (
+        <div className="profile-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPasswordResetUser(null); }}>
+          <form className="profile-modal password-reset-modal" onSubmit={submitPasswordReset}>
+            <button type="button" className="modal-close-button" aria-label="Close password reset" onClick={() => setPasswordResetUser(null)}>
+              <X size={18} aria-hidden="true" />
+            </button>
+            <h2>Reset temporary password</h2>
+            <p className="helper-text">Set a new temporary password for {passwordResetUser.name}. It is sent only to Supabase Auth and is not saved in the users table.</p>
+            <input type="password" autoFocus required minLength="6" placeholder="New temporary password" value={passwordResetValue} onChange={(event) => setPasswordResetValue(event.target.value)} />
+            <div className="action-row">
+              <button type="button" className="inline-action" onClick={() => setPasswordResetUser(null)}>Cancel</button>
+              <button type="submit" className="primary-action">Reset password</button>
+            </div>
+          </form>
+        </div>
+      )}    </section>
   );
 }
 
@@ -2709,6 +2886,20 @@ function ContentTable({ items, edits, setEdits, onSave, onDelete, refresh, type,
                   {type === "post" && (
                     <div className="blog-inline-editor">
                       <textarea rows="3" placeholder="Excerpt" value={edit.excerpt ?? ""} onChange={(event) => setEdit("excerpt", event.target.value)} />
+                      <div className="inline-editor-grid compact">
+                        <label>
+                          Type
+                          <select value={edit.postType ?? "blog"} onChange={(event) => setEdit("postType", event.target.value)}>
+                            {postTypeOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
+                          </select>
+                        </label>
+                        <label>
+                          Category
+                          <select value={edit.category ?? "general"} onChange={(event) => setEdit("category", event.target.value)}>
+                            {postCategoryOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
+                          </select>
+                        </label>
+                      </div>
                       <RichTextEditor label="Full blog content" value={edit.body ?? ""} onChange={(value) => setEdit("body", value)} minHeight={170} placeholder="Edit the formatted blog content..." />
                     </div>
                   )}
@@ -2785,6 +2976,28 @@ function AccessDenied({ message = "Your role, chief level, assigned group, and p
     </article>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
