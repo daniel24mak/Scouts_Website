@@ -309,6 +309,37 @@ function getSchoolGrade(scout) {
   return grade || school || "Unspecified";
 }
 
+function canSeeDashboardEvent(event, user) {
+  if ((event.approvalStatus ?? "approved") === "draft" && event.submittedBy !== user?.id) {
+    return false;
+  }
+
+  if (user?.role !== "admin" && (event.approvalStatus ?? "approved") !== "approved") {
+    return false;
+  }
+
+  if (event.visibility === "public") {
+    return true;
+  }
+
+  if (!user) {
+    return false;
+  }
+
+  if (user.role === "admin") {
+    return true;
+  }
+
+  if (event.visibility === "logged-in") {
+    return true;
+  }
+
+  if (event.visibility === "group") {
+    return event.visibleGroupIds?.includes(user.groupId) || event.groupId === user.groupId;
+  }
+
+  return event.type !== "meeting";
+}
 function getEquipeName(scout, equipes) {
   return equipes.find((equipe) => equipe.id === scout?.equipeId)?.name ?? "Unassigned";
 }
@@ -377,6 +408,27 @@ function formatRelativeTime(value) {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
+function formatDubaiDateTime(value) {
+  if (!value) return "Unknown";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Unknown";
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Dubai",
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true
+  }).formatToParts(date).reduce((current, part) => ({ ...current, [part.type]: part.value }), {});
+
+  return `${parts.day}-${parts.month}-${parts.year} ${parts.hour}:${parts.minute}:${parts.second} ${parts.dayPeriod?.toLowerCase() ?? ""}`.trim();
+}
+
+function getReviewTimestamp(item) {
+  return item.updatedAt || item.createdAt || item.profileChangeSubmittedAt || item.dateFrom || item.date || item.eventDate || "";
+}
 function WizardStepper({ step }) {
   return (
     <div className="wizard-stepper" aria-label={`Step ${step + 1} of ${wizardSteps.length}`}>
@@ -473,12 +525,16 @@ export default function AdminDashboardPage() {
   const [newScout, setNewScout] = useState({ ...emptyScout, groupId: data.groups[0]?.id ?? "" });
   const [equipeEdits, setEquipeEdits] = useState({});
   const [newEquipe, setNewEquipe] = useState({ name: "", description: "" });
+  const [isNewEquipeOpen, setIsNewEquipeOpen] = useState(false);
+  const [expandedEquipeDescriptions, setExpandedEquipeDescriptions] = useState({});
+  const [equipeScoutFilter, setEquipeScoutFilter] = useState("all");
   const [selectedEquipeId, setSelectedEquipeId] = useState("all");
   const [selectedScoutIds, setSelectedScoutIds] = useState([]);
   const [autoAssignMode, setAutoAssignMode] = useState("equal");
   const [customEquipeSizes, setCustomEquipeSizes] = useState({});
   const [genderBalance, setGenderBalance] = useState("auto");
   const [assignmentPreview, setAssignmentPreview] = useState(null);
+  const [isEquipeActionLoading, setIsEquipeActionLoading] = useState(false);
   const [chiefEdits, setChiefEdits] = useState({});
   const [newChief, setNewChief] = useState({ ...emptyChief, groupId: data.groups[0]?.id ?? "" });
   const [newChiefPreview, setNewChiefPreview] = useState("");
@@ -511,10 +567,13 @@ export default function AdminDashboardPage() {
   const [lastDashboardSection, setLastDashboardSection] = useState("overview");
   const [sidebarMode, setSidebarMode] = useState(() => window.localStorage.getItem(sidebarModeKey) ?? "expanded");
   const [openSidebarGroups, setOpenSidebarGroups] = useState({});
+  const [isSidebarTemporarilyExpanded, setIsSidebarTemporarilyExpanded] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [showMobileMenuBar, setShowMobileMenuBar] = useState(false);
   const [postWizardStep, setPostWizardStep] = useState(0);
+  const [editingWizardPostId, setEditingWizardPostId] = useState(null);
   const [galleryWizardStep, setGalleryWizardStep] = useState(0);
+  const [editingWizardAlbumId, setEditingWizardAlbumId] = useState(null);
   const [contentPreviewMode, setContentPreviewMode] = useState("web");
   const [selectedApproval, setSelectedApproval] = useState(null);
   const [selectedApprovalPhotoIds, setSelectedApprovalPhotoIds] = useState([]);
@@ -555,10 +614,10 @@ export default function AdminDashboardPage() {
   const allPhotos = data.allGalleryPhotos ?? allAlbums.flatMap((album) => album.photos ?? []);
   const allPhotoBatches = data.photoUploadBatches ?? [];
   const reviewItems = [
-    ...allPosts.map((post) => ({ ...post, contentType: "Blog post" })),
-    ...allAlbums.map((album) => ({ ...album, contentType: "Album" })),
-    ...allPhotoBatches.map((batch) => ({ ...batch, contentType: "Photo batch" })),
-    ...data.plannedEvents.map((event) => ({ ...event, contentType: "Calendar event" }))
+    ...allPosts.filter((post) => post.approvalStatus !== "draft").map((post) => ({ ...post, contentType: "Blog post" })),
+    ...allAlbums.filter((album) => album.approvalStatus !== "draft").map((album) => ({ ...album, contentType: "Album" })),
+    ...allPhotoBatches.filter((batch) => batch.approvalStatus !== "draft").map((batch) => ({ ...batch, contentType: "Photo batch" })),
+    ...data.plannedEvents.filter((event) => event.approvalStatus !== "draft").map((event) => ({ ...event, contentType: "Calendar event" }))
   ];
   const profileReviewItems = (data.users ?? [])
     .filter((profile) => profile.profileChangeStatus === "pending")
@@ -580,7 +639,7 @@ export default function AdminDashboardPage() {
       ...data.plannedEvents
     ]
       .filter((item) => item.submittedBy === user?.id)
-      .filter((item) => ["pending", "pending_update", "needs_changes", "rejected"].includes(item.approvalStatus))
+      .filter((item) => ["draft", "pending", "pending_update", "needs_changes", "rejected"].includes(item.approvalStatus))
       .map((item) => ({ ...item, contentType: item.contentType ?? (item.location ? "Calendar event" : item.photos ? "Album" : "Blog post") })),
     [allPosts, allAlbums, data.plannedEvents, user?.id]
   );
@@ -662,6 +721,25 @@ export default function AdminDashboardPage() {
     }
   }, [activeSection, sidebarGroups]);
   useEffect(() => {
+    if (!isSidebarTemporarilyExpanded) {
+      return undefined;
+    }
+
+    const closeTemporarySidebar = (event) => {
+      if (!event.target.closest?.(".admin-sidebar")) {
+        setIsSidebarTemporarilyExpanded(false);
+      }
+    };
+
+    document.addEventListener("mousedown", closeTemporarySidebar);
+    document.addEventListener("touchstart", closeTemporarySidebar, { passive: true });
+
+    return () => {
+      document.removeEventListener("mousedown", closeTemporarySidebar);
+      document.removeEventListener("touchstart", closeTemporarySidebar);
+    };
+  }, [isSidebarTemporarilyExpanded]);
+  useEffect(() => {
     if (!selectedGroupId && data.groups[0]?.id) {
       setSelectedGroupId(data.groups[0].id);
     }
@@ -740,7 +818,7 @@ export default function AdminDashboardPage() {
     [data.registeredScouts, isAdmin, search, selectedEquipeId, user?.groupId]
   );
   const visiblePosts = useMemo(() => {
-    const availablePosts = isAdmin ? allPosts : allPosts.filter((post) => post.submittedBy === user?.id);
+    const availablePosts = isAdmin ? allPosts.filter((post) => post.approvalStatus !== "draft" || post.submittedBy === user?.id) : allPosts.filter((post) => post.submittedBy === user?.id);
     const byStatus =
       statusFilter === "all"
         ? availablePosts
@@ -748,7 +826,7 @@ export default function AdminDashboardPage() {
     return filterBySearch(byStatus, search, ["title", "author", "excerpt", "postType", "category", "approvalStatus"]);
   }, [allPosts, isAdmin, search, statusFilter, user?.id]);
   const visibleAlbums = useMemo(() => {
-    const availableAlbums = isAdmin ? allAlbums : allAlbums.filter((album) => album.submittedBy === user?.id);
+    const availableAlbums = isAdmin ? allAlbums.filter((album) => album.approvalStatus !== "draft" || album.submittedBy === user?.id) : allAlbums.filter((album) => album.submittedBy === user?.id);
     const byStatus =
       statusFilter === "all"
         ? availableAlbums
@@ -772,7 +850,7 @@ export default function AdminDashboardPage() {
       statusFilter === "all"
         ? byType
         : byType.filter((item) => item.approvalStatus === statusFilter);
-    return filterBySearch(byStatus, search, ["title", "contentType", "approvalStatus", "submittedBy", "name", "pendingName"]);
+    return filterBySearch(byStatus, search, ["title", "contentType", "approvalStatus", "submittedBy", "name", "pendingName"]).sort((a, b) => new Date(getReviewTimestamp(b)).getTime() - new Date(getReviewTimestamp(a)).getTime());
   }, [reviewItems, profileReviewItems, approvalTypeFilter, search, statusFilter]);
 
   const updateRule = (groupId, field, value) => {
@@ -800,6 +878,7 @@ export default function AdminDashboardPage() {
     setLastDashboardSection(sectionId);
   };
   const selectSidebarItem = (id) => {
+    setIsSidebarTemporarilyExpanded(false);
     if (settingSections.some(([settingId]) => settingId === id)) {
       setActiveSetting(id);
       setActiveSection(id);
@@ -810,12 +889,17 @@ export default function AdminDashboardPage() {
     setIsMobileMoreOpen(false);
   };
   const toggleSidebarMode = async () => {
+    setIsSidebarTemporarilyExpanded(false);
     const nextMode = sidebarMode === "expanded" ? "collapsed" : "expanded";
     setSidebarMode(nextMode);
     await logAuditEvent("sidebar_preference_changed", "Dashboard", user?.id ?? "anonymous", { sidebarMode: nextMode });
   };
   const toggleSidebarGroup = (id) => {
     setOpenSidebarGroups((current) => ({ ...current, [id]: !current[id] }));
+  };
+  const openCollapsedSidebarGroup = (groupId) => {
+    setOpenSidebarGroups((current) => ({ ...current, [groupId]: true }));
+    setIsSidebarTemporarilyExpanded(true);
   };
   const openPendingWorkItem = (item) => {
     if (!item) {
@@ -949,21 +1033,44 @@ export default function AdminDashboardPage() {
       return;
     }
 
-    await addEquipe({ ...newEquipe, groupId: dashboardGroupId });
-    setNewEquipe({ name: "", description: "" });
-    setSaveMessage("Equipe created.");
-    await refresh();
+    try {
+      setIsEquipeActionLoading(true);
+      await addEquipe({ ...newEquipe, groupId: dashboardGroupId });
+      setNewEquipe({ name: "", description: "" });
+      setIsNewEquipeOpen(false);
+      setSaveMessage("Equipe created.");
+      await refresh();
+    } finally {
+      setIsEquipeActionLoading(false);
+    }
   };
   const saveDashboardEquipe = async (equipeId) => {
     const payload = equipeEdits[equipeId] ?? groupEquipes.find((equipe) => equipe.id === equipeId);
-    await saveEquipe(equipeId, payload);
-    setSaveMessage("Equipe saved.");
-    await refresh();
+    try {
+      setIsEquipeActionLoading(true);
+      await saveEquipe(equipeId, payload);
+      setSaveMessage("Equipe saved.");
+      await refresh();
+    } finally {
+      setIsEquipeActionLoading(false);
+    }
   };
-  const archiveDashboardEquipe = async (equipeId) => {
-    await removeEquipe(equipeId);
-    setSaveMessage("Equipe archived and scouts moved to Unassigned.");
-    await refresh();
+  const deleteDashboardEquipe = async (equipeId) => {
+    const equipe = groupEquipes.find((item) => item.id === equipeId);
+    const confirmed = window.confirm(`Permanently delete ${equipe?.name ?? "this equipe"}?` + "\n\nThis cannot be undone. Any currently assigned scouts will become unassigned.");
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setIsEquipeActionLoading(true);
+      await removeEquipe(equipeId);
+      setSelectedScoutIds([]);
+      setSaveMessage("Equipe deleted and assigned scouts moved to Unassigned.");
+      await refresh();
+    } finally {
+      setIsEquipeActionLoading(false);
+    }
   };
   const assignSelectedScouts = async (equipeId) => {
     if (!selectedScoutIds.length) {
@@ -971,22 +1078,37 @@ export default function AdminDashboardPage() {
       return;
     }
 
-    await assignEquipeScouts({ scoutIds: selectedScoutIds, equipeId: equipeId || null, groupId: dashboardGroupId });
-    setSelectedScoutIds([]);
-    setSaveMessage(equipeId ? "Selected scouts assigned to equipe." : "Selected scouts moved to Unassigned.");
-    await refresh();
+    try {
+      setIsEquipeActionLoading(true);
+      await assignEquipeScouts({ scoutIds: selectedScoutIds, equipeId: equipeId || null, groupId: dashboardGroupId });
+      setSelectedScoutIds([]);
+      setSaveMessage(equipeId ? "Selected scouts assigned to equipe." : "Selected scouts moved to Unassigned.");
+      await refresh();
+    } finally {
+      setIsEquipeActionLoading(false);
+    }
+  };
+  const updateScoutEquipeAssignment = async (scoutId, equipeId) => {
+    try {
+      setIsEquipeActionLoading(true);
+      await assignEquipeScouts({ scoutIds: [scoutId], equipeId: equipeId || null, groupId: dashboardGroupId });
+      setSaveMessage(equipeId ? "Scout reassigned to equipe." : "Scout moved to Unassigned.");
+      await refresh();
+    } finally {
+      setIsEquipeActionLoading(false);
+    }
   };
   const toggleScoutSelection = (scoutId) => {
     setSelectedScoutIds((current) =>
       current.includes(scoutId) ? current.filter((id) => id !== scoutId) : [...current, scoutId]
     );
   };
-  const buildRandomAssignmentPreview = () => {
+  const buildAssignmentPreviewData = () => {
     const availableScouts = data.registeredScouts.filter((scout) => scout.groupId === dashboardGroupId);
     const activeEquipes = groupEquipes;
     if (!activeEquipes.length || !availableScouts.length) {
       setSaveMessage("Create equipes and make sure this group has scouts before randomizing.");
-      return;
+      return null;
     }
 
     const shuffled = [...availableScouts].sort(() => Math.random() - 0.5);
@@ -1009,7 +1131,7 @@ export default function AdminDashboardPage() {
         : "";
     if (warning) {
       setSaveMessage(warning);
-      return;
+      return null;
     }
 
     const males = shuffled.filter((scout) => String(scout.gender).toLowerCase() === "male");
@@ -1046,34 +1168,57 @@ export default function AdminDashboardPage() {
     const unassigned = availableScouts.filter((scout) => !assignedIds.has(scout.id));
     const genderWarning = genderBalance !== "auto" && Object.values(assignments).some((items) => {
       const gendered = items.filter((scout) => ["male", "female"].includes(String(scout.gender).toLowerCase()));
-    if (!gendered.length) return false;
+      if (!gendered.length) return false;
       const actual = gendered.filter((scout) => scout.gender === "male").length / gendered.length;
       return Math.abs(actual - maleRatio) > 0.2;
     });
 
-    setAssignmentPreview({
+    return {
       assignments,
       unassigned,
       warning: genderWarning
         ? "Exact gender percentage could not be matched because of the available number of scouts. The closest balanced distribution was applied."
         : ""
-    });
+    };
   };
-  const saveAssignmentPreview = async () => {
-    if (!assignmentPreview) {
+  const buildRandomAssignmentPreview = () => {
+    const preview = buildAssignmentPreviewData();
+    if (preview) {
+      setAssignmentPreview(preview);
+    }
+  };
+  const saveAssignmentPreview = async (preview = assignmentPreview) => {
+    if (!preview) {
       return;
     }
 
-    for (const [equipeId, scouts] of Object.entries(assignmentPreview.assignments)) {
-      await assignEquipeScouts({ scoutIds: scouts.map((scout) => scout.id), equipeId, groupId: dashboardGroupId });
+    try {
+      setIsEquipeActionLoading(true);
+      for (const [equipeId, scouts] of Object.entries(preview.assignments)) {
+        await assignEquipeScouts({ scoutIds: scouts.map((scout) => scout.id), equipeId, groupId: dashboardGroupId });
+      }
+
+      await logAuditEvent("automatic_equipe_assignment_saved", "Group", dashboardGroupId, {
+        equipeIds: Object.keys(preview.assignments)
+      });
+      setAssignmentPreview(null);
+      setSaveMessage("Automatic equipe assignments saved.");
+      await refresh();
+    } finally {
+      setIsEquipeActionLoading(false);
+    }
+  };
+  const runAutomaticAssignment = async () => {
+    if (isEquipeActionLoading) {
+      return;
     }
 
-    await logAuditEvent("automatic_equipe_assignment_saved", "Group", dashboardGroupId, {
-      equipeIds: Object.keys(assignmentPreview.assignments)
-    });
-    setAssignmentPreview(null);
-    setSaveMessage("Automatic equipe assignments saved.");
-    await refresh();
+    const preview = buildAssignmentPreviewData();
+    if (!preview) {
+      return;
+    }
+
+    await saveAssignmentPreview(preview);
   };
   const setChiefLevel = (chiefId, level) => {
     setChiefEdits((current) => ({
@@ -1216,26 +1361,69 @@ export default function AdminDashboardPage() {
       setSaveMessage(`Password reset failed: ${error.message}`);
     }
   };
+  const loadPostDraftIntoWizard = (post) => {
+    setEditingWizardPostId(post.id);
+    setNewPost({
+      ...emptyPost,
+      ...post,
+      postType: post.postType ?? post.contentType ?? "blog",
+      category: post.category ?? "general",
+      author: post.author ?? "Group Admin",
+      albumId: post.albumId ?? "",
+      approvalStatus: post.approvalStatus ?? "draft",
+      thumbnailFile: null
+    });
+    setPostWizardStep(0);
+    setActiveSection("posts");
+    setSaveMessage(`Loaded draft "${post.title}" into the post wizard.`);
+  };
+  const resetPostWizard = () => {
+    setNewPost(emptyPost);
+    setEditingWizardPostId(null);
+    setPostWizardStep(0);
+  };
+  const discardPostWizard = async () => {
+    if (editingWizardPostId) {
+      const confirmed = window.confirm("Delete this saved post draft? This cannot be undone.");
+      if (!confirmed) return;
+      await deleteBlog(editingWizardPostId);
+      await refresh();
+      setSaveMessage("Post draft deleted.");
+    }
+    resetPostWizard();
+  };
   const createPost = async (event) => {
     event.preventDefault();
     const requestedStatus = event.nativeEvent.submitter?.value;
+    if (postWizardStep < wizardSteps.length - 1) {
+      setPostWizardStep(wizardSteps.length - 1);
+      setSaveMessage("Review your post, then submit when ready.");
+      return;
+    }
+
+    const nextStatus = isAdmin ? (requestedStatus || newPost.approvalStatus) : (requestedStatus || "pending");
     try {
       setUploadStatus(newPost.thumbnailFile ? "Optimizing and uploading blog thumbnail..." : "Saving blog post...");
-      await createBlog({
-        ...newPost,
-        approvalStatus: isAdmin ? newPost.approvalStatus : requestedStatus || "pending"
-      });
-      setNewPost(emptyPost);
-      setPostWizardStep(0);
-      setSaveMessage((requestedStatus || newPost.approvalStatus) === "draft" ? "Post draft saved." : "Post sent for approval.");
+      if (editingWizardPostId) {
+        await updateBlog(editingWizardPostId, {
+          ...newPost,
+          approvalStatus: nextStatus
+        });
+      } else {
+        await createBlog({
+          ...newPost,
+          approvalStatus: nextStatus
+        });
+      }
+      resetPostWizard();
+      setSaveMessage(nextStatus === "draft" ? "Post draft saved." : "Post sent for approval.");
       await refresh();
     } catch (error) {
       setSaveMessage(`Post save failed: ${error.message}`);
     } finally {
       setUploadStatus(null);
     }
-  };
-  const savePost = async (postId, payload, options = {}) => {
+  };  const savePost = async (postId, payload, options = {}) => {
     const nextPayload = payload ?? postEdits[postId];
     const currentPost = allPosts.find((post) => post.id === postId);
     const shouldCreateRevision = !isAdmin && currentPost?.approvalStatus === "approved";
@@ -1276,69 +1464,115 @@ export default function AdminDashboardPage() {
   const removeSelectedPhotoFile = (fileToRemove) => {
     setPhotoFiles((current) => current.filter((file) => file !== fileToRemove));
   };
+  const loadAlbumDraftIntoWizard = (album) => {
+    setEditingWizardAlbumId(album.id);
+    setGalleryUploadMode("new");
+    setNewAlbum({
+      ...emptyAlbum,
+      ...album,
+      category: album.category ?? "",
+      approvalStatus: album.approvalStatus ?? "draft"
+    });
+    setAlbumThumbnailFile(null);
+    setPhotoFiles([]);
+    setGalleryWizardStep(0);
+    setActiveSection("gallery");
+    setSaveMessage(`Loaded draft "${album.title}" into the gallery wizard.`);
+  };
+  const resetGalleryWizard = () => {
+    setNewAlbum(emptyAlbum);
+    setAlbumThumbnailFile(null);
+    setPhotoFiles([]);
+    setEditingWizardAlbumId(null);
+    setGalleryWizardStep(0);
+  };
+  const discardGalleryWizard = async () => {
+    if (editingWizardAlbumId) {
+      const confirmed = window.confirm("Delete this saved album draft? This cannot be undone.");
+      if (!confirmed) return;
+      await deleteAlbum(editingWizardAlbumId);
+      await refresh();
+      setSaveMessage("Album draft deleted.");
+    }
+    resetGalleryWizard();
+  };
   const createGalleryAlbum = async (event) => {
     event.preventDefault();
+    const requestedStatus = event.nativeEvent.submitter?.value;
+    if (galleryWizardStep < wizardSteps.length - 1) {
+      setGalleryWizardStep(wizardSteps.length - 1);
+      setSaveMessage("Review your gallery upload, then submit when ready.");
+      return;
+    }
 
     try {
-    if (galleryUploadMode === "existing" && !photoAlbumId) {
+      if (galleryUploadMode === "existing" && !photoAlbumId) {
         setSaveMessage("Please choose an existing album.");
         return;
       }
-    if (galleryUploadMode === "new") {
-    if (!newAlbum.title.trim()) {
+      if (galleryUploadMode === "new") {
+        if (!newAlbum.title.trim()) {
           setSaveMessage("Please enter an album title.");
           return;
         }
-    if (!newAlbum.eventDate) {
+        if (!newAlbum.eventDate) {
           setSaveMessage("Please select an album date.");
           return;
         }
-    if (!newAlbum.location.trim()) {
+        if (!newAlbum.location.trim()) {
           setSaveMessage("Please enter the album location.");
           return;
         }
-    if (!albumThumbnailFile) {
+        if (!editingWizardAlbumId && !albumThumbnailFile) {
           setSaveMessage("Please upload an album thumbnail.");
           return;
         }
-    if (!newAlbum.category.trim()) {
+        if (!newAlbum.category.trim()) {
           setSaveMessage("Please select an album category.");
           return;
         }
       }
-    if (!photoFiles.length) {
+      if (!photoFiles.length && !editingWizardAlbumId) {
         setSaveMessage("Please upload at least one photo.");
         return;
       }
 
-      setUploadStatus(galleryUploadMode === "new" ? "Creating album and optimizing photos..." : "Optimizing and uploading photo bundle...");
+      setUploadStatus(galleryUploadMode === "new" ? "Saving album and optimizing photos..." : "Optimizing and uploading photo bundle...");
       setPhotoUploadProgress({ completed: 0, total: photoFiles.length, percent: 0 });
       let targetAlbumId = photoAlbumId;
-      const approvalStatus = isAdmin ? newAlbum.approvalStatus : "pending";
-    if (galleryUploadMode === "new") {
-        const created = await createAlbum({
-          ...newAlbum,
-          thumbnailFile: albumThumbnailFile,
-          approvalStatus
-        });
-        targetAlbumId = Array.isArray(created) ? created[0]?.id : created?.id;
+      const approvalStatus = isAdmin ? (requestedStatus || newAlbum.approvalStatus) : (requestedStatus || "pending");
+      if (galleryUploadMode === "new") {
+        if (editingWizardAlbumId) {
+          await updateAlbum(editingWizardAlbumId, {
+            ...newAlbum,
+            thumbnailFile: albumThumbnailFile,
+            approvalStatus
+          });
+          targetAlbumId = editingWizardAlbumId;
+        } else {
+          const created = await createAlbum({
+            ...newAlbum,
+            thumbnailFile: albumThumbnailFile,
+            approvalStatus
+          });
+          targetAlbumId = Array.isArray(created) ? created[0]?.id : created?.id;
+        }
       }
 
-      await addAlbumPhotos(targetAlbumId, {
-        photos: photoFiles,
-        approvalStatus,
-        submittedBy: user.name,
-        onProgress: (progress) => {
-          setPhotoUploadProgress(progress);
-          setUploadStatus(`Uploading optimized photos: ${progress.completed} of ${progress.total}`);
-        }
-      });
+      if (photoFiles.length) {
+        await addAlbumPhotos(targetAlbumId, {
+          photos: photoFiles,
+          approvalStatus,
+          submittedBy: user.name,
+          onProgress: (progress) => {
+            setPhotoUploadProgress(progress);
+            setUploadStatus(`Uploading optimized photos: ${progress.completed} of ${progress.total}`);
+          }
+        });
+      }
 
-      setNewAlbum(emptyAlbum);
-      setAlbumThumbnailFile(null);
-      setPhotoFiles([]);
-      setGalleryWizardStep(0);
-      setSaveMessage(galleryUploadMode === "new" ? "Album and photo bundle submitted." : "Photo bundle submitted.");
+      resetGalleryWizard();
+      setSaveMessage(approvalStatus === "draft" ? "Album draft saved." : galleryUploadMode === "new" ? "Album and photo bundle submitted." : "Photo bundle submitted.");
       setPhotoUploadProgress({ completed: 0, total: 0, percent: 0 });
       await refresh();
     } catch (error) {
@@ -1346,8 +1580,7 @@ export default function AdminDashboardPage() {
     } finally {
       setUploadStatus(null);
     }
-  };
-  const saveAlbum = async (albumId, payload) => {
+  };  const saveAlbum = async (albumId, payload) => {
     const nextPayload = payload ?? albumEdits[albumId];
     const currentAlbum = allAlbums.find((album) => album.id === albumId);
     const shouldCreateRevision = !isAdmin && currentAlbum?.approvalStatus === "approved";
@@ -1403,11 +1636,7 @@ export default function AdminDashboardPage() {
       reviewerComment: payload.reviewerComment
     });
     setSaveMessage(`${item.contentType} marked ${approvalStatus.replace("_", " ")}.`);
-    setSelectedApproval((current) =>
-      current?.id === item.id && current?.contentType === item.contentType
-        ? { ...current, ...payload }
-        : current
-    );
+    setSelectedApproval(null);
     setApprovalComment("");
     setSelectedApprovalPhotoIds([]);
     await refresh();
@@ -1818,20 +2047,14 @@ export default function AdminDashboardPage() {
       data.registeredScouts.filter((scout) => scout.groupId === dashboardGroupId),
       data.registrationImportSettings.sortBy
     );
-    const groupEvents = data.plannedEvents.filter(
-      (event) =>
-        event.visibility === "logged-in" ||
-        event.groupId === dashboardGroupId ||
-        event.visibleGroupIds?.includes(dashboardGroupId)
-    );
 
     return (
-      <div className="cms-panel-stack">
+      <div className="cms-panel-stack my-group-reference">
         {isAdmin && (
           <div className="cms-toolbar">
             <label>
               View group
-              <select value={selectedGroupId} onChange={(event) => setSelectedGroupId(event.target.value)}>
+              <select value={selectedGroupId} disabled={isEquipeActionLoading} onChange={(event) => setSelectedGroupId(event.target.value)}>
                 {data.groups.map((group) => (
                   <option value={group.id} key={group.id}>{group.name}</option>
                 ))}
@@ -1839,42 +2062,23 @@ export default function AdminDashboardPage() {
             </label>
           </div>
         )}
-        <div className="dashboard-stat-grid">
-          <article className="stat-card">
-            <span>Assigned group</span>
-            <strong>{dashboardGroup?.name ?? "Unassigned"}</strong>
-          </article>
-          <article className="stat-card">
-            <span>Scouts</span>
-            <strong>{groupScouts.length}</strong>
-          </article>
-          <article className="stat-card">
-            <span>Attendance days</span>
-            <strong>{data.attendanceMeetings.filter((meeting) => meeting.groupId === dashboardGroupId).length}</strong>
-          </article>
-          <article className="stat-card">
-            <span>Upcoming internal events</span>
-            <strong>{groupEvents.length}</strong>
-          </article>
-        </div>
-        <div className="action-row">
-          {canTakeAttendance(user) && <button type="button" className="inline-action" onClick={() => setActiveSection("scoutAttendance")}>Take scout attendance</button>}
-          {canTakeAttendance(user) && <button type="button" className="inline-action" onClick={() => setActiveSection("attendanceSheets")}>View attendance sheet</button>}
-          {canPublishContent(user) && <Link className="inline-action" to="/chiefs/content">Submit post or photos</Link>}
-        </div>
+        {canTakeAttendance(user) && (
+          <div className="my-group-attendance-link">
+            <button type="button" className="inline-action" onClick={() => setActiveSection("scoutAttendance")}>
+              Take Attendance for {dashboardGroup?.name ?? "My Group"}
+            </button>
+          </div>
+        )}
         <article className="table-panel">
           <div className="panel-heading">
             <div>
               <h2>{dashboardGroup?.name ?? "My Group"}</h2>
-              <p>
-                Scouts sorted by {sortLabels[data.registrationImportSettings.sortBy]} from{" "}
-                {data.registrationImportSettings.excelFileName}.
-              </p>
+              <p>Quick roster reference for the selected group.</p>
             </div>
             <span>{groupScouts.length} scouts</span>
           </div>
           <table>
-            <thead><tr><th>Name</th><th>School Grade</th><th>Age</th><th>Equipe</th><th>Status</th></tr></thead>
+            <thead><tr><th>Scout name</th><th>Grade</th><th>Age</th><th>Equipe</th></tr></thead>
             <tbody>
               {groupScouts.length ? groupScouts.map((scout) => (
                 <tr key={scout.id}>
@@ -1882,105 +2086,46 @@ export default function AdminDashboardPage() {
                   <td>{getSchoolGrade(scout)}</td>
                   <td>{scout.age}</td>
                   <td>{getEquipeName(scout, groupEquipes)}</td>
-                  <td>{scout.status}</td>
                 </tr>
-              )) : <tr><td colSpan="5">No scouts found for this group.</td></tr>}
-            </tbody>
-          </table>
-        </article>
-        <article className="table-panel">
-          <div className="panel-heading">
-            <div>
-              <h2>Group and internal events</h2>
-              <p>Events shown here are limited to what this dashboard user can access.</p>
-            </div>
-            <span>{groupEvents.length} events</span>
-          </div>
-          <table>
-            <thead><tr><th>Event</th><th>Date from</th><th>Date to</th><th>Visibility</th><th>Status</th></tr></thead>
-            <tbody>
-              {groupEvents.length ? groupEvents.map((event) => (
-                <tr key={event.id}>
-                  <td>{event.title}</td>
-                  <td>{event.dateFrom ?? event.date}</td>
-                  <td>{event.dateTo ?? event.date}</td>
-                  <td>{event.visibility}</td>
-                  <td>{event.approvalStatus}</td>
-                </tr>
-              )) : <tr><td colSpan="5">No internal events found.</td></tr>}
+              )) : <tr><td colSpan="4">No scouts found for this group.</td></tr>}
             </tbody>
           </table>
         </article>
       </div>
     );
   };
-
   const renderOverview = () => {
-    if (!isAdmin) {
-      const groupScouts = data.registeredScouts.filter((scout) => scout.groupId === user.groupId);
-      const groupAttendance = data.attendanceMeetings.filter((meeting) => meeting.groupId === user.groupId);
-      const groupEvents = data.plannedEvents.filter(
-        (event) =>
-          event.visibility === "logged-in" ||
-          event.groupId === user.groupId ||
-          event.visibleGroupIds?.includes(user.groupId)
-      );
-      const ownSubmissions = [
-        ...allPosts,
-        ...allAlbums,
-        ...data.plannedEvents
-      ].filter((item) => item.submittedBy === user.id);
-      const pendingOwnItems = ownPendingItems;
+    const visibleUpcomingEvents = data.plannedEvents
+      .filter((event) => canSeeDashboardEvent(event, user))
+      .filter((event) => (event.dateTo ?? event.dateFrom ?? event.date) >= new Date().toISOString().slice(0, 10))
+      .sort((a, b) => String(a.dateFrom ?? a.date).localeCompare(String(b.dateFrom ?? b.date)))
+      .slice(0, 5);
 
-      return (
-        <>
-          <div className="dashboard-stat-grid">
-            {[
-              ["Assigned group", dashboardGroup?.name ?? "Unassigned"],
-              ["Scouts", groupScouts.length],
-              ["Attendance days", groupAttendance.length],
-              ["My submissions", ownSubmissions.length]
-            ].map(([label, value]) => (
-              <article className="stat-card" key={label}>
-                <span>{label}</span>
-                <strong>{value}</strong>
-              </article>
-            ))}
-          </div>
-          <div className="dashboard-overview-stack">
-            <PendingWorkList
-              items={pendingOwnItems}
-              getSubmitterName={() => user.name}
-              getSubmitterPicture={() => user.profilePictureUrl}
-              onOpen={openPendingWorkItem}
-            />
-            <div className="quick-shortcuts-row">
-              <button type="button" onClick={() => setActiveSection("myGroup")}><Users size={17} aria-hidden="true" />My Group</button>
-              {canPublishContent(user) && <button type="button" onClick={() => setActiveSection("posts")}><FileText size={17} aria-hidden="true" />New Blog Post</button>}
-              {canCreateGroupMeetings(user) && <button type="button" onClick={() => setActiveSection("calendar")}><CalendarDays size={17} aria-hidden="true" />New Event</button>}
-              {canTakeAttendance(user) && <button type="button" onClick={() => setActiveSection("scoutAttendance")}><CheckCircle2 size={17} aria-hidden="true" />Take Attendance</button>}
-            </div>
-            <article className="admin-panel dashboard-upload-panel">
-              <h2>Upcoming internal events</h2>
-              <div className="mini-list">
-                {groupEvents.slice(0, 3).map((event) => <span key={event.id}>{event.title} - {event.dateFrom ?? event.date}</span>)}
-                {!groupEvents.length && <span>No internal events yet</span>}
-              </div>
-            </article>
-          </div>
-        </>
-      );
-    }
+    const ownSubmissions = [
+      ...allPosts,
+      ...allAlbums,
+      ...data.plannedEvents
+    ].filter((item) => item.submittedBy === user?.id);
+    const groupScouts = data.registeredScouts.filter((scout) => scout.groupId === user?.groupId);
+    const groupAttendance = data.attendanceMeetings.filter((meeting) => meeting.groupId === user?.groupId);
+    const stats = isAdmin
+      ? [
+          ["Active scouts", data.registeredScouts.length],
+          ["Chiefs", chiefs.length],
+          ["Attendance days", data.attendanceMeetings.length],
+          ["Pending approvals", pendingItems.length]
+        ]
+      : [
+          ["Assigned group", dashboardGroup?.name ?? "Unassigned"],
+          ["Scouts", groupScouts.length],
+          ["Attendance days", groupAttendance.length],
+          ["My submissions", ownSubmissions.length]
+        ];
 
     return (
       <>
         <div className="dashboard-stat-grid">
-          {[
-            ["Active scouts", data.registeredScouts.length],
-            ["Chiefs", chiefs.length],
-            ["Attendance days", data.attendanceMeetings.length],
-            ["Pending approvals", pendingItems.length]
-          ].map(([label, value]) => (
+          {stats.map(([label, value]) => (
             <article className="stat-card" key={label}>
               <span>{label}</span>
               <strong>{value}</strong>
@@ -1989,43 +2134,38 @@ export default function AdminDashboardPage() {
         </div>
         <div className="dashboard-overview-stack">
           <PendingWorkList
-            items={pendingItems}
-            getSubmitterName={getSubmitterName}
-            getSubmitterPicture={getSubmitterPicture}
+            items={isAdmin ? pendingItems : ownPendingItems}
+            getSubmitterName={isAdmin ? getSubmitterName : () => user.name}
+            getSubmitterPicture={isAdmin ? getSubmitterPicture : () => user.profilePictureUrl}
             onOpen={openPendingWorkItem}
           />
-          <div className="quick-shortcuts-row">
-            <button type="button" onClick={() => setActiveSection("posts")}><FileText size={17} aria-hidden="true" />New Blog Post</button>
-            <button type="button" onClick={() => setActiveSection("calendar")}><CalendarDays size={17} aria-hidden="true" />New Event</button>
-            <button type="button" onClick={() => setActiveSection("scoutAttendance")}><CheckCircle2 size={17} aria-hidden="true" />Take Attendance</button>
-            <button type="button" onClick={() => setActiveSection("upload")}><Upload size={17} aria-hidden="true" />Upload Scouts</button>
-          </div>
-          <div className="admin-dashboard-grid">
-            <article className="admin-panel dashboard-upload-panel">
-              <h2>Active year</h2>
-              <p>
-                {data.registrationImportSettings.scoutYear} is active. Current import:{" "}
-                {data.registrationImportSettings.excelFileName}.
-              </p>
-              <button type="button" className="inline-action" onClick={() => setActiveSection("upload")}>
-                Upload scout list
-              </button>
-            </article>
-          <article className="admin-panel dashboard-upload-panel">
-            <h2>Recent activity</h2>
-            <div className="mini-list">
-              <span>{data.attendanceMeetings.at(-1)?.date ?? "No scout attendance yet"}</span>
-              <span>{data.chiefAttendanceMeetings.at(-1)?.date ?? "No chief attendance yet"}</span>
-              <span>{allPosts[0]?.title ?? "No posts yet"}</span>
-              <span>{(data.contactMessages ?? []).filter((message) => message.status === "new").length} new contact messages</span>
+          <article className="admin-panel dashboard-upcoming-events-panel">
+            <div className="panel-heading compact-heading">
+              <div>
+                <h2>Upcoming Events</h2>
+                <p>Events visible to this dashboard user.</p>
+              </div>
+              <span>{visibleUpcomingEvents.length}</span>
+            </div>
+            <div className="mini-list dashboard-event-list">
+              {visibleUpcomingEvents.length ? visibleUpcomingEvents.map((event) => (
+                <button type="button" key={event.id} onClick={() => setActiveSection("calendar")}>
+                  <strong>{event.title}</strong>
+                  <span>{event.dateFrom ?? event.date}</span>
+                </button>
+              )) : <span>No upcoming events visible right now.</span>}
             </div>
           </article>
+          <div className="quick-shortcuts-row">
+            {canTakeAttendance(user) && <button type="button" onClick={() => setActiveSection("scoutAttendance")}><CheckCircle2 size={17} aria-hidden="true" />Take Attendance</button>}
+            {canPublishContent(user) && <button type="button" onClick={() => setActiveSection("posts")}><FileText size={17} aria-hidden="true" />New Blog Post</button>}
+            {canCreateGroupMeetings(user) && <button type="button" onClick={() => setActiveSection("calendar")}><CalendarDays size={17} aria-hidden="true" />New Event</button>}
+            {canPublishContent(user) && <button type="button" onClick={() => setActiveSection("gallery")}><GalleryHorizontal size={17} aria-hidden="true" />Upload Photos/Album</button>}
           </div>
         </div>
       </>
     );
   };
-
   const renderUpload = () => {
     const activeYear = data.scoutYears?.find((year) => year.isActive);
     const selectedUploadYear = data.scoutYears?.find((year) => year.id === registrationYearId);
@@ -2264,9 +2404,27 @@ export default function AdminDashboardPage() {
       data.registeredScouts.filter((scout) => scout.groupId === dashboardGroupId),
       "name"
     );
+    const filteredAssignmentScouts = filterBySearch(
+      groupScouts.filter((scout) => {
+        if (equipeScoutFilter === "assigned") return Boolean(scout.equipeId);
+        if (equipeScoutFilter === "unassigned") return !scout.equipeId;
+        return true;
+      }),
+      search,
+      ["name"]
+    );
     const isMixedGroup =
       dashboardGroup?.genderFilter === "mixed" ||
       (groupScouts.some((scout) => scout.gender === "male") && groupScouts.some((scout) => scout.gender === "female"));
+    const allFilteredSelected = filteredAssignmentScouts.length > 0 && filteredAssignmentScouts.every((scout) => selectedScoutIds.includes(scout.id));
+    const toggleFilteredScouts = (checked) => {
+      setSelectedScoutIds((current) => {
+        const currentSet = new Set(current);
+        filteredAssignmentScouts.forEach((scout) => checked ? currentSet.add(scout.id) : currentSet.delete(scout.id));
+        return [...currentSet];
+      });
+    };
+
     if (!canManageEquipes) {
       return (
         <AccessDenied message="Only admins, head chiefs, and vice head chiefs can manage equipes for this group." />
@@ -2274,128 +2432,154 @@ export default function AdminDashboardPage() {
     }
 
     return (
-      <div className="cms-panel-stack">
+      <div className="cms-panel-stack equipe-management-redesign">
+        {isEquipeActionLoading && <UploadLoadingState message="Updating equipe management..." />}
         {isAdmin && (
           <div className="cms-toolbar">
             <label>
               Manage group
-              <select value={selectedGroupId} onChange={(event) => setSelectedGroupId(event.target.value)}>
+              <select value={selectedGroupId} disabled={isEquipeActionLoading} onChange={(event) => setSelectedGroupId(event.target.value)}>
                 {data.groups.map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}
               </select>
             </label>
           </div>
         )}
 
-        <form className="inline-editor-grid" onSubmit={createDashboardEquipe}>
-          <input required placeholder="Equipe name" value={newEquipe.name} onChange={(event) => setNewEquipe((current) => ({ ...current, name: event.target.value }))} />
-          <input placeholder="Description" value={newEquipe.description} onChange={(event) => setNewEquipe((current) => ({ ...current, description: event.target.value }))} />
-          <button type="submit">Create equipe</button>
-        </form>
+        <article className="admin-panel equipe-zone equipe-create-zone">
+          <div className="panel-heading compact-heading">
+            <div>
+              <h2>Create New Equipe</h2>
+              <p>Add a new equipe for {dashboardGroup?.name ?? "this group"}.</p>
+            </div>
+            <button type="button" className="primary-action" disabled={isEquipeActionLoading} onClick={() => setIsNewEquipeOpen((current) => !current)}>
+              {isNewEquipeOpen ? "Close" : "+ New Equipe"}
+            </button>
+          </div>
+          {isNewEquipeOpen && (
+            <form className="inline-editor-grid" onSubmit={createDashboardEquipe}>
+              <input required disabled={isEquipeActionLoading} placeholder="Equipe name" value={newEquipe.name} onChange={(event) => setNewEquipe((current) => ({ ...current, name: event.target.value }))} />
+              <input disabled={isEquipeActionLoading} placeholder="Description" value={newEquipe.description} onChange={(event) => setNewEquipe((current) => ({ ...current, description: event.target.value }))} />
+              <button type="submit" disabled={isEquipeActionLoading}>{isEquipeActionLoading ? "Creating..." : "Create equipe"}</button>
+            </form>
+          )}
+        </article>
 
-        <div className="equipe-grid">
-          {groupEquipes.map((equipe) => {
-            const edit = equipeEdits[equipe.id] ?? equipe;
-            const equipeScouts = groupScouts.filter((scout) => scout.equipeId === equipe.id);
-            const maleCount = equipeScouts.filter((scout) => scout.gender === "male").length;
-            const femaleCount = equipeScouts.filter((scout) => scout.gender === "female").length;
-            const setEdit = (field, value) => setEquipeEdits((current) => ({ ...current, [equipe.id]: { ...edit, [field]: value } }));
+        <section className="equipe-zone">
+          <div className="section-kicker">Equipe Cards</div>
+          <div className="equipe-grid">
+            {groupEquipes.map((equipe) => {
+              const edit = equipeEdits[equipe.id] ?? equipe;
+              const equipeScouts = groupScouts.filter((scout) => scout.equipeId === equipe.id);
+              const maleCount = equipeScouts.filter((scout) => scout.gender === "male").length;
+              const femaleCount = equipeScouts.filter((scout) => scout.gender === "female").length;
+              const isDescriptionOpen = Boolean(expandedEquipeDescriptions[equipe.id]);
+              const setEdit = (field, value) => setEquipeEdits((current) => ({ ...current, [equipe.id]: { ...edit, [field]: value } }));
 
-            return (
-              <article className="admin-panel equipe-card" key={equipe.id}>
-                <div className="panel-heading">
-                  <div>
-                    <h2>{equipe.name}</h2>
-                    <p>{equipeScouts.length} scouts  -  {maleCount} male  -  {femaleCount} female</p>
+              return (
+                <article className="admin-panel equipe-card" key={equipe.id}>
+                  <div className="panel-heading">
+                    <div>
+                      <input className="equipe-name-input" disabled={isEquipeActionLoading} value={edit.name ?? ""} onChange={(event) => setEdit("name", event.target.value)} aria-label="Equipe name" />
+                      <p>{equipeScouts.length} scouts - {maleCount} male - {femaleCount} female</p>
+                    </div>
                   </div>
-                  <label className="checkbox-cell">
-                    <input type="checkbox" checked={selectedScoutIds.length > 0 && equipeScouts.every((scout) => selectedScoutIds.includes(scout.id))} onChange={(event) => {
-                      setSelectedScoutIds((current) => {
-                        const currentSet = new Set(current);
-                        equipeScouts.forEach((scout) => event.target.checked ? currentSet.add(scout.id) : currentSet.delete(scout.id));
-                        return [...currentSet];
-                      });
-                    }} />
-                  </label>
-                </div>
-                <input value={edit.name ?? ""} onChange={(event) => setEdit("name", event.target.value)} />
-                <input value={edit.description ?? ""} placeholder="Description" onChange={(event) => setEdit("description", event.target.value)} />
-                <div className="inline-editor-grid compact">
-                  <label>
-                    Leader
-                    <select value={edit.leaderId ?? ""} onChange={(event) => setEdit("leaderId", event.target.value || null)}>
-                      <option value="">No leader</option>
-                      {groupChiefs.map((chief) => <option value={chief.id} key={chief.id}>{chief.name}</option>)}
-                    </select>
-                  </label>
-                  <label>
-                    Co-leader
-                    <select value={edit.coLeaderId ?? ""} onChange={(event) => setEdit("coLeaderId", event.target.value || null)}>
-                      <option value="">No co-leader</option>
-                      {groupChiefs.map((chief) => <option value={chief.id} key={chief.id}>{chief.name}</option>)}
-                    </select>
-                  </label>
-                </div>
-                <div className="mini-list equipe-scout-list">
-                  {equipeScouts.map((scout) => (
-                    <label key={scout.id}>
-                      <input type="checkbox" checked={selectedScoutIds.includes(scout.id)} onChange={() => toggleScoutSelection(scout.id)} />
-                      <span>{scout.name}</span>
+                  <div className="inline-editor-grid compact">
+                    <label>
+                      Leader
+                      <select value={edit.leaderId ?? ""} disabled={isEquipeActionLoading} onChange={(event) => setEdit("leaderId", event.target.value || null)}>
+                        <option value="">No leader</option>
+                        {groupChiefs.map((chief) => <option value={chief.id} key={chief.id}>{chief.name}</option>)}
+                      </select>
                     </label>
-                  ))}
-                  {!equipeScouts.length && <span>No scouts assigned yet.</span>}
-                </div>
-                <div className="table-actions">
-                  <button type="button" className="inline-action" onClick={() => saveDashboardEquipe(equipe.id)}>Save</button>
-                  <button type="button" className="inline-action" onClick={() => assignSelectedScouts(equipe.id)}>Assign selected</button>
-                  <button type="button" className="inline-action danger-action" onClick={() => archiveDashboardEquipe(equipe.id)}>Archive</button>
-                </div>
-              </article>
-            );
-          })}
-          {!groupEquipes.length && <article className="admin-panel"><h2>No equipes yet</h2><p>Create the first equipe for {dashboardGroup?.name ?? "this group"}.</p></article>}
-        </div>
+                    <label>
+                      Co-leader
+                      <select value={edit.coLeaderId ?? ""} disabled={isEquipeActionLoading} onChange={(event) => setEdit("coLeaderId", event.target.value || null)}>
+                        <option value="">No co-leader</option>
+                        {groupChiefs.map((chief) => <option value={chief.id} key={chief.id}>{chief.name}</option>)}
+                      </select>
+                    </label>
+                  </div>
+                  <div className="equipe-description-editor">
+                    <button type="button" className="inline-action" onClick={() => setExpandedEquipeDescriptions((current) => ({ ...current, [equipe.id]: !current[equipe.id] }))}>
+                      {isDescriptionOpen ? "Hide Description" : "Edit Description"}
+                    </button>
+                    {isDescriptionOpen && (
+                      <textarea rows="3" disabled={isEquipeActionLoading} value={edit.description ?? ""} placeholder="Description" onChange={(event) => setEdit("description", event.target.value)} />
+                    )}
+                  </div>
+                  <div className="table-actions">
+                    <button type="button" className="inline-action" disabled={isEquipeActionLoading} onClick={() => saveDashboardEquipe(equipe.id)}>{isEquipeActionLoading ? "Saving..." : "Save"}</button>
+                    <button type="button" className="inline-action danger-action" disabled={isEquipeActionLoading} onClick={() => deleteDashboardEquipe(equipe.id)}>Delete Equipe</button>
+                  </div>
+                </article>
+              );
+            })}
+            {!groupEquipes.length && <article className="admin-panel"><h2>No equipes yet</h2><p>Create the first equipe for {dashboardGroup?.name ?? "this group"}.</p></article>}
+          </div>
+        </section>
 
-        <article className="table-panel">
+        <article className="table-panel equipe-assignment-zone">
           <div className="panel-heading">
             <div>
-              <h2>Unassigned scouts</h2>
-              <p>Select scouts here, then assign them to an equipe above.</p>
+              <h2>Scout Assignment Table</h2>
+              <p>Search, select, and move scouts between equipes.</p>
             </div>
             <div className="table-actions">
-              <button type="button" className="inline-action" onClick={() => assignSelectedScouts(null)}>Move selected to Unassigned</button>
+              <button type="button" className="inline-action" disabled={isEquipeActionLoading || !selectedScoutIds.length} onClick={() => assignSelectedScouts(null)}>Move Selected to Unassigned</button>
             </div>
           </div>
+          <div className="cms-toolbar equipe-assignment-toolbar">
+            <label>
+              Search scouts
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by name" />
+            </label>
+            <label>
+              Filter
+              <select value={equipeScoutFilter} disabled={isEquipeActionLoading} onChange={(event) => setEquipeScoutFilter(event.target.value)}>
+                <option value="all">All</option>
+                <option value="assigned">Assigned</option>
+                <option value="unassigned">Unassigned</option>
+              </select>
+            </label>
+          </div>
           <table>
-            <thead><tr><th>Select</th><th>Name</th><th>School Grade</th><th>Age</th><th>Gender</th><th>Equipe</th></tr></thead>
+            <thead><tr><th><input type="checkbox" disabled={isEquipeActionLoading} checked={allFilteredSelected} onChange={(event) => toggleFilteredScouts(event.target.checked)} aria-label="Select all visible scouts" /></th><th>Scout name</th><th>Current equipe</th></tr></thead>
             <tbody>
-              {groupScouts.map((scout) => (
+              {filteredAssignmentScouts.length ? filteredAssignmentScouts.map((scout) => (
                 <tr key={scout.id}>
-                  <td><input type="checkbox" checked={selectedScoutIds.includes(scout.id)} onChange={() => toggleScoutSelection(scout.id)} /></td>
+                  <td><input type="checkbox" disabled={isEquipeActionLoading} checked={selectedScoutIds.includes(scout.id)} onChange={() => toggleScoutSelection(scout.id)} /></td>
                   <td>{scout.name}</td>
-                  <td>{getSchoolGrade(scout)}</td>
-                  <td>{scout.age}</td>
-                  <td>{scout.gender || "Unknown"}</td>
-                  <td>{getEquipeName(scout, groupEquipes)}</td>
+                  <td>
+                    <select value={scout.equipeId ?? ""} disabled={isEquipeActionLoading} onChange={(event) => updateScoutEquipeAssignment(scout.id, event.target.value || null)}>
+                      <option value="">Unassigned</option>
+                      {groupEquipes.map((equipe) => <option value={equipe.id} key={equipe.id}>{equipe.name}</option>)}
+                    </select>
+                  </td>
                 </tr>
-              ))}
+              )) : <tr><td colSpan="3">No scouts match this filter.</td></tr>}
             </tbody>
           </table>
         </article>
 
-        <article className="admin-panel">
-          <h2>Automatic assignment</h2>
+        <article className="admin-panel automatic-assignment-zone">
+          <div className="panel-heading compact-heading">
+            <div>
+              <h2>Automatic Assignment Tool</h2>
+              <p>Gender-balancing logic is preserved while assigning scouts across equipes.</p>
+            </div>
+          </div>
           <div className="cms-toolbar">
             <label>
               Split mode
-              <select value={autoAssignMode} onChange={(event) => setAutoAssignMode(event.target.value)}>
-                <option value="equal">Equal split</option>
-                <option value="custom">Custom size per equipe</option>
+              <select value={autoAssignMode} disabled={isEquipeActionLoading} onChange={(event) => setAutoAssignMode(event.target.value)}>
+                <option value="equal">Equal Split</option>
+                <option value="custom">Custom Size per Equipe</option>
               </select>
             </label>
             {isMixedGroup && (
               <label>
                 Gender balance
-                <select value={genderBalance} onChange={(event) => setGenderBalance(event.target.value)}>
+                <select value={genderBalance} disabled={isEquipeActionLoading} onChange={(event) => setGenderBalance(event.target.value)}>
                   <option value="auto">Auto-balance based on available scouts</option>
                   <option value="50">50% male / 50% female</option>
                   <option value="60">60% male / 40% female</option>
@@ -2403,14 +2587,14 @@ export default function AdminDashboardPage() {
                 </select>
               </label>
             )}
-            <button type="button" className="primary-action" onClick={buildRandomAssignmentPreview}>Preview random split</button>
+            <button type="button" className="primary-action" disabled={isEquipeActionLoading} onClick={runAutomaticAssignment}>{isEquipeActionLoading ? "Running..." : "Run Automatic Assignment"}</button>
           </div>
           {autoAssignMode === "custom" && (
             <div className="inline-editor-grid compact">
               {groupEquipes.map((equipe) => (
                 <label key={equipe.id}>
                   {equipe.name}
-                  <input type="number" min="0" value={customEquipeSizes[equipe.id] ?? ""} onChange={(event) => setCustomEquipeSizes((current) => ({ ...current, [equipe.id]: event.target.value }))} />
+                  <input type="number" min="0" disabled={isEquipeActionLoading} value={customEquipeSizes[equipe.id] ?? ""} onChange={(event) => setCustomEquipeSizes((current) => ({ ...current, [equipe.id]: event.target.value }))} />
                 </label>
               ))}
             </div>
@@ -2424,7 +2608,7 @@ export default function AdminDashboardPage() {
                   return (
                     <article className="admin-panel" key={equipe.id}>
                       <h3>{equipe.name}</h3>
-                      <p>{scouts.length} scouts  -  {scouts.filter((scout) => scout.gender === "male").length} male  -  {scouts.filter((scout) => scout.gender === "female").length} female</p>
+                      <p>{scouts.length} scouts - {scouts.filter((scout) => scout.gender === "male").length} male - {scouts.filter((scout) => scout.gender === "female").length} female</p>
                       <div className="mini-list">{scouts.map((scout) => <span key={scout.id}>{scout.name}</span>)}</div>
                     </article>
                   );
@@ -2432,9 +2616,9 @@ export default function AdminDashboardPage() {
               </div>
               <p className="helper-text">{assignmentPreview.unassigned.length} scouts will stay Unassigned.</p>
               <div className="action-row">
-                <button type="button" className="inline-action" onClick={buildRandomAssignmentPreview}>Randomize Again</button>
-                <button type="button" className="primary-action" onClick={saveAssignmentPreview}>Save Assignments</button>
-                <button type="button" className="inline-action" onClick={() => setAssignmentPreview(null)}>Cancel</button>
+                <button type="button" className="inline-action" disabled={isEquipeActionLoading} onClick={buildRandomAssignmentPreview}>Randomize Again</button>
+                <button type="button" className="primary-action" disabled={isEquipeActionLoading} onClick={() => saveAssignmentPreview()}>{isEquipeActionLoading ? "Saving..." : "Save Assignments"}</button>
+                <button type="button" className="inline-action" disabled={isEquipeActionLoading} onClick={() => setAssignmentPreview(null)}>Cancel</button>
               </div>
             </div>
           )}
@@ -2442,7 +2626,6 @@ export default function AdminDashboardPage() {
       </div>
     );
   };
-
   const renderChiefs = () => (
     <div className="cms-panel-stack">
       <form className="inline-editor-grid chief-add-form" onSubmit={createChief}>
@@ -2516,8 +2699,9 @@ export default function AdminDashboardPage() {
   const renderPosts = () => (
     <div className="cms-panel-stack">
       <form className="cms-form wizard-form" onSubmit={createPost}>
-        <h2>Create post</h2>
+
         <WizardStepper step={postWizardStep} />
+        {editingWizardPostId && <p className="helper-text">Editing a saved draft. Review it before submitting.</p>}
         {postWizardStep === 0 && (
           <div className="wizard-panel">
             <input required placeholder="Title" value={newPost.title} onChange={(event) => setNewPost((current) => ({ ...current, title: event.target.value }))} />
@@ -2553,37 +2737,38 @@ export default function AdminDashboardPage() {
         {postWizardStep === 2 && (
           <div className="wizard-panel">
             <h3>Review post</h3>
-            <ReviewGrid items={[
-              ["Title", newPost.title],
-              ["Type", newPost.postType],
-              ["Category", newPost.category],
-              ["Excerpt", newPost.excerpt],
-              ["Thumbnail", newPost.thumbnailFile?.name],
-              ["Linked album", allAlbums.find((album) => album.id === newPost.albumId)?.title]
-            ]} />
+            <div className="approval-preview-card wizard-preview-card">
+              <BlogPostPreview post={{ ...newPost, contentType: "Blog post", author: newPost.author || user?.name || "Scout Leader", authorProfilePictureUrl: user?.profilePictureUrl }} compact />
+              <ReviewGrid items={[
+                ["Type", newPost.postType],
+                ["Category", newPost.category],
+                ["Thumbnail", newPost.thumbnailFile?.name ?? (newPost.thumbnailUrl ? "Existing thumbnail" : "Not set")],
+                ["Linked album", allAlbums.find((album) => album.id === newPost.albumId)?.title]
+              ]} />
+            </div>
           </div>
         )}
         {postWizardStep < 2 ? (
           <WizardControls step={postWizardStep} setStep={setPostWizardStep} canProceed={postWizardStep === 0 ? Boolean(newPost.title.trim() && newPost.body.trim()) : true} />
-        ) : isAdmin ? (
-          <WizardControls step={postWizardStep} setStep={setPostWizardStep} isSubmitting={Boolean(uploadStatus)} submitLabel="Create post" />
         ) : (
           <div className="wizard-actions">
             <button type="button" className="secondary-action" onClick={() => setPostWizardStep(1)}>Back</button>
             <button type="submit" className="secondary-action" value="draft" disabled={Boolean(uploadStatus)}>Save draft</button>
-            <button type="submit" className="primary-action" value="pending" disabled={Boolean(uploadStatus)}>Send for approval</button>
+            <button type="submit" className="primary-action" value={isAdmin ? newPost.approvalStatus : "pending"} disabled={Boolean(uploadStatus)}>{uploadStatus ? "Working..." : isAdmin ? "Submit post" : "Send for approval"}</button>
+            <button type="button" className="danger-action" disabled={Boolean(uploadStatus)} onClick={discardPostWizard}>{editingWizardPostId ? "Delete draft" : "Discard"}</button>
           </div>
         )}
       </form>
-      <BlogLinksTable items={visiblePosts} onDelete={deleteBlog} refresh={refresh} canDelete={isAdmin} />
+      <BlogLinksTable items={visiblePosts} onDelete={deleteBlog} refresh={refresh} canDelete={isAdmin} onEditDraft={loadPostDraftIntoWizard} />
     </div>
   );
 
   const renderGallery = () => (
     <div className="cms-panel-stack">
       <form className="cms-form gallery-bundle-form wizard-form" onSubmit={createGalleryAlbum}>
-        <h2>Gallery upload</h2>
+
         <WizardStepper step={galleryWizardStep} />
+        {editingWizardAlbumId && <p className="helper-text">Editing a saved album draft. Review it before submitting.</p>}
         {galleryWizardStep === 0 && (
           <div className="wizard-panel">
             <div className="segmented-choice">
@@ -2655,20 +2840,43 @@ export default function AdminDashboardPage() {
         {galleryWizardStep === 2 && (
           <div className="wizard-panel">
             <h3>Review album</h3>
-            <ReviewGrid items={[
-              ["Mode", galleryUploadMode === "new" ? "New album" : "Existing album"],
-              ["Album", galleryUploadMode === "new" ? newAlbum.title : allAlbums.find((album) => album.id === photoAlbumId)?.title],
-              ["Date", newAlbum.eventDate],
-              ["Location", newAlbum.location],
-              ["Category", newAlbum.category],
-              ["Thumbnail", albumThumbnailFile?.name],
-              ["Photos", `${photoFiles.length} selected`]
-            ]} />
+            <div className="approval-preview-card wizard-preview-card photo-batch-preview">
+              <div className="preview-event-meta">
+                <span>{galleryUploadMode === "new" ? "New album" : "Existing album"}</span>
+                <span>{galleryUploadMode === "new" ? newAlbum.title : allAlbums.find((album) => album.id === photoAlbumId)?.title}</span>
+                <span>{photoFiles.length} photo{photoFiles.length === 1 ? "" : "s"} selected</span>
+              </div>
+              <FormattedText text={newAlbum.description} fallback="No description added yet." />
+              <ReviewGrid items={[
+                ["Date", newAlbum.eventDate],
+                ["Location", newAlbum.location],
+                ["Category", newAlbum.category],
+                ["Thumbnail", albumThumbnailFile?.name ?? (editingWizardAlbumId ? "Existing thumbnail" : "Not set")]
+              ]} />
+              <div className="upload-preview image-upload-list">
+                {photoFiles.slice(0, 8).map((file) => <span key={`${file.name}-${file.size}-${file.lastModified}`}>{file.name}</span>)}
+                {!photoFiles.length && <small>No new photos selected.</small>}
+              </div>
+            </div>
           </div>
         )}
-        <WizardControls step={galleryWizardStep} setStep={setGalleryWizardStep} isSubmitting={Boolean(uploadStatus)} submitLabel="Submit photo bundle" canProceed={galleryWizardStep === 0 ? (galleryUploadMode === "existing" ? Boolean(photoAlbumId) : Boolean(newAlbum.title.trim() && newAlbum.eventDate && newAlbum.location.trim() && newAlbum.category.trim())) : galleryWizardStep === 1 ? Boolean(photoFiles.length && (galleryUploadMode === "existing" || albumThumbnailFile)) : true} />
+        {galleryWizardStep < 2 ? (
+          <WizardControls
+            step={galleryWizardStep}
+            setStep={setGalleryWizardStep}
+            isSubmitting={Boolean(uploadStatus)}
+            canProceed={galleryWizardStep === 0 ? (galleryUploadMode === "existing" ? Boolean(photoAlbumId) : Boolean(newAlbum.title.trim() && newAlbum.eventDate && newAlbum.location.trim() && newAlbum.category.trim())) : galleryWizardStep === 1 ? Boolean((photoFiles.length || editingWizardAlbumId) && (galleryUploadMode === "existing" || albumThumbnailFile || editingWizardAlbumId)) : true}
+          />
+        ) : (
+          <div className="wizard-actions">
+            <button type="button" className="secondary-action" onClick={() => setGalleryWizardStep(1)}>Back</button>
+            <button type="submit" className="secondary-action" value="draft" disabled={Boolean(uploadStatus)}>Save draft</button>
+            <button type="submit" className="primary-action" value={isAdmin ? newAlbum.approvalStatus : "pending"} disabled={Boolean(uploadStatus)}>{uploadStatus ? "Working..." : "Submit album/photos"}</button>
+            <button type="button" className="danger-action" disabled={Boolean(uploadStatus)} onClick={discardGalleryWizard}>{editingWizardAlbumId ? "Delete draft" : "Discard"}</button>
+          </div>
+        )}
       </form>
-      <AlbumLinksTable items={visibleAlbums} onDelete={deleteAlbum} refresh={refresh} canDelete={isAdmin} />
+      <AlbumLinksTable items={visibleAlbums} onDelete={deleteAlbum} refresh={refresh} canDelete={isAdmin} onEditDraft={loadAlbumDraftIntoWizard} />
     </div>
   );
 
@@ -2818,8 +3026,8 @@ export default function AdminDashboardPage() {
         )}
         <dl className="approval-details">
           <div><dt>Submitted by</dt><dd><span className="approval-submitter"><UserAvatar name={getSubmitterName(selectedApproval)} imageUrl={getSubmitterPicture(selectedApproval)} size={30} />{getSubmitterName(selectedApproval)}</span></dd></div>
-          <div><dt>Created</dt><dd>{selectedApproval.createdAt ?? "Unknown"}</dd></div>
-          <div><dt>Updated</dt><dd>{selectedApproval.updatedAt ?? "Not updated"}</dd></div>
+          <div><dt>Created</dt><dd>{formatDubaiDateTime(selectedApproval.createdAt)}</dd></div>
+          <div><dt>Updated</dt><dd>{formatDubaiDateTime(selectedApproval.updatedAt)}</dd></div>
         </dl>
       </div>
     );
@@ -2855,7 +3063,7 @@ export default function AdminDashboardPage() {
                 <td>{item.title}</td>
                 <td><StatusBadge status={item.approvalStatus} /></td>
                 <td><span className="approval-submitter"><UserAvatar name={getSubmitterName(item)} imageUrl={getSubmitterPicture(item)} size={28} />{getSubmitterName(item)}</span></td>
-                <td>{item.updatedAt ?? item.createdAt}</td>
+                <td>{formatDubaiDateTime(getReviewTimestamp(item))}</td>
                 <td className="table-actions">
                   <button type="button" className="inline-action" onClick={() => {
                     setSelectedApproval(item);
@@ -2936,13 +3144,15 @@ export default function AdminDashboardPage() {
   };
 
   const activeTitle = selectedSection?.[1] ?? "Admin";
-  const mobilePrimaryItems = flatSidebarItems.slice(0, 4);
-  const mobileMoreItems = flatSidebarItems.slice(4);
+  const mobilePrimaryIds = ["overview", "myGroup", "scoutAttendance", "calendar"];
+  const mobilePrimaryItems = mobilePrimaryIds.map((id) => flatSidebarItems.find(([itemId]) => itemId === id)).filter(Boolean).slice(0, 4);
+  const mobilePrimaryIdSet = new Set(mobilePrimaryItems.map(([id]) => id));
+  const mobileMoreItems = flatSidebarItems.filter(([id]) => !mobilePrimaryIdSet.has(id));
   const hasMobileMoreItems = mobileMoreItems.length > 0;
   const isMobilePrimaryActive = (id) => activeSection === id;
 
   return (
-    <section className={`admin-cms-shell sidebar-${sidebarMode} ${isMobileSidebarOpen ? "mobile-sidebar-open" : ""} ${showMobileMenuBar ? "mobile-menu-bar-visible" : ""}`}>
+    <section className={`admin-cms-shell sidebar-${sidebarMode} ${isSidebarTemporarilyExpanded ? "sidebar-temporary-expanded" : ""} ${isMobileSidebarOpen ? "mobile-sidebar-open" : ""} ${showMobileMenuBar ? "mobile-menu-bar-visible" : ""}`}>
       <div className="dashboard-mobile-reveal-bar" aria-hidden={!showMobileMenuBar}>
         <button type="button" className="dashboard-menu-button" aria-expanded={isMobileSidebarOpen} aria-controls="dashboard-sidebar" onClick={() => setIsMobileSidebarOpen(true)}>
           <Menu size={18} aria-hidden="true" />
@@ -2982,7 +3192,7 @@ export default function AdminDashboardPage() {
             const GroupIcon = group.Icon;
             return (
               <div className={`sidebar-group ${isOpen ? "open" : ""} ${isActiveGroup ? "active-group" : ""}`} key={group.id}>
-                <button type="button" className="sidebar-group-trigger" onClick={() => sidebarMode === "collapsed" ? selectSidebarItem(group.children[0]?.[0]) : toggleSidebarGroup(group.id)} title={group.label} aria-label={group.label} aria-expanded={isOpen}>
+                <button type="button" className="sidebar-group-trigger" onClick={() => sidebarMode === "collapsed" ? openCollapsedSidebarGroup(group.id) : toggleSidebarGroup(group.id)} title={group.label} aria-label={group.label} aria-expanded={isOpen}>
                   <GroupIcon size={17} aria-hidden="true" />
                   <span>{group.label}</span>
                   <ChevronDown className="sidebar-chevron" size={16} aria-hidden="true" />
@@ -3126,12 +3336,6 @@ export default function AdminDashboardPage() {
             </div>
           </div>
         </div>
-        <div className="admin-main-header dashboard-context-header">
-          <div>
-            <p className="eyebrow">{settingSections.some(([id]) => id === activeSection) ? "Settings" : "Built-in CMS"}</p>
-            <h1>{activeTitle}</h1>
-          </div>
-        </div>
         {saveMessage && <p className="helper-text dashboard-save-message">{saveMessage}</p>}
         {isDashboardLoading && <UploadLoadingState message="Loading dashboard data..." />}
         {dashboardError && (
@@ -3217,7 +3421,7 @@ function StatusBadge({ status }) {
   return <span className={`status-badge ${status ?? "pending"}`}>{String(status ?? "pending").replace("_", " ")}</span>;
 }
 
-function BlogLinksTable({ items, onDelete, refresh, canDelete = false }) {
+function BlogLinksTable({ items, onDelete, refresh, canDelete = false, onEditDraft = null }) {
   return (
     <div className="table-panel">
       <table className="editable-table blog-list-table">
@@ -3240,6 +3444,7 @@ function BlogLinksTable({ items, onDelete, refresh, canDelete = false }) {
               <td>{item.updatedAt?.slice?.(0, 10) ?? item.createdAt?.slice?.(0, 10) ?? ""}</td>
               <td className="table-actions">
                 <Link className="inline-action" to={`/blogs/${item.slug}`}>Open</Link>
+                {item.approvalStatus === "draft" && onEditDraft && <button type="button" className="inline-action" onClick={() => onEditDraft(item)}>Edit draft</button>}
                 {canDelete && !item.isRevision && (
                   <button type="button" className="inline-action danger-action" onClick={async () => {
                     await onDelete(item.id);
@@ -3257,7 +3462,7 @@ function BlogLinksTable({ items, onDelete, refresh, canDelete = false }) {
   );
 }
 
-function AlbumLinksTable({ items, onDelete, refresh, canDelete = false }) {
+function AlbumLinksTable({ items, onDelete, refresh, canDelete = false, onEditDraft = null }) {
   return (
     <div className="table-panel">
       <table className="editable-table blog-list-table">
@@ -3280,6 +3485,7 @@ function AlbumLinksTable({ items, onDelete, refresh, canDelete = false }) {
               <td>{item.photoCount ?? item.photos?.length ?? 0}</td>
               <td className="table-actions">
                 <Link className="inline-action" to={`/gallery/${item.originalId ?? item.id}`}>Open</Link>
+                {item.approvalStatus === "draft" && onEditDraft && <button type="button" className="inline-action" onClick={() => onEditDraft(item)}>Edit draft</button>}
                 {canDelete && !item.isRevision && (
                   <button type="button" className="inline-action danger-action" onClick={async () => {
                     await onDelete(item.id);
@@ -3422,6 +3628,5 @@ function AccessDenied({ message = "Your role, chief level, assigned group, and p
     </article>
   );
 }
-
 
 

@@ -268,6 +268,7 @@ export function normalizeEvent(event) {
     linkedBlogId: event.linked_blog_id ?? event.linkedBlogId ?? null,
     linkedAlbumId: event.linked_album_id ?? event.linkedAlbumId ?? null,
     submittedBy: event.submitted_by ?? event.created_by ?? event.submittedBy ?? event.createdBy ?? null,
+    createdAt: event.created_at ?? event.createdAt ?? null,
     updatedAt: event.updated_at ?? event.updatedAt ?? null
   };
 }

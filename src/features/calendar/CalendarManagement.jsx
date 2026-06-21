@@ -73,7 +73,11 @@ function getMonthCells(displayDate) {
 }
 
 function canSeeEvent(event, user) {
-  if (user?.role !== "admin" && (event.approvalStatus ?? "approved") !== "approved") {
+  if ((event.approvalStatus ?? "approved") === "draft" && event.submittedBy !== user?.id) {
+    return false;
+  }
+
+  if (user?.role !== "admin" && (event.approvalStatus ?? "approved") !== "approved" && event.submittedBy !== user?.id) {
     return false;
   }
 
@@ -179,15 +183,13 @@ function WizardStepper({ step }) {
   );
 }
 
-function WizardControls({ step, setStep, submitLabel, canProceed = true }) {
+function WizardControls({ step, setStep, canProceed = true }) {
   return (
     <div className="wizard-actions">
       {step > 0 && <button type="button" className="secondary-action" onClick={() => setStep((current) => Math.max(0, current - 1))}>Back</button>}
       {step < 2 ? (
         <button type="button" className="primary-action" disabled={!canProceed} onClick={() => setStep((current) => Math.min(2, current + 1))}>Next</button>
-      ) : (
-        <button type="submit" className="primary-action"><Plus size={18} aria-hidden="true" />{submitLabel}</button>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -225,6 +227,7 @@ export default function CalendarManagement() {
     description: ""
   });
   const [groupMeetingStep, setGroupMeetingStep] = useState(0);
+  const [editingGroupMeetingDraftId, setEditingGroupMeetingDraftId] = useState(null);
   const [adminEvent, setAdminEvent] = useState({
     title: "",
     dateFrom: "",
@@ -239,6 +242,7 @@ export default function CalendarManagement() {
     linkedAlbumId: ""
   });
   const [adminEventStep, setAdminEventStep] = useState(0);
+  const [editingAdminEventDraftId, setEditingAdminEventDraftId] = useState(null);
   const [saveMessage, setSaveMessage] = useState("");
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [editingEvent, setEditingEvent] = useState(null);
@@ -251,6 +255,12 @@ export default function CalendarManagement() {
   const selectedDateEvents = useMemo(
     () => getEventsForDay(visibleEvents, selectedDate),
     [selectedDate, visibleEvents]
+  );
+  const ownCalendarDrafts = useMemo(
+    () => data.plannedEvents
+      .filter((event) => event.submittedBy === user?.id && event.approvalStatus === "draft")
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt || b.dateFrom || b.date).getTime() - new Date(a.updatedAt || a.createdAt || a.dateFrom || a.date).getTime()),
+    [data.plannedEvents, user?.id]
   );
   const agendaEventsByDate = useMemo(() => {
     const currentMonth = displayDate.getMonth();
@@ -331,26 +341,7 @@ export default function CalendarManagement() {
     setSelectedDate(dateKey);
     setCalendarView("month");
   };
-  const handleCreateGroupMeeting = async (event) => {
-    event.preventDefault();
-    const error = validateEventDates(groupMeeting);
-    if (error) {
-      setSaveMessage(error);
-      return;
-    }
-
-    await createCalendarEvent({
-      ...groupMeeting,
-      date: groupMeeting.dateFrom,
-      title: groupMeeting.title || `${user.groupId} meeting`,
-      type: "meeting",
-      visibility: "group",
-      groupId: user.groupId,
-      visibleGroupIds: [user.groupId],
-      description: groupMeeting.description || "Group meeting created by a head or vice chief.",
-      approvalStatus: user.role === "admin" ? "approved" : "pending"
-    });
-    setSaveMessage(user.role === "admin" ? "Group meeting saved." : "Group meeting submitted for admin approval.");
+  const resetGroupMeetingWizard = () => {
     setGroupMeeting({
       title: "",
       dateFrom: "",
@@ -361,26 +352,83 @@ export default function CalendarManagement() {
       description: ""
     });
     setGroupMeetingStep(0);
-    await refresh();
-    setLastCalendarUpdate(new Date());
+    setEditingGroupMeetingDraftId(null);
   };
-  const handleCreateAdminEvent = async (event) => {
+
+  const loadCalendarDraftIntoWizard = (draft) => {
+    if (canCreateAdminEvent) {
+      setEditingAdminEventDraftId(draft.id);
+      setAdminEvent({
+        title: draft.title ?? "",
+        dateFrom: draft.dateFrom ?? draft.date ?? "",
+        dateTo: draft.dateTo ?? draft.dateFrom ?? draft.date ?? "",
+        startTime: draft.startTime ?? "",
+        endTime: draft.endTime ?? "",
+        visibility: draft.visibility ?? "public",
+        visibleGroupIds: draft.visibleGroupIds ?? [],
+        location: draft.location ?? "Scout Hall",
+        description: draft.description ?? "",
+        linkedBlogId: draft.linkedBlogId ?? "",
+        linkedAlbumId: draft.linkedAlbumId ?? ""
+      });
+      setAdminEventStep(0);
+      setSaveMessage(`Loaded draft "${draft.title}" into the event wizard.`);
+      return;
+    }
+
+    setEditingGroupMeetingDraftId(draft.id);
+    setGroupMeeting({
+      title: draft.title ?? "",
+      dateFrom: draft.dateFrom ?? draft.date ?? "",
+      dateTo: draft.dateTo ?? draft.dateFrom ?? draft.date ?? "",
+      startTime: draft.startTime ?? "",
+      endTime: draft.endTime ?? "",
+      location: draft.location ?? "Scout Hall",
+      description: draft.description ?? ""
+    });
+    setGroupMeetingStep(0);
+    setSaveMessage(`Loaded draft "${draft.title}" into the meeting wizard.`);
+  };
+
+  const handleCreateGroupMeeting = async (event) => {
     event.preventDefault();
-    const error = validateEventDates(adminEvent);
+    const requestedStatus = event.nativeEvent.submitter?.value;
+    if (groupMeetingStep < wizardSteps.length - 1) {
+      setGroupMeetingStep(wizardSteps.length - 1);
+      setSaveMessage("Review your meeting, then submit when ready.");
+      return;
+    }
+
+    const error = validateEventDates(groupMeeting);
     if (error) {
       setSaveMessage(error);
       return;
     }
 
-    await createCalendarEvent({
-      ...adminEvent,
-      date: adminEvent.dateFrom,
-      type: adminEvent.visibility === "group" ? "meeting" : "event",
-      status: "planned",
-      approvalStatus: "approved",
-      description: adminEvent.description || "Calendar event created by admin."
-    });
-    setSaveMessage("Calendar event saved.");
+    const approvalStatus = requestedStatus === "draft" ? "draft" : user.role === "admin" ? "approved" : "pending";
+    const groupMeetingPayload = {
+      ...groupMeeting,
+      date: groupMeeting.dateFrom,
+      title: groupMeeting.title || `${user.groupId} meeting`,
+      type: "meeting",
+      visibility: "group",
+      groupId: user.groupId,
+      visibleGroupIds: [user.groupId],
+      description: groupMeeting.description || "Group meeting created by a head or vice chief.",
+      approvalStatus
+    };
+
+    if (editingGroupMeetingDraftId) {
+      await updateCalendarEvent(editingGroupMeetingDraftId, groupMeetingPayload);
+    } else {
+      await createCalendarEvent(groupMeetingPayload);
+    }
+    setSaveMessage(approvalStatus === "draft" ? "Group meeting draft saved." : user.role === "admin" ? "Group meeting saved." : "Group meeting submitted for admin approval.");
+    resetGroupMeetingWizard();
+    await refresh();
+    setLastCalendarUpdate(new Date());
+  };
+  const resetAdminEventWizard = () => {
     setAdminEvent({
       title: "",
       dateFrom: "",
@@ -395,6 +443,41 @@ export default function CalendarManagement() {
       linkedAlbumId: ""
     });
     setAdminEventStep(0);
+    setEditingAdminEventDraftId(null);
+  };
+
+  const handleCreateAdminEvent = async (event) => {
+    event.preventDefault();
+    const requestedStatus = event.nativeEvent.submitter?.value;
+    if (adminEventStep < wizardSteps.length - 1) {
+      setAdminEventStep(wizardSteps.length - 1);
+      setSaveMessage("Review your calendar event, then submit when ready.");
+      return;
+    }
+
+    const error = validateEventDates(adminEvent);
+    if (error) {
+      setSaveMessage(error);
+      return;
+    }
+
+    const approvalStatus = requestedStatus === "draft" ? "draft" : "approved";
+    const adminEventPayload = {
+      ...adminEvent,
+      date: adminEvent.dateFrom,
+      type: adminEvent.visibility === "group" ? "meeting" : "event",
+      status: "planned",
+      approvalStatus,
+      description: adminEvent.description || "Calendar event created by admin."
+    };
+
+    if (editingAdminEventDraftId) {
+      await updateCalendarEvent(editingAdminEventDraftId, adminEventPayload);
+    } else {
+      await createCalendarEvent(adminEventPayload);
+    }
+    setSaveMessage(approvalStatus === "draft" ? "Calendar event draft saved." : "Calendar event saved.");
+    resetAdminEventWizard();
     await refresh();
     setLastCalendarUpdate(new Date());
   };
@@ -427,6 +510,29 @@ export default function CalendarManagement() {
       approvalStatus: selectedEvent.approvalStatus ?? "pending"
     });
   };
+  const toggleAdminEventGroup = (groupId) => {
+    setAdminEvent((current) => {
+      const groupIds = current.visibleGroupIds ?? [];
+      return {
+        ...current,
+        visibleGroupIds: groupIds.includes(groupId)
+          ? groupIds.filter((id) => id !== groupId)
+          : [...groupIds, groupId]
+      };
+    });
+  };
+  const toggleEditingEventGroup = (groupId) => {
+    setEditingEvent((current) => {
+      const groupIds = current.visibleGroupIds ?? [];
+      return {
+        ...current,
+        visibleGroupIds: groupIds.includes(groupId)
+          ? groupIds.filter((id) => id !== groupId)
+          : [...groupIds, groupId]
+      };
+    });
+  };
+
   const saveEventEdit = async (event) => {
     event.preventDefault();
     const error = validateEventDates(editingEvent);
@@ -500,6 +606,28 @@ export default function CalendarManagement() {
         user is allowed to see that group.
       </p>
       {saveMessage && <p className="helper-text">{saveMessage}</p>}
+      {ownCalendarDrafts.length > 0 && (
+        <div className="table-panel calendar-draft-panel">
+          <div className="panel-heading compact-heading">
+            <div>
+              <h2>Your saved calendar drafts</h2>
+              <p>Open a draft in the wizard, review it, then save or submit when ready.</p>
+            </div>
+            <span>{ownCalendarDrafts.length}</span>
+          </div>
+          <div className="pending-work-list">
+            {ownCalendarDrafts.map((draft) => (
+              <div className="pending-work-row" key={draft.id}>
+                <span className="pending-type-badge"><CalendarDays size={15} aria-hidden="true" />Draft</span>
+                <strong>{draft.title || "Untitled calendar draft"}</strong>
+                <small>{formatEventDateRange(draft)}</small>
+                <button type="button" className="inline-action" onClick={() => loadCalendarDraftIntoWizard(draft)}>Edit draft</button>
+                <button type="button" className="inline-action danger-action" onClick={() => handleDeleteEvent(draft.id, draft.title || "calendar draft")}>Delete</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {(canCreateGroupMeeting || canCreateAdminEvent) && (
         <div className="calendar-tools">
           {canCreateGroupMeeting && (
@@ -525,10 +653,27 @@ export default function CalendarManagement() {
               {groupMeetingStep === 2 && (
                 <div className="wizard-panel">
                   <h3>Review event</h3>
-                  <ReviewGrid items={[["Title", groupMeeting.title || `${user.groupId} meeting`], ["Date from", groupMeeting.dateFrom], ["Date to", groupMeeting.dateTo], ["Time", [groupMeeting.startTime, groupMeeting.endTime].filter(Boolean).join(" - ")], ["Location", groupMeeting.location]]} />
+                  <div className="approval-preview-card wizard-preview-card">
+                    <div className="preview-event-meta">
+                      <span>{groupMeeting.title || `${user.groupId} meeting`}</span>
+                      <span>{groupMeeting.dateFrom}{groupMeeting.dateTo && groupMeeting.dateTo !== groupMeeting.dateFrom ? ` to ${groupMeeting.dateTo}` : ""}</span>
+                      <span>{[groupMeeting.startTime, groupMeeting.endTime].filter(Boolean).join(" - ") || "All day"}</span>
+                      <span>{groupMeeting.location}</span>
+                    </div>
+                    <FormattedText text={groupMeeting.description} fallback="No description added yet." />
+                  </div>
                 </div>
               )}
-              <WizardControls step={groupMeetingStep} setStep={setGroupMeetingStep} submitLabel="Add group meeting" canProceed={groupMeetingStep === 0 ? Boolean(groupMeeting.dateFrom && groupMeeting.dateTo && groupMeeting.description.trim()) : groupMeetingStep === 1 ? Boolean(groupMeeting.location.trim()) : true} />
+              {groupMeetingStep < 2 ? (
+                <WizardControls step={groupMeetingStep} setStep={setGroupMeetingStep} canProceed={groupMeetingStep === 0 ? Boolean(groupMeeting.dateFrom && groupMeeting.dateTo && groupMeeting.description.trim()) : groupMeetingStep === 1 ? Boolean(groupMeeting.location.trim()) : true} />
+              ) : (
+                <div className="wizard-actions">
+                  <button type="button" className="secondary-action" onClick={() => setGroupMeetingStep(1)}>Back</button>
+                  <button type="submit" className="secondary-action" value="draft">Save draft</button>
+                  <button type="submit" className="primary-action" value={user.role === "admin" ? "approved" : "pending"}><Plus size={18} aria-hidden="true" />Submit meeting</button>
+                  <button type="button" className="danger-action" onClick={resetGroupMeetingWizard}>Discard</button>
+                </div>
+              )}
             </form>
           )}
           {canCreateAdminEvent && (
@@ -550,7 +695,17 @@ export default function CalendarManagement() {
                   <label>End time<input type="time" value={adminEvent.endTime} onChange={(event) => setAdminEvent((current) => ({ ...current, endTime: event.target.value }))} /></label>
                   <label>Location<input type="text" required value={adminEvent.location} onChange={(event) => setAdminEvent((current) => ({ ...current, location: event.target.value }))} /></label>
                   <label>Visibility<select value={adminEvent.visibility} onChange={(event) => setAdminEvent((current) => ({ ...current, visibility: event.target.value }))}><option value="public">Public</option><option value="logged-in">All Chiefs</option><option value="group">Specific Group/s</option></select></label>
-                  {adminEvent.visibility === "group" && <label>Groups<select multiple value={adminEvent.visibleGroupIds} onChange={(event) => setAdminEvent((current) => ({ ...current, visibleGroupIds: [...event.target.selectedOptions].map((option) => option.value) }))}>{scoutGroups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}</select></label>}
+                  {adminEvent.visibility === "group" && (
+                    <fieldset className="group-checkbox-list">
+                      <legend>Groups</legend>
+                      {scoutGroups.map((group) => (
+                        <label key={group.id}>
+                          <input type="checkbox" checked={(adminEvent.visibleGroupIds ?? []).includes(group.id)} onChange={() => toggleAdminEventGroup(group.id)} />
+                          <span>{group.name}</span>
+                        </label>
+                      ))}
+                    </fieldset>
+                  )}
                   <label>Linked blog<select value={adminEvent.linkedBlogId} onChange={(event) => setAdminEvent((current) => ({ ...current, linkedBlogId: event.target.value }))}><option value="">No linked blog</option>{linkablePosts.map((post) => <option key={post.id} value={post.id}>{post.title}</option>)}</select></label>
                   <label>Linked gallery<select value={adminEvent.linkedAlbumId} onChange={(event) => setAdminEvent((current) => ({ ...current, linkedAlbumId: event.target.value }))}><option value="">No linked gallery</option>{linkableAlbums.map((album) => <option key={album.id} value={album.id}>{album.title}</option>)}</select></label>
                 </div>
@@ -558,10 +713,32 @@ export default function CalendarManagement() {
               {adminEventStep === 2 && (
                 <div className="wizard-panel">
                   <h3>Review event</h3>
-                  <ReviewGrid items={[["Title", adminEvent.title], ["Date from", adminEvent.dateFrom], ["Date to", adminEvent.dateTo], ["Visibility", adminEvent.visibility], ["Location", adminEvent.location], ["Linked blog", linkablePosts.find((post) => post.id === adminEvent.linkedBlogId)?.title], ["Linked gallery", linkableAlbums.find((album) => album.id === adminEvent.linkedAlbumId)?.title]]} />
+                  <div className="approval-preview-card wizard-preview-card">
+                    <div className="preview-event-meta">
+                      <span>{adminEvent.title}</span>
+                      <span>{adminEvent.dateFrom}{adminEvent.dateTo && adminEvent.dateTo !== adminEvent.dateFrom ? ` to ${adminEvent.dateTo}` : ""}</span>
+                      <span>{[adminEvent.startTime, adminEvent.endTime].filter(Boolean).join(" - ") || "All day"}</span>
+                      <span>{adminEvent.visibility}</span>
+                      <span>{adminEvent.location}</span>
+                    </div>
+                    <FormattedText text={adminEvent.description} fallback="No description added yet." />
+                    <ReviewGrid items={[
+                      ["Linked blog", linkablePosts.find((post) => post.id === adminEvent.linkedBlogId)?.title],
+                      ["Linked gallery", linkableAlbums.find((album) => album.id === adminEvent.linkedAlbumId)?.title]
+                    ]} />
+                  </div>
                 </div>
               )}
-              <WizardControls step={adminEventStep} setStep={setAdminEventStep} submitLabel="Add event" canProceed={adminEventStep === 0 ? Boolean(adminEvent.title.trim() && adminEvent.dateFrom && adminEvent.dateTo && adminEvent.description.trim()) : adminEventStep === 1 ? Boolean(adminEvent.location.trim()) : true} />
+              {adminEventStep < 2 ? (
+                <WizardControls step={adminEventStep} setStep={setAdminEventStep} canProceed={adminEventStep === 0 ? Boolean(adminEvent.title.trim() && adminEvent.dateFrom && adminEvent.dateTo && adminEvent.description.trim()) : adminEventStep === 1 ? Boolean(adminEvent.location.trim()) : true} />
+              ) : (
+                <div className="wizard-actions">
+                  <button type="button" className="secondary-action" onClick={() => setAdminEventStep(1)}>Back</button>
+                  <button type="submit" className="secondary-action" value="draft">Save draft</button>
+                  <button type="submit" className="primary-action" value="approved"><Plus size={18} aria-hidden="true" />Submit event</button>
+                  <button type="button" className="danger-action" onClick={resetAdminEventWizard}>Discard</button>
+                </div>
+              )}
             </form>
           )}
         </div>
@@ -681,6 +858,17 @@ export default function CalendarManagement() {
                   {user?.role === "admin" && (
                     <>
                       <label>Visibility<select value={editingEvent.visibility} onChange={(event) => setEditingEvent((current) => ({ ...current, visibility: event.target.value }))}><option value="public">Public</option><option value="logged-in">All Chiefs</option><option value="group">Specific Group/s</option></select></label>
+                      {editingEvent.visibility === "group" && (
+                        <fieldset className="group-checkbox-list">
+                          <legend>Groups</legend>
+                          {scoutGroups.map((group) => (
+                            <label key={group.id}>
+                              <input type="checkbox" checked={(editingEvent.visibleGroupIds ?? []).includes(group.id)} onChange={() => toggleEditingEventGroup(group.id)} />
+                              <span>{group.name}</span>
+                            </label>
+                          ))}
+                        </fieldset>
+                      )}
                       <label>Status<select value={editingEvent.approvalStatus} onChange={(event) => setEditingEvent((current) => ({ ...current, approvalStatus: event.target.value }))}><option value="pending">pending</option><option value="approved">approved</option><option value="needs_changes">needs changes</option><option value="rejected">rejected</option><option value="archived">archived</option></select></label>
                     </>
                   )}
@@ -732,5 +920,3 @@ export default function CalendarManagement() {
     </section>
   );
 }
-
-

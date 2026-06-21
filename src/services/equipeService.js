@@ -51,20 +51,16 @@ export async function updateEquipe(equipeId, payload) {
 }
 
 export async function archiveEquipe(equipeId) {
-  const [updated] = await patchSupabaseRows("equipes", `id=eq.${encodeURIComponent(equipeId)}`, {
-    is_active: false,
-    archived_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  });
-
   await patchSupabaseRows("scouts", `equipe_id=eq.${encodeURIComponent(equipeId)}`, {
     equipe_id: null
   });
-  await logAuditEvent("equipe_archived", "Equipe", equipeId);
 
-  return updated;
+  await deleteSupabaseRows("equipe_leaders", `equipe_id=eq.${encodeURIComponent(equipeId)}`);
+  await deleteSupabaseRows("equipes", `id=eq.${encodeURIComponent(equipeId)}`);
+  await logAuditEvent("equipe_deleted", "Equipe", equipeId);
+
+  return { id: equipeId, deleted: true };
 }
-
 export async function assignScoutsToEquipe({ scoutIds, equipeId, groupId }) {
   const currentUserId = getCurrentSupabaseUserId();
   const uniqueScoutIds = [...new Set(scoutIds ?? [])].filter(Boolean);
