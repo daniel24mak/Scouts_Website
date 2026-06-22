@@ -1,4 +1,6 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { clearRecoveryReloads } from "../components/SiteRecoveryPrompt.jsx";
+import { notifySiteLoadError } from "../services/siteErrorService.js";
 
 const cacheTtlMs = 60 * 1000;
 const publicDataCache = new Map();
@@ -48,6 +50,7 @@ function loadPublicData(key, loader, { force = false } = {}) {
   const request = loader()
     .then((nextData) => {
       publicDataCache.set(key, { data: nextData, createdAt: Date.now() });
+      clearRecoveryReloads();
       return nextData;
     })
     .finally(() => {
@@ -68,10 +71,21 @@ export function usePublicData(loader, dependencies = [], initialData = null, cac
   const reload = async () => {
     setIsLoading(true);
     setError(null);
-    const nextData = await loadPublicData(requestKey, loader, { force: true });
-    setData(nextData);
-    setIsLoading(false);
-    return nextData;
+
+    try {
+      const nextData = await loadPublicData(requestKey, loader, { force: true });
+      setData(nextData);
+      return nextData;
+    } catch (nextError) {
+      setError(nextError);
+      notifySiteLoadError(nextError, {
+        source: "public-data-reload",
+        metadata: { requestKey }
+      });
+      throw nextError;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -102,6 +116,10 @@ export function usePublicData(loader, dependencies = [], initialData = null, cac
         if (!cancelled) {
           setError(nextError);
           setIsLoading(false);
+          notifySiteLoadError(nextError, {
+            source: "public-data-load",
+            metadata: { requestKey }
+          });
         }
       });
 

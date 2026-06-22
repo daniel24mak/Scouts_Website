@@ -462,6 +462,16 @@ CREATE TABLE audit_logs (
   metadata jsonb NOT NULL DEFAULT '{}',
   created_at timestamptz NOT NULL DEFAULT now()
 );
+CREATE TABLE site_error_messages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  message text NOT NULL,
+  stack text,
+  source text NOT NULL DEFAULT 'client',
+  page_url text,
+  user_agent text,
+  metadata jsonb NOT NULL DEFAULT '{}',
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chiefs ENABLE ROW LEVEL SECURITY;
@@ -495,6 +505,7 @@ ALTER TABLE faqs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contact_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE site_error_messages ENABLE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION current_profile()
 RETURNS user_profiles
@@ -819,6 +830,18 @@ CREATE POLICY "admins manage contact messages" ON contact_messages
 
 CREATE POLICY "admins manage audit logs" ON audit_logs
   FOR ALL USING (is_admin()) WITH CHECK (is_admin());
+CREATE POLICY "public submit site error messages" ON site_error_messages
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "admins read site error messages" ON site_error_messages
+  FOR SELECT USING (is_admin());
+
+CREATE POLICY "admins delete site error messages" ON site_error_messages
+  FOR DELETE USING (is_admin());
+
+GRANT INSERT ON public.site_error_messages TO anon, authenticated;
+GRANT SELECT, DELETE ON public.site_error_messages TO authenticated;
+CREATE INDEX site_error_messages_created_at_idx ON site_error_messages (created_at DESC);
 
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('scouts-files', 'scouts-files', true)
@@ -862,10 +885,4 @@ CREATE POLICY "logged in users upload publishable images" ON storage.objects
 
 CREATE POLICY "public read site images" ON storage.objects
   FOR SELECT USING (bucket_id IN ('site-images', 'leader-headshots', 'gallery', 'blog-thumbnails', 'event-images', 'album-thumbnails'));
-
-
-
-
-
-
 

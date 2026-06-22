@@ -10687,8 +10687,12 @@ textarea:focus-visible {
 }
 
 .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-subitems {
-  max-height: 560px;
+  max-height: 0;
   padding-left: 12px;
+}
+
+.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-group.open .sidebar-subitems {
+  max-height: 560px;
 }
 
 .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar button,
@@ -11214,5 +11218,86 @@ textarea:focus-visible {
 @media (max-width: 768px) {
   .dashboard-bottom-tabs {
     grid-template-columns: repeat(auto-fit, minmax(0, 1fr)) !important;
+  }
+}
+
+.site-recovery-prompt {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 2200;
+  width: min(420px, calc(100vw - 28px));
+  pointer-events: none;
+}
+
+.site-recovery-card {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  padding: 22px;
+  border: 1px solid rgba(64, 85, 166, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 24px 70px rgba(22, 33, 76, 0.2);
+  pointer-events: auto;
+}
+
+.site-recovery-card h2 {
+  margin: 0;
+  color: #4055a6;
+  font-size: 1.2rem;
+}
+
+.site-recovery-card p {
+  margin: 0;
+  color: #4d566c;
+  line-height: 1.55;
+}
+
+.site-recovery-card .primary-action {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.site-recovery-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: #4055a6;
+  background: rgba(64, 85, 166, 0.08);
+  cursor: pointer;
+}
+
+.site-recovery-close:hover,
+.site-recovery-close:focus-visible {
+  color: #ffffff;
+  background: #4055a6;
+}
+
+.error-screen .primary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+@media (max-width: 640px) {
+  .site-recovery-prompt {
+    right: 14px;
+    bottom: 14px;
+    left: 14px;
+    width: auto;
+  }
+
+  .site-recovery-card {
+    padding: 20px;
   }
 }

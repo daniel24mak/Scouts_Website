@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getBootstrap, loadingData } from "./client.js";
+import { notifySiteLoadError } from "../services/siteErrorService.js";
 
 let cachedBootstrap = null;
 let inFlightBootstrap = null;
@@ -23,6 +24,7 @@ function loadBootstrap({ force = false } = {}) {
     })
     .catch((error) => {
       console.error("[dashboard] bootstrap fetch failed", error);
+      notifySiteLoadError(error, { source: "dashboard-bootstrap" });
       throw error;
     })
     .finally(() => {

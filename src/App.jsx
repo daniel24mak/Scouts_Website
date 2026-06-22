@@ -6,6 +6,7 @@ import Layout from "./components/Layout.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import ScrollToTop from "./components/ScrollToTop.jsx";
 import BrandedLoader from "./components/BrandedLoader.jsx";
+import SiteRecoveryPrompt from "./components/SiteRecoveryPrompt.jsx";
 import { ToastProvider } from "./components/ToastProvider.jsx";
 
 const AboutPage = lazy(() => import("./pages/AboutPage.jsx"));
@@ -31,6 +32,7 @@ export default function App() {
     <AuthProvider>
       <ToastProvider>
         <ScrollToTop />
+        <SiteRecoveryPrompt />
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route element={<Layout />}>
