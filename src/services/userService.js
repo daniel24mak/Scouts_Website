@@ -96,7 +96,10 @@ export async function createProfile(profile) {
     profile_picture_url: profilePictureUrl,
     can_publish: Boolean(profile.canPublish),
     can_create_group_meetings: Boolean(profile.canCreateGroupMeetings),
-    can_edit_scouts: Boolean(profile.canEditScouts)
+    can_edit_scouts: Boolean(profile.canEditScouts),
+    manage_form_templates: Boolean(profile.manageFormTemplates),
+    view_all_forms: Boolean(profile.viewAllForms),
+    post_forms: Boolean(profile.postForms)
   };
 
   return insertSupabaseRow("user_profiles", row).catch((error) => {
@@ -121,6 +124,9 @@ export async function updateProfile(userId, profile) {
     can_publish: Boolean(profile.canPublish),
     can_create_group_meetings: Boolean(profile.canCreateGroupMeetings),
     can_edit_scouts: Boolean(profile.canEditScouts),
+    manage_form_templates: Boolean(profile.manageFormTemplates),
+    view_all_forms: Boolean(profile.viewAllForms),
+    post_forms: Boolean(profile.postForms),
     updated_at: new Date().toISOString()
   };
 
@@ -151,7 +157,10 @@ export async function createDashboardUser(profile) {
     permissions: {
       can_publish: Boolean(profile.canPublish),
       can_create_group_meetings: Boolean(profile.canCreateGroupMeetings),
-      can_edit_scouts: Boolean(profile.canEditScouts)
+      can_edit_scouts: Boolean(profile.canEditScouts),
+      manage_form_templates: Boolean(profile.manageFormTemplates),
+      view_all_forms: Boolean(profile.viewAllForms),
+      post_forms: Boolean(profile.postForms)
     }
   });
 }

@@ -71,6 +71,7 @@ import ScoutAttendanceManager from "../features/attendance/ScoutAttendanceManage
 import AttendanceSheetsManager from "../features/attendance/AttendanceSheetsManager.jsx";
 import ChiefAttendanceManager from "../features/attendance/ChiefAttendanceManager.jsx";
 import CalendarManagement from "../features/calendar/CalendarManagement.jsx";
+import FormsDashboard, { FormPreview } from "../features/forms/FormsDashboard.jsx";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import { useToast } from "../components/ToastProvider.jsx";
 import AvatarCropModal from "../components/AvatarCropModal.jsx";
@@ -83,8 +84,12 @@ import {
   canCreateGroupMeetings,
   canEditScouts,
   canManageSystem,
+  canManageFormTemplates,
+  canPostForms,
   canPublishContent,
-  canTakeAttendance
+  canTakeAttendance,
+  canUseForms,
+  canViewAllForms
 } from "../services/permissions.js";
 import { subscribeDashboardRealtime } from "../services/realtimeService.js";
 import { isSupabaseConfigured } from "../services/supabaseClient.js";
@@ -205,6 +210,14 @@ const sections = [
   ["calendar", "Calendar Events", CalendarDays, "all"],
   ["posts", "Posts / Blogs", FileText, "publish"],
   ["gallery", "Gallery / Albums", GalleryHorizontal, "publish"],
+  ["manageForms", "Manage Forms", FileText, "forms_manage"],
+  ["formsCreate", "Create Form", FileText, "forms_manage"],
+  ["formTemplates", "Form Templates", FileText, "forms_manage"],
+  ["postedForms", "Posted Forms", FileText, "forms_post"],
+  ["formResponses", "Form Responses", FileText, "forms_view"],
+  ["myForms", "My Forms", FileText, "forms"],
+  ["myFormDrafts", "My Form Drafts", FileText, "forms"],
+  ["mySubmittedForms", "Submitted Forms", FileText, "forms"],
   ["approvals", "Approval Requests", CheckCircle2, "admin"],
   ["contactMessages", "Contact Messages", MessageSquare, "admin"],
   ["settings", "Settings", Settings, "admin"],
@@ -258,13 +271,13 @@ function arrayBufferToBase64(buffer) {
 
 function chiefDefaults(level) {
     if (level === "head") {
-    return { canPublish: true, canCreateGroupMeetings: true, canEditScouts: true };
+    return { canPublish: true, canCreateGroupMeetings: true, canEditScouts: true, manageFormTemplates: true, viewAllForms: true, postForms: true };
   }
     if (level === "vice") {
-    return { canPublish: true, canCreateGroupMeetings: true, canEditScouts: false };
+    return { canPublish: true, canCreateGroupMeetings: true, canEditScouts: false, manageFormTemplates: false, viewAllForms: false, postForms: true };
   }
 
-  return { canPublish: false, canCreateGroupMeetings: false, canEditScouts: false };
+  return { canPublish: false, canCreateGroupMeetings: false, canEditScouts: false, manageFormTemplates: false, viewAllForms: false, postForms: false };
 }
 
 function toChiefForm(user) {
@@ -278,6 +291,9 @@ function toChiefForm(user) {
     canPublish: Boolean(user.permissions.canPublish),
     canCreateGroupMeetings: Boolean(user.permissions.canCreateGroupMeetings),
     canEditScouts: Boolean(user.permissions.canEditScouts),
+    manageFormTemplates: Boolean(user.permissions.manageFormTemplates),
+    viewAllForms: Boolean(user.permissions.viewAllForms),
+    postForms: Boolean(user.permissions.postForms),
     profilePictureUrl: user.profilePictureUrl ?? null,
     profilePictureFile: null,
     profilePicturePreview: ""
@@ -384,6 +400,21 @@ function isSectionAllowed(section, user) {
   }
     if (access === "scouts") {
     return canEditScouts(user);
+  }
+    if (access === "forms") {
+    return canUseForms(user);
+  }
+    if (id === "manageForms") {
+    return canManageFormTemplates(user) || canPostForms(user) || canViewAllForms(user);
+  }
+    if (access === "forms_manage") {
+    return canManageFormTemplates(user) || canPostForms(user);
+  }
+    if (access === "forms_post") {
+    return canPostForms(user) || canViewAllForms(user);
+  }
+    if (access === "forms_view") {
+    return canViewAllForms(user) || canPostForms(user);
   }
 
   return false;
@@ -614,11 +645,21 @@ export default function AdminDashboardPage() {
   const allAlbums = data.allGalleryAlbums ?? data.galleryAlbums;
   const allPhotos = data.allGalleryPhotos ?? allAlbums.flatMap((album) => album.photos ?? []);
   const allPhotoBatches = data.photoUploadBatches ?? [];
+  const allPostedForms = data.postedForms ?? [];
+  const allFormSubmissions = data.formSubmissions ?? [];
+  const isPostedFormTargetedToUser = (form, targetUser = user) => {
+    if (!targetUser) return false;
+    if (form.targetType === "all_chiefs") return true;
+    if (form.targetType === "groups") return form.targetGroupIds?.includes(targetUser.groupId);
+    if (form.targetType === "users") return form.targetUserIds?.includes(targetUser.id);
+    return false;
+  };
   const reviewItems = [
     ...allPosts.filter((post) => post.approvalStatus !== "draft").map((post) => ({ ...post, contentType: "Blog post" })),
     ...allAlbums.filter((album) => album.approvalStatus !== "draft").map((album) => ({ ...album, contentType: "Album" })),
     ...allPhotoBatches.filter((batch) => batch.approvalStatus !== "draft").map((batch) => ({ ...batch, contentType: "Photo batch" })),
-    ...data.plannedEvents.filter((event) => event.approvalStatus !== "draft").map((event) => ({ ...event, contentType: "Calendar event" }))
+    ...data.plannedEvents.filter((event) => event.approvalStatus !== "draft").map((event) => ({ ...event, contentType: "Calendar event" })),
+    ...allPostedForms.filter((form) => form.approvalStatus !== "draft").map((form) => ({ ...form, contentType: "Posted form" }))
   ];
   const profileReviewItems = (data.users ?? [])
     .filter((profile) => profile.profileChangeStatus === "pending")
@@ -655,7 +696,8 @@ export default function AdminDashboardPage() {
       { id: "overview", type: "item", item: item("overview") },
       { id: "myGroupGroup", type: "group", label: "My Group", Icon: Users, children: available(["myGroup", "equipes"]) },
       { id: "attendanceGroup", type: "group", label: "Attendance", Icon: CheckCircle2, children: available(["scoutAttendance", "attendanceSheets", "chiefAttendance"]) },
-      { id: "contentGroup", type: "group", label: "Content", Icon: FileText, children: available(["calendar", "posts", "gallery"]) }
+      { id: "contentGroup", type: "group", label: "Content", Icon: FileText, children: available(["calendar", "posts", "gallery"]) },
+      { id: "formsGroup", type: "group", label: "Forms", Icon: FileText, children: isAdmin || canManageFormTemplates(user) || canPostForms(user) || canViewAllForms(user) ? available(["manageForms", "myForms"]) : available(["myForms"]) }
     ];
 
     if (canOpenSection("approvals", user)) groups.push({ id: "approvals", type: "item", item: item("approvals") });
@@ -938,7 +980,8 @@ export default function AdminDashboardPage() {
       Album: "gallery",
       "Photo batch": "gallery",
       "Calendar event": "calendar",
-      "Profile change": "usersPermissions"
+      "Profile change": "usersPermissions",
+      "Posted form": "myForms"
     };
     const targetSection = sectionByContentType[item.contentType] ?? "overview";
     openDashboardSection(canOpenSection(targetSection, user) ? targetSection : "overview");
@@ -1635,6 +1678,8 @@ export default function AdminDashboardPage() {
 
     if (item.contentType === "Profile change") {
       await reviewProfileChange(item, approvalStatus, payload.reviewerComment);
+    } else if (item.contentType === "Posted form") {
+      await reviewDashboardPostedForm(item.id, approvalStatus === "approved" ? "open" : approvalStatus, payload.reviewerComment);
     } else {
       const save =
         item.contentType === "Blog post"
@@ -2666,7 +2711,7 @@ export default function AdminDashboardPage() {
       </form>
       <div className="table-panel">
         <table className="editable-table users-permissions-table">
-          <thead><tr><th>Profile</th><th>Name</th><th>Email</th><th>Role</th><th>Group</th><th>Level</th><th>Status</th><th>Post/photos</th><th>Meetings</th><th>Edit scouts</th><th>Password</th><th>Save</th></tr></thead>
+          <thead><tr><th>Profile</th><th>Name</th><th>Email</th><th>Role</th><th>Group</th><th>Level</th><th>Status</th><th>Post/photos</th><th>Meetings</th><th>Edit scouts</th><th>Form templates</th><th>Post forms</th><th>All responses</th><th>Password</th><th>Save</th></tr></thead>
           <tbody>
             {chiefs.map((chief) => {
               const edit = chiefEdits[chief.id] ?? toChiefForm(chief);
@@ -2701,7 +2746,7 @@ export default function AdminDashboardPage() {
                   <td><select value={edit.groupId} onChange={(event) => setEdit("groupId", event.target.value)}>{data.groups.map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}</select></td>
                   <td><select value={edit.chiefLevel} onChange={(event) => setChiefLevel(chief.id, event.target.value)}><option value="chief">Chief</option><option value="vice">Vice head chief</option><option value="head">Head chief</option></select></td>
                   <td><select value={edit.accountStatus} onChange={(event) => setEdit("accountStatus", event.target.value)}><option value="active">Active</option><option value="disabled">Disabled</option></select></td>
-                  {["canPublish", "canCreateGroupMeetings", "canEditScouts"].map((field) => (
+                  {["canPublish", "canCreateGroupMeetings", "canEditScouts", "manageFormTemplates", "postForms", "viewAllForms"].map((field) => (
                     <td key={field}><label className="checkbox-cell"><input type="checkbox" checked={Boolean(edit[field])} onChange={(event) => setEdit(field, event.target.checked)} /></label></td>
                   ))}
                   <td><button type="button" className="inline-action" onClick={() => { setPasswordResetUser(chief); setPasswordResetValue(""); }}>Reset</button></td>
@@ -2989,6 +3034,11 @@ export default function AdminDashboardPage() {
             <span>{selectedApproval.visibility}</span>
           </div>
         )}
+        {selectedApproval.contentType === "Posted form" && (
+          <div className="forms-approval-preview">
+            <FormPreview form={selectedApproval} disabled />
+          </div>
+        )}
         {selectedApproval.contentType === "Album" && (
           <div className="photo-batch-preview">
             <div className="preview-event-meta">
@@ -3062,11 +3112,11 @@ export default function AdminDashboardPage() {
           <span>{pendingItems.length} waiting</span>
         </div>
         <div className="approval-type-tabs" role="tablist" aria-label="Approval types">
-          {["all", "Blog post", "Album", "Calendar event", "Photo batch", "Photo", "Profile change"].map((type) => {
+          {["all", "Blog post", "Album", "Calendar event", "Posted form", "Photo batch", "Photo", "Profile change"].map((type) => {
             const count = [...reviewItems, ...profileReviewItems].filter((item) => (type === "all" || item.contentType === type) && ["pending", "pending_update", "needs_changes"].includes(item.approvalStatus)).length;
             return (
               <button type="button" key={type} className={approvalTypeFilter === type ? "active" : ""} onClick={() => setApprovalTypeFilter(type)}>
-                <span>{type === "all" ? "All" : type.replace("Calendar event", "Events").replace("Blog post", "Blogs").replace("Profile change", "Profiles")}</span>
+                <span>{type === "all" ? "All" : type.replace("Calendar event", "Events").replace("Blog post", "Blogs").replace("Posted form", "Forms").replace("Profile change", "Profiles")}</span>
                 {count > 0 && <small>{count}</small>}
               </button>
             );
@@ -3154,6 +3204,9 @@ export default function AdminDashboardPage() {
     if (activeSection === "scoutAttendance") return <ScoutAttendanceManager />;
     if (activeSection === "attendanceSheets") return <AttendanceSheetsManager />;
     if (activeSection === "chiefAttendance") return <ChiefAttendanceManager />;
+    if (["manageForms", "formsCreate", "formTemplates", "postedForms", "formResponses", "myForms", "myFormDrafts", "mySubmittedForms"].includes(activeSection)) {
+      return <FormsDashboard data={data} user={user} isAdmin={isAdmin} mode={activeSection} onRefresh={refresh} setSaveMessage={setSaveMessage} />;
+    }
     if (activeSection === "calendar") return <CalendarManagement />;
     if (activeSection === "reports") return <EmptyAdminSection title="Reports" />;
     if (activeSection === "documents") return <EmptyAdminSection title="Documents" />;
@@ -3162,7 +3215,7 @@ export default function AdminDashboardPage() {
   };
 
   const activeTitle = selectedSection?.[1] ?? "Admin";
-  const mobilePrimaryIds = ["overview", "myGroup", "scoutAttendance", "calendar"];
+  const mobilePrimaryIds = ["overview", "myGroup", "scoutAttendance", "myForms"];
   const mobilePrimaryItems = mobilePrimaryIds.map((id) => flatSidebarItems.find(([itemId]) => itemId === id)).filter(Boolean).slice(0, 4);
   const mobilePrimaryIdSet = new Set(mobilePrimaryItems.map(([id]) => id));
   const mobileMoreItems = flatSidebarItems.filter(([id]) => !mobilePrimaryIdSet.has(id));

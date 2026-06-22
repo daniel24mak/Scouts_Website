@@ -19,7 +19,10 @@ INSERT INTO permissions (id, description) VALUES
   ('admin_tools', 'Access admin dashboard modules'),
   ('archive_access', 'View and export archived years'),
   ('reports', 'View and export reports'),
-  ('user_management', 'Create and manage internal users')
+  ('user_management', 'Create and manage internal users'),
+  ('manage_form_templates', 'Create, edit, draft, and manage reusable form templates'),
+  ('view_all_forms', 'View all posted forms and all submitted responses'),
+  ('post_forms', 'Prepare and submit forms for posting')
 ON CONFLICT (id) DO UPDATE SET description = EXCLUDED.description;
 
 INSERT INTO role_permissions (role_id, permission_id)

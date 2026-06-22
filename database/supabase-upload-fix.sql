@@ -706,3 +706,241 @@ DROP POLICY IF EXISTS "public read site images" ON storage.objects;
 CREATE POLICY "public read site images" ON storage.objects
   FOR SELECT USING (bucket_id IN ('site-images', 'leader-headshots', 'gallery', 'blog-thumbnails', 'event-images', 'album-thumbnails', 'profile-pictures'));
 
+
+-- Dashboard Forms / Evaluations system.
+ALTER TABLE user_profiles
+ADD COLUMN IF NOT EXISTS manage_form_templates boolean NOT NULL DEFAULT false,
+ADD COLUMN IF NOT EXISTS view_all_forms boolean NOT NULL DEFAULT false,
+ADD COLUMN IF NOT EXISTS post_forms boolean NOT NULL DEFAULT false;
+
+INSERT INTO permissions (id, description) VALUES
+  ('manage_form_templates', 'Create, edit, draft, and manage reusable form templates'),
+  ('view_all_forms', 'View all posted forms and all submitted responses'),
+  ('post_forms', 'Prepare and submit forms for posting')
+ON CONFLICT (id) DO UPDATE SET description = EXCLUDED.description;
+
+INSERT INTO role_permissions (role_id, permission_id)
+VALUES
+  ('admin', 'manage_form_templates'),
+  ('admin', 'view_all_forms'),
+  ('admin', 'post_forms')
+ON CONFLICT DO NOTHING;
+
+CREATE OR REPLACE FUNCTION public.can_manage_form_templates()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT public.is_admin()
+  OR EXISTS (
+    SELECT 1 FROM public.user_profiles
+    WHERE id = auth.uid()
+      AND manage_form_templates = true
+      AND account_status = 'active'
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.can_post_forms()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT public.is_admin()
+  OR EXISTS (
+    SELECT 1 FROM public.user_profiles
+    WHERE id = auth.uid()
+      AND post_forms = true
+      AND account_status = 'active'
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.can_view_all_forms()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT public.is_admin()
+  OR EXISTS (
+    SELECT 1 FROM public.user_profiles
+    WHERE id = auth.uid()
+      AND view_all_forms = true
+      AND account_status = 'active'
+  );
+$$;
+
+CREATE TABLE IF NOT EXISTS form_templates (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  description text,
+  status text NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'active', 'archived')),
+  current_version_id uuid,
+  schema_json jsonb NOT NULL DEFAULT '{"questions": []}',
+  created_by uuid REFERENCES user_profiles(id),
+  updated_by uuid REFERENCES user_profiles(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  archived_at timestamptz
+);
+
+CREATE TABLE IF NOT EXISTS form_template_versions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  template_id uuid NOT NULL REFERENCES form_templates(id) ON DELETE CASCADE,
+  version_number integer NOT NULL DEFAULT 1,
+  title text NOT NULL,
+  description text,
+  schema_json jsonb NOT NULL DEFAULT '{"questions": []}',
+  created_by uuid REFERENCES user_profiles(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (template_id, version_number)
+);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'form_templates_current_version_id_fkey'
+  ) THEN
+    ALTER TABLE form_templates
+    ADD CONSTRAINT form_templates_current_version_id_fkey
+    FOREIGN KEY (current_version_id) REFERENCES form_template_versions(id) ON DELETE SET NULL;
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS posted_forms (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  template_id uuid REFERENCES form_templates(id) ON DELETE SET NULL,
+  template_version_id uuid REFERENCES form_template_versions(id) ON DELETE SET NULL,
+  title text NOT NULL,
+  description text,
+  instructions text,
+  schema_json jsonb NOT NULL DEFAULT '{"questions": []}',
+  status text NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'pending', 'needs_changes', 'open', 'closed', 'rejected', 'archived')),
+  target_type text NOT NULL DEFAULT 'all_chiefs' CHECK (target_type IN ('all_chiefs', 'groups', 'users')),
+  target_group_ids text[] NOT NULL DEFAULT '{}',
+  target_user_ids uuid[] NOT NULL DEFAULT '{}',
+  linked_event_id uuid REFERENCES calendar_events(id) ON DELETE SET NULL,
+  due_date date,
+  allow_edits boolean NOT NULL DEFAULT true,
+  reviewer_comment text,
+  created_by uuid REFERENCES user_profiles(id),
+  approved_by uuid REFERENCES user_profiles(id),
+  posted_at timestamptz,
+  closed_by uuid REFERENCES user_profiles(id),
+  closed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE posted_forms
+ADD COLUMN IF NOT EXISTS generate_ai_summary boolean NOT NULL DEFAULT false;
+
+CREATE TABLE IF NOT EXISTS form_submissions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  posted_form_id uuid NOT NULL REFERENCES posted_forms(id) ON DELETE CASCADE,
+  submitted_by uuid NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
+  group_id text REFERENCES groups(id) ON DELETE SET NULL,
+  answers_json jsonb NOT NULL DEFAULT '{}',
+  status text NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'submitted', 'edited', 'locked')),
+  submitted_at timestamptz,
+  edited_at timestamptz,
+  locked_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (posted_form_id, submitted_by)
+);
+
+CREATE TABLE IF NOT EXISTS form_ai_summaries (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  posted_form_id uuid NOT NULL REFERENCES posted_forms(id) ON DELETE CASCADE,
+  status text NOT NULL DEFAULT 'not_configured' CHECK (status IN ('not_configured', 'pending', 'ready', 'failed')),
+  summary_json jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (posted_form_id)
+);
+
+ALTER TABLE form_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE form_template_versions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE posted_forms ENABLE ROW LEVEL SECURITY;
+ALTER TABLE form_submissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE form_ai_summaries ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "form templates visible" ON form_templates;
+CREATE POLICY "form templates visible" ON form_templates
+  FOR SELECT USING (public.can_manage_form_templates() OR public.can_post_forms() OR created_by = auth.uid());
+DROP POLICY IF EXISTS "form templates managed" ON form_templates;
+CREATE POLICY "form templates managed" ON form_templates
+  FOR ALL USING (public.can_manage_form_templates() OR created_by = auth.uid()) WITH CHECK (public.can_manage_form_templates() OR created_by = auth.uid());
+
+DROP POLICY IF EXISTS "form template versions visible" ON form_template_versions;
+CREATE POLICY "form template versions visible" ON form_template_versions
+  FOR SELECT USING (public.can_manage_form_templates() OR public.can_post_forms() OR created_by = auth.uid());
+DROP POLICY IF EXISTS "form template versions managed" ON form_template_versions;
+CREATE POLICY "form template versions managed" ON form_template_versions
+  FOR ALL USING (public.can_manage_form_templates() OR created_by = auth.uid()) WITH CHECK (public.can_manage_form_templates() OR created_by = auth.uid());
+
+DROP POLICY IF EXISTS "posted forms visible" ON posted_forms;
+CREATE POLICY "posted forms visible" ON posted_forms
+  FOR SELECT USING (
+    public.can_view_all_forms()
+    OR public.can_post_forms()
+    OR created_by = auth.uid()
+    OR (
+      status IN ('open', 'closed')
+      AND auth.uid() IS NOT NULL
+      AND (
+        target_type = 'all_chiefs'
+        OR auth.uid() = ANY(target_user_ids)
+        OR (SELECT group_id FROM user_profiles WHERE id = auth.uid()) = ANY(target_group_ids)
+      )
+    )
+  );
+DROP POLICY IF EXISTS "posted forms managed" ON posted_forms;
+CREATE POLICY "posted forms managed" ON posted_forms
+  FOR ALL USING (public.can_view_all_forms() OR public.can_post_forms() OR created_by = auth.uid())
+  WITH CHECK (public.can_view_all_forms() OR public.can_post_forms() OR created_by = auth.uid());
+
+DROP POLICY IF EXISTS "form submissions visible" ON form_submissions;
+CREATE POLICY "form submissions visible" ON form_submissions
+  FOR SELECT USING (public.can_view_all_forms() OR submitted_by = auth.uid());
+DROP POLICY IF EXISTS "form submissions write own" ON form_submissions;
+DROP POLICY IF EXISTS "form submissions insert own open forms" ON form_submissions;
+CREATE POLICY "form submissions insert own open forms" ON form_submissions
+  FOR INSERT WITH CHECK (
+    public.can_view_all_forms()
+    OR (
+      submitted_by = auth.uid()
+      AND EXISTS (SELECT 1 FROM posted_forms WHERE id = posted_form_id AND status = 'open')
+    )
+  );
+
+DROP POLICY IF EXISTS "form submissions update own open forms" ON form_submissions;
+CREATE POLICY "form submissions update own open forms" ON form_submissions
+  FOR UPDATE USING (
+    public.can_view_all_forms()
+    OR (
+      submitted_by = auth.uid()
+      AND EXISTS (SELECT 1 FROM posted_forms WHERE id = posted_form_id AND status = 'open' AND allow_edits = true)
+    )
+  ) WITH CHECK (
+    public.can_view_all_forms()
+    OR (
+      submitted_by = auth.uid()
+      AND EXISTS (SELECT 1 FROM posted_forms WHERE id = posted_form_id AND status = 'open' AND allow_edits = true)
+    )
+  );
+
+DROP POLICY IF EXISTS "form ai summaries visible" ON form_ai_summaries;
+CREATE POLICY "form ai summaries visible" ON form_ai_summaries
+  FOR SELECT USING (public.can_view_all_forms() OR public.can_post_forms());
+DROP POLICY IF EXISTS "form ai summaries managed" ON form_ai_summaries;
+CREATE POLICY "form ai summaries managed" ON form_ai_summaries
+  FOR ALL USING (public.can_view_all_forms()) WITH CHECK (public.can_view_all_forms());
+
+CREATE INDEX IF NOT EXISTS form_templates_status_idx ON form_templates (status);
+CREATE INDEX IF NOT EXISTS posted_forms_status_idx ON posted_forms (status);
+CREATE INDEX IF NOT EXISTS posted_forms_created_by_idx ON posted_forms (created_by);
+CREATE INDEX IF NOT EXISTS form_submissions_posted_form_id_idx ON form_submissions (posted_form_id);
+CREATE INDEX IF NOT EXISTS form_submissions_submitted_by_idx ON form_submissions (submitted_by);

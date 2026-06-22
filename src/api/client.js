@@ -60,6 +60,7 @@ import {
   updateLeader
 } from "../services/siteContentService.js";
 import { adminResetUserPassword, createDashboardUser, createProfile, getProfiles, reviewProfileChangeRequest, submitProfileChangeRequest, updateProfile } from "../services/userService.js";
+import { closePostedForm, deleteFormTemplateCascade, deletePostedFormCascade, getFormsData, reopenPostedForm, saveFormSubmission, saveFormTemplate, savePostedForm, updatePostedFormReview } from "../services/formService.js";
 
 export const fallbackData = {
   users: demoUsers,
@@ -127,10 +128,11 @@ export async function getBootstrap() {
       getGallery(),
       getWebsiteContent(),
       getPublicEngagementData(),
-      getEquipeData()
+      getEquipeData(),
+      getFormsData()
     ]);
     const valueAt = (index, fallback) =>
-      results[index].status === "fulfilled" ? results[index].value : fallback;
+      results[index]?.status === "fulfilled" ? results[index].value : fallback;
     const users = valueAt(0, []);
     const scoutData = valueAt(1, {
       groups: scoutGroups,
@@ -152,6 +154,7 @@ export async function getBootstrap() {
     const websiteData = valueAt(6, { siteContent: {}, leaders: [] });
     const engagementData = valueAt(7, { faqs: [], contactMessages: [] });
     const equipeData = valueAt(8, { equipes: [] });
+    const formsData = valueAt(9, { formTemplates: [], formTemplateVersions: [], postedForms: [], formSubmissions: [], formAiSummaries: [] });
 
     return {
       users,
@@ -163,6 +166,7 @@ export async function getBootstrap() {
       ...websiteData,
       ...engagementData,
       ...equipeData,
+      ...formsData,
       contentSubmissions: [
         ...(contentData.allBlogPosts ?? []).map((post) => ({ ...post, contentType: "blog" })),
         ...(galleryData.allGalleryAlbums ?? []).map((album) => ({ ...album, contentType: "album" }))
@@ -593,8 +597,68 @@ export function assignEquipeScouts(payload) {
 
   return Promise.resolve(payload);
 }
+export function saveDashboardFormTemplate(payload) {
+  if (isSupabaseConfigured) {
+    return saveFormTemplate(payload);
+  }
+
+  return Promise.resolve(payload);
+}
 
 
+export function deleteDashboardFormTemplate(templateId) {
+  if (isSupabaseConfigured) {
+    return deleteFormTemplateCascade(templateId);
+  }
+
+  return Promise.resolve(null);
+}
+
+export function saveDashboardPostedForm(payload) {
+  if (isSupabaseConfigured) {
+    return savePostedForm(payload);
+  }
+
+  return Promise.resolve(payload);
+}
+
+export function reviewDashboardPostedForm(formId, status, comment) {
+  if (isSupabaseConfigured) {
+    return updatePostedFormReview(formId, status, comment);
+  }
+
+  return Promise.resolve({ id: formId, approvalStatus: status });
+}
+
+export function closeDashboardPostedForm(formId) {
+  if (isSupabaseConfigured) {
+    return closePostedForm(formId);
+  }
+
+  return Promise.resolve({ id: formId, approvalStatus: "closed" });
+}
 
 
+export function reopenDashboardPostedForm(formId) {
+  if (isSupabaseConfigured) {
+    return reopenPostedForm(formId);
+  }
 
+  return Promise.resolve({ id: formId, approvalStatus: "open" });
+}
+
+export function deleteDashboardPostedForm(formId) {
+  if (isSupabaseConfigured) {
+    return deletePostedFormCascade(formId);
+  }
+
+  return Promise.resolve(null);
+}
+
+export function saveDashboardFormSubmission(payload) {
+  if (isSupabaseConfigured) {
+    return saveFormSubmission(payload);
+  }
+
+  return Promise.resolve(payload);
+}

@@ -27,7 +27,10 @@ export function normalizeProfile(profile) {
       canCreateGroupMeetings: Boolean(
         profile.can_create_group_meetings ?? profile.permissions?.canCreateGroupMeetings
       ),
-      canEditScouts: Boolean(profile.can_edit_scouts ?? profile.permissions?.canEditScouts)
+      canEditScouts: Boolean(profile.can_edit_scouts ?? profile.permissions?.canEditScouts),
+      manageFormTemplates: Boolean(profile.manage_form_templates ?? profile.permissions?.manageFormTemplates),
+      viewAllForms: Boolean(profile.view_all_forms ?? profile.permissions?.viewAllForms),
+      postForms: Boolean(profile.post_forms ?? profile.permissions?.postForms)
     }
   };
 }
