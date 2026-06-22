@@ -540,6 +540,7 @@ export default function AdminDashboardPage() {
   const [newChiefPreview, setNewChiefPreview] = useState("");
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
   const [profileEdit, setProfileEdit] = useState({ name: user?.name ?? "", profilePictureFile: null, profilePicturePreview: "", currentPassword: "", newPassword: "", confirmPassword: "" });
   const [profileMessage, setProfileMessage] = useState("");
@@ -643,7 +644,8 @@ export default function AdminDashboardPage() {
       .map((item) => ({ ...item, contentType: item.contentType ?? (item.location ? "Calendar event" : item.photos ? "Album" : "Blog post") })),
     [allPosts, allAlbums, data.plannedEvents, user?.id]
   );
-  const dashboardNotificationCount = canOpenSection("approvals", user) ? pendingItems.length : ownPendingItems.length;
+  const notificationItems = canOpenSection("approvals", user) ? pendingItems : ownPendingItems;
+  const dashboardNotificationCount = notificationItems.length;
   const selectedSection = sections.find(([id]) => id === activeSection);
   const sectionById = useMemo(() => new Map(sections.map((section) => [section[0], section])), []);
   const sidebarGroups = useMemo(() => {
@@ -715,12 +717,6 @@ export default function AdminDashboardPage() {
     }
   }, [activeSection, user]);
   useEffect(() => {
-    const activeGroup = sidebarGroups.find((group) => group.type === "group" && group.children.some(([id]) => id === activeSection));
-    if (activeGroup) {
-      setOpenSidebarGroups((current) => current[activeGroup.id] ? current : { ...current, [activeGroup.id]: true });
-    }
-  }, [activeSection, sidebarGroups]);
-  useEffect(() => {
     if (!isSidebarTemporarilyExpanded) {
       return undefined;
     }
@@ -749,9 +745,10 @@ export default function AdminDashboardPage() {
   }, [activeSection, activeSetting]);
   useEffect(() => {
     const handleKeyDown = (event) => {
-    if (event.key === "Escape") {
+      if (event.key === "Escape") {
         setIsMobileSidebarOpen(false);
         setIsMobileMoreOpen(false);
+        setIsNotificationsOpen(false);
         setIsProfileMenuOpen(false);
       }
     };
@@ -772,7 +769,7 @@ export default function AdminDashboardPage() {
       const isMobile = window.matchMedia("(max-width: 768px)").matches;
       const isScrollingUp = currentScrollY < lastScrollY - 8;
       const isScrollingDown = currentScrollY > lastScrollY + 8;
-    if (!isMobile || currentScrollY < 180 || isMobileSidebarOpen) {
+      if (!isMobile || currentScrollY < 180 || isMobileSidebarOpen) {
         setShowMobileMenuBar(false);
       } else if (isScrollingUp) {
         setShowMobileMenuBar(true);
@@ -792,6 +789,26 @@ export default function AdminDashboardPage() {
       window.removeEventListener("resize", handleDashboardScroll);
     };
   }, [isMobileSidebarOpen]);
+  useEffect(() => {
+    if (!isProfileMenuOpen && !isNotificationsOpen) {
+      return undefined;
+    }
+
+    const closeOpenTopbarMenus = (event) => {
+      if (!event.target.closest?.(".dashboard-profile-menu") && !event.target.closest?.(".dashboard-notification-menu")) {
+        setIsProfileMenuOpen(false);
+        setIsNotificationsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", closeOpenTopbarMenus);
+    document.addEventListener("touchstart", closeOpenTopbarMenus, { passive: true });
+
+    return () => {
+      document.removeEventListener("mousedown", closeOpenTopbarMenus);
+      document.removeEventListener("touchstart", closeOpenTopbarMenus);
+    };
+  }, [isProfileMenuOpen, isNotificationsOpen]);
   useEffect(() => {
     const unsubscribe = subscribeDashboardRealtime(async () => {
       await refresh();
@@ -887,6 +904,7 @@ export default function AdminDashboardPage() {
     }
     setIsMobileSidebarOpen(false);
     setIsMobileMoreOpen(false);
+    setIsNotificationsOpen(false);
   };
   const toggleSidebarMode = async () => {
     setIsSidebarTemporarilyExpanded(false);
@@ -895,10 +913,10 @@ export default function AdminDashboardPage() {
     await logAuditEvent("sidebar_preference_changed", "Dashboard", user?.id ?? "anonymous", { sidebarMode: nextMode });
   };
   const toggleSidebarGroup = (id) => {
-    setOpenSidebarGroups((current) => ({ ...current, [id]: !current[id] }));
+    setOpenSidebarGroups((current) => (current[id] ? {} : { [id]: true }));
   };
   const openCollapsedSidebarGroup = (groupId) => {
-    setOpenSidebarGroups((current) => ({ ...current, [groupId]: true }));
+    setOpenSidebarGroups((current) => (current[groupId] ? current : { [groupId]: true }));
     setIsSidebarTemporarilyExpanded(true);
   };
   const openPendingWorkItem = (item) => {
@@ -3150,6 +3168,7 @@ export default function AdminDashboardPage() {
   const mobileMoreItems = flatSidebarItems.filter(([id]) => !mobilePrimaryIdSet.has(id));
   const hasMobileMoreItems = mobileMoreItems.length > 0;
   const isMobilePrimaryActive = (id) => activeSection === id;
+  const visibleNotificationItems = notificationItems.slice(0, 8);
 
   return (
     <section className={`admin-cms-shell sidebar-${sidebarMode} ${isSidebarTemporarilyExpanded ? "sidebar-temporary-expanded" : ""} ${isMobileSidebarOpen ? "mobile-sidebar-open" : ""} ${showMobileMenuBar ? "mobile-menu-bar-visible" : ""}`}>
@@ -3215,6 +3234,10 @@ export default function AdminDashboardPage() {
         </Link>
       </aside>
       <nav className="dashboard-bottom-tabs" aria-label="Dashboard mobile navigation">
+        <Link to="/" className="dashboard-bottom-tab-link" aria-label="Back to website">
+          <ArrowLeft size={18} aria-hidden="true" />
+          <span>Website</span>
+        </Link>
         {mobilePrimaryItems.map(([id, label, Icon]) => (
           <button type="button" key={id} className={isMobilePrimaryActive(id) ? "active" : ""} onClick={() => selectSidebarItem(id)}>
             <Icon size={18} aria-hidden="true" />
@@ -3317,12 +3340,30 @@ export default function AdminDashboardPage() {
             }} title="Refresh dashboard data" aria-label="Refresh dashboard data">
               <RefreshCw size={16} aria-hidden="true" />
             </button>
-            <button type="button" className="dashboard-notification-button" onClick={() => openDashboardSection(canOpenSection("approvals", user) ? "approvals" : "overview")} title={canOpenSection("approvals", user) ? "Pending approvals" : "My pending work"}>
-              <Bell size={18} aria-hidden="true" />
-              {dashboardNotificationCount > 0 && <small>{dashboardNotificationCount}</small>}
-            </button>
+            <div className="dashboard-notification-menu">
+              <button type="button" className="dashboard-notification-button" onClick={() => { setIsNotificationsOpen((current) => !current); setIsProfileMenuOpen(false); }} title={canOpenSection("approvals", user) ? "Pending approvals" : "My pending work"} aria-expanded={isNotificationsOpen} aria-haspopup="menu">
+                <Bell size={18} aria-hidden="true" />
+                {dashboardNotificationCount > 0 && <small>{dashboardNotificationCount}</small>}
+              </button>
+              {isNotificationsOpen && (
+                <div className="dashboard-notification-dropdown" role="menu">
+                  <div className="notification-dropdown-header">
+                    <strong>Notifications</strong>
+                    <span>{dashboardNotificationCount}</span>
+                  </div>
+                  {visibleNotificationItems.length ? visibleNotificationItems.map((item) => (
+                    <button type="button" key={`${item.contentType}-${item.id}`} onClick={() => { setIsNotificationsOpen(false); openPendingWorkItem(item); }}>
+                      <span>{item.contentType}</span>
+                      <strong>{item.title || item.name || "Untitled request"}</strong>
+                      <small>{item.approvalStatus?.replace?.("_", " ") ?? "pending"}</small>
+                    </button>
+                  )) : <p>No notifications right now.</p>}
+                  {dashboardNotificationCount > visibleNotificationItems.length && <button type="button" className="notification-view-all" onClick={() => { setIsNotificationsOpen(false); openDashboardSection(canOpenSection("approvals", user) ? "approvals" : "overview"); }}>View all</button>}
+                </div>
+              )}
+            </div>
             <div className="dashboard-profile-menu">
-              <button type="button" className="dashboard-profile-button" onClick={() => setIsProfileMenuOpen((current) => !current)} aria-expanded={isProfileMenuOpen}>
+              <button type="button" className="dashboard-profile-button" onClick={() => { setIsProfileMenuOpen((current) => !current); setIsNotificationsOpen(false); }} aria-expanded={isProfileMenuOpen}>
                 <UserAvatar user={user} size={36} />
                 <span>{user.name}</span>
                 <ChevronDown size={15} aria-hidden="true" />

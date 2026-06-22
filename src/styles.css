@@ -11019,3 +11019,200 @@ textarea:focus-visible {
     justify-content: center;
   }
 }
+
+/* Dashboard mobile utility fixes: website tab, notification dropdown, keyboard and modal safety. */
+.dashboard-notification-menu {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.dashboard-notification-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 140;
+  display: grid;
+  width: min(340px, calc(100vw - 28px));
+  max-height: min(420px, 70vh);
+  overflow: auto;
+  border: 1px solid var(--dashboard-line, #dfe5ef);
+  border-radius: 8px;
+  padding: 8px;
+  background: #ffffff;
+  box-shadow: 0 22px 60px rgb(15 23 42 / 0.18);
+}
+
+.notification-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px 10px;
+  color: var(--dashboard-blue, #4055a6);
+}
+
+.notification-dropdown-header span {
+  display: inline-grid;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 999px;
+  color: #ffffff;
+  background: #e5484d;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.dashboard-notification-dropdown button {
+  display: grid;
+  gap: 3px;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px;
+  color: var(--dashboard-text, #172044);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dashboard-notification-dropdown button:hover,
+.dashboard-notification-dropdown button:focus-visible {
+  background: rgb(64 85 166 / 0.08);
+  outline: none;
+}
+
+.dashboard-notification-dropdown button span,
+.dashboard-notification-dropdown button small {
+  color: var(--dashboard-muted, #667085);
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.dashboard-notification-dropdown button strong {
+  color: var(--dashboard-text, #172044);
+  font-size: 0.9rem;
+}
+
+.dashboard-notification-dropdown p {
+  margin: 0;
+  padding: 12px 10px;
+  color: var(--dashboard-muted, #667085);
+  font-weight: 800;
+}
+
+.modal-backdrop:has(.calendar-detail-modal) {
+  z-index: 150;
+}
+
+@media (max-width: 768px) {
+  .dashboard-topbar {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    padding-block: 9px !important;
+  }
+
+  .dashboard-topbar-actions {
+    display: flex !important;
+    flex-flow: row nowrap !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 5px !important;
+  }
+
+  .dashboard-refresh-button,
+  .dashboard-notification-button,
+  .dashboard-profile-button {
+    width: 38px !important;
+    min-width: 38px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+  }
+
+  .dashboard-topbar-search {
+    display: none !important;
+  }
+
+  .dashboard-bottom-tabs a.dashboard-bottom-tab-link,
+  .dashboard-bottom-tabs button {
+    position: relative;
+    display: grid;
+    min-width: 0;
+    min-height: 54px;
+    align-content: center;
+    justify-items: center;
+    gap: 3px;
+    border: 0;
+    border-radius: 7px;
+    padding: 6px 3px !important;
+    color: #5f6677;
+    background: transparent;
+    font-size: 0.68rem;
+    font-weight: 900;
+    line-height: 1.08;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .dashboard-bottom-tabs a.dashboard-bottom-tab-link span,
+  .dashboard-bottom-tabs button span {
+    display: -webkit-box;
+    min-height: 1.35rem;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: 0.64rem;
+    line-height: 1.06;
+    text-align: center;
+  }
+
+  .dashboard-bottom-tabs a.dashboard-bottom-tab-link:hover,
+  .dashboard-bottom-tabs a.dashboard-bottom-tab-link:focus-visible {
+    color: var(--dashboard-blue, #4055a6);
+    background: rgb(64 85 166 / 0.1);
+    outline: none;
+  }
+
+  .dashboard-notification-dropdown {
+    position: fixed;
+    top: 62px;
+    right: 10px;
+    left: 10px;
+    width: auto;
+    max-height: min(440px, calc(100dvh - 90px));
+  }
+
+  .admin-cms-shell:has(input:focus),
+  .admin-cms-shell:has(textarea:focus),
+  .admin-cms-shell:has(select:focus) {
+    padding-bottom: 16px !important;
+  }
+
+  .admin-cms-shell:has(input:focus) .dashboard-bottom-tabs,
+  .admin-cms-shell:has(textarea:focus) .dashboard-bottom-tabs,
+  .admin-cms-shell:has(select:focus) .dashboard-bottom-tabs,
+  body:has(.calendar-detail-modal) .dashboard-bottom-tabs,
+  body:has(.approval-review-modal) .dashboard-bottom-tabs,
+  body:has(.profile-modal) .dashboard-bottom-tabs,
+  body:has(.dashboard-more-sheet) .dashboard-bottom-tabs {
+    display: none !important;
+  }
+
+  .modal-backdrop:has(.calendar-detail-modal) {
+    z-index: 150 !important;
+    align-items: end;
+    padding: 10px 10px max(10px, env(safe-area-inset-bottom));
+  }
+
+  .calendar-detail-modal {
+    max-height: calc(100dvh - 20px) !important;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-bottom-tabs {
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr)) !important;
+  }
+}
