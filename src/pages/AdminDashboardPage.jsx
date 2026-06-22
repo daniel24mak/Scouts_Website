@@ -659,7 +659,12 @@ export default function AdminDashboardPage() {
     ...allAlbums.filter((album) => album.approvalStatus !== "draft").map((album) => ({ ...album, contentType: "Album" })),
     ...allPhotoBatches.filter((batch) => batch.approvalStatus !== "draft").map((batch) => ({ ...batch, contentType: "Photo batch" })),
     ...data.plannedEvents.filter((event) => event.approvalStatus !== "draft").map((event) => ({ ...event, contentType: "Calendar event" })),
-    ...allPostedForms.filter((form) => form.approvalStatus !== "draft").map((form) => ({ ...form, contentType: "Posted form" }))
+    ...allPostedForms.filter((form) => form.approvalStatus !== "draft").map((form) => ({
+      ...form,
+      contentType: "Posted form",
+      submittedBy: form.submittedBy ?? form.createdBy,
+      submitterName: getSubmitterProfile(form.submittedBy ?? form.createdBy)?.name
+    }))
   ];
   const profileReviewItems = (data.users ?? [])
     .filter((profile) => profile.profileChangeStatus === "pending")

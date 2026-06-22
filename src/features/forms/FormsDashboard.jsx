@@ -81,7 +81,7 @@ function downloadCsv({ form, submissions, users, groups }) {
   });
   const escapeCell = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
   const csv = [headers, ...rows].map((row) => row.map(escapeCell).join(",")).join("\r\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -299,6 +299,7 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
   const [activeFormId, setActiveFormId] = useState(null);
   const [answers, setAnswers] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const [submitProgress, setSubmitProgress] = useState(null);
 
   useEffect(() => {
     if (mode === "manageForms") {
@@ -345,12 +346,17 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
       return;
     }
     setIsSaving(true);
+    setSubmitProgress({ percent: 20, label: status === "draft" ? "Saving draft..." : "Submitting form..." });
     try {
+      setSubmitProgress({ percent: 55, label: "Saving answers securely..." });
       await saveDashboardFormSubmission({ postedFormId: activeForm.id, submittedBy: user.id, groupId: user.groupId, answersJson: answers, status });
+      setSubmitProgress({ percent: 85, label: "Refreshing forms..." });
       setSaveMessage(status === "draft" ? "Form draft saved." : "Form submitted.");
       setActiveFormId(null);
       await onRefresh();
+      setSubmitProgress({ percent: 100, label: "Done" });
     } finally {
+      window.setTimeout(() => setSubmitProgress(null), 450);
       setIsSaving(false);
     }
   };
@@ -366,9 +372,16 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
       <div className="forms-fill-shell">
         <button type="button" className="inline-action" onClick={() => setActiveFormId(null)}>Back to forms</button>
         <FormPreview form={activeForm} answers={answers} disabled={locked} onAnswerChange={(questionId, value) => setAnswers((current) => ({ ...current, [questionId]: value }))} />
+        {submitProgress && (
+          <div className="upload-progress compact forms-submit-progress" aria-label={submitProgress.label}>
+            <div><span style={{ width: `${submitProgress.percent}%` }} /></div>
+            <strong>{submitProgress.percent}%</strong>
+            <small>{submitProgress.label}</small>
+          </div>
+        )}
         <div className="action-row">
-          <button type="button" className="inline-action" disabled={isSaving || locked} onClick={() => submitCurrentForm("draft")}>Save draft</button>
-          <button type="button" className="primary-action" disabled={isSaving || locked} onClick={() => submitCurrentForm("submitted")}>{existing?.approvalStatus === "submitted" ? "Update response" : "Submit form"}</button>
+          <button type="button" className="inline-action" disabled={isSaving || locked} onClick={() => submitCurrentForm("draft")}>{isSaving ? "Working..." : "Save draft"}</button>
+          <button type="button" className="primary-action" disabled={isSaving || locked} onClick={() => submitCurrentForm("submitted")}>{isSaving ? "Submitting..." : existing?.approvalStatus === "submitted" ? "Update response" : "Submit form"}</button>
           {locked && <span className="helper-text">This form is locked because it is closed or editing is disabled.</span>}
         </div>
       </div>
