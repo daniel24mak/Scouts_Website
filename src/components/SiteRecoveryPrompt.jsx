@@ -56,7 +56,7 @@ export default function SiteRecoveryPrompt() {
   }, []);
 
   useEffect(() => {
-    if (!recoveryError) return undefined;
+    if (!recoveryError || recoveryError.autoReload === false) return undefined;
 
     const reloadTimer = window.setTimeout(() => {
       const reloading = reloadWithRecoveryLimit(recoveryError.error || recoveryError.message, recoveryError.source || "client");
@@ -72,6 +72,8 @@ export default function SiteRecoveryPrompt() {
     recoveryError?.message || recoveryError?.error?.message || "Some page content could not be loaded."
   ), [recoveryError]);
 
+  const isImageError = recoveryError?.kind === "images";
+
   if (!recoveryError || dismissed) return null;
 
   return (
@@ -85,8 +87,8 @@ export default function SiteRecoveryPrompt() {
         >
           <X size={18} />
         </button>
-        <p className="eyebrow">Page not loading properly?</p>
-        <h2>Reload this page</h2>
+        <p className="eyebrow">{isImageError ? "Images not loading?" : "Page not loading properly?"}</p>
+        <h2>{isImageError ? "Try reloading the page" : "Reload this page"}</h2>
         <p>{isAutoReloading ? "Trying to reload automatically..." : message}</p>
         <button type="button" className="primary-action" onClick={() => window.location.reload()}>
           <RefreshCw size={18} />

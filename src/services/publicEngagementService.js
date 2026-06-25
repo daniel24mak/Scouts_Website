@@ -62,9 +62,10 @@ function normalizeContactMessage(row) {
     id: row.id,
     name: row.name,
     email: row.email,
+    phone: row.phone ?? "",
     subject: row.subject,
     message: row.message,
-    status: row.status ?? "new",
+    status: (row.status ?? "new") === "responded" ? "replied" : (row.status ?? "new"),
     notes: row.notes ?? "",
     createdAt: row.created_at ?? row.createdAt ?? null,
     readAt: row.read_at ?? row.readAt ?? null,
@@ -74,7 +75,7 @@ function normalizeContactMessage(row) {
 
 
 export async function getPublicFaqs() {
-  const rows = await getSupabaseRows("faqs", "select=id,question,answer,display_order,is_active,created_at,updated_at&is_active=eq.true&order=display_order.asc,created_at.asc").catch(() => []);
+  const rows = await getSupabaseRows("faqs", "select=id,question,answer,display_order,is_active,created_at,updated_at&is_active=eq.true&order=display_order.asc,created_at.asc");
   return rows.map(normalizeFaq).filter((faq) => faq.isActive !== false);
 }
 
@@ -86,7 +87,7 @@ export async function getPublicEngagementData() {
   const faqs = faqRows.map(normalizeFaq);
 
   return {
-    faqs: faqs.length ? faqs : defaultFaqs,
+    faqs,
     contactMessages: messageRows.map(normalizeContactMessage)
   };
 }
@@ -128,6 +129,7 @@ export function submitContactMessage(message) {
   return insertSupabaseRow("contact_messages", {
     name: message.name,
     email: message.email,
+    phone: message.phone ?? null,
     subject: message.subject,
     message: message.message,
     status: "new"
@@ -137,10 +139,10 @@ export function submitContactMessage(message) {
 export function updateContactMessage(messageId, message) {
   const now = new Date().toISOString();
   const statusPatch = {
-    status: message.status,
+    status: message.status === "replied" ? "responded" : message.status,
     notes: message.notes ?? "",
     read_at: message.status === "read" && !message.readAt ? now : message.readAt ?? null,
-    responded_at: message.status === "responded" && !message.respondedAt ? now : message.respondedAt ?? null
+    responded_at: ["responded", "replied"].includes(message.status) && !message.respondedAt ? now : message.respondedAt ?? null
   };
 
   return patchSupabaseRows("contact_messages", `id=eq.${encodeURIComponent(messageId)}`, statusPatch);

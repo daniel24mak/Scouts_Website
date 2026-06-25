@@ -1,4 +1,4 @@
-import { deleteSupabaseRows, getCurrentSupabaseUserId, getSupabaseRows, insertSupabaseRow, patchSupabaseRows } from "./supabaseClient.js";
+import { callSupabaseRpc, deleteSupabaseRows, getCurrentSupabaseUserId, getSupabaseRows, insertSupabaseRow, patchSupabaseRows } from "./supabaseClient.js";
 
 function jsonValue(value, fallback) {
   if (value === null || value === undefined) return fallback;
@@ -85,6 +85,7 @@ export function normalizePostedForm(form) {
     allowEdits: Boolean(form.allow_edits ?? form.allowEdits ?? true),
     generateAiSummary: Boolean(form.generate_ai_summary ?? form.generateAiSummary ?? false),
     createdBy: form.created_by ?? form.createdBy ?? null,
+    submittedBy: form.created_by ?? form.createdBy ?? form.submitted_by ?? form.submittedBy ?? null,
     approvedBy: form.approved_by ?? form.approvedBy ?? null,
     postedAt: form.posted_at ?? form.postedAt ?? null,
     closedBy: form.closed_by ?? form.closedBy ?? null,
@@ -92,6 +93,8 @@ export function normalizePostedForm(form) {
     reviewerComment: form.reviewer_comment ?? form.reviewerComment ?? "",
     createdAt: form.created_at ?? form.createdAt ?? null,
     updatedAt: form.updated_at ?? form.updatedAt ?? null,
+    submitterName: form.creator?.full_name ?? form.submitterName ?? null,
+    submitterProfilePictureUrl: form.creator?.profile_picture_url ?? form.submitterProfilePictureUrl ?? null,
     contentType: "Posted form"
   };
 }
@@ -127,7 +130,7 @@ export async function getFormsData() {
   const [templates, versions, postedForms, submissions, aiSummaries] = await Promise.all([
     getSupabaseRows("form_templates", "select=*&order=updated_at.desc"),
     getSupabaseRows("form_template_versions", "select=*&order=created_at.desc"),
-    getSupabaseRows("posted_forms", "select=*&order=updated_at.desc"),
+    getSupabaseRows("posted_forms", "select=*,creator:user_profiles!posted_forms_created_by_fkey(full_name,profile_picture_url)&order=updated_at.desc").catch(() => getSupabaseRows("posted_forms", "select=*&order=updated_at.desc")),
     getSupabaseRows("form_submissions", "select=*&order=updated_at.desc"),
     getSupabaseRows("form_ai_summaries", "select=*&order=updated_at.desc")
   ]);
@@ -219,6 +222,7 @@ export async function savePostedForm(payload) {
 
   if (payload.id) {
     const [form] = await patchSupabaseRows("posted_forms", `id=eq.${encodeURIComponent(payload.id)}`, row);
+    if (row.status === "open") await callSupabaseRpc("create_posted_form_notifications", { target_form_id: form.id });
     return normalizePostedForm(form);
   }
 
@@ -226,6 +230,7 @@ export async function savePostedForm(payload) {
     ...row,
     created_by: userId
   });
+  if (row.status === "open") await callSupabaseRpc("create_posted_form_notifications", { target_form_id: form.id });
   return normalizePostedForm(form);
 }
 
@@ -244,6 +249,7 @@ export async function updatePostedFormReview(formId, status, reviewerComment = "
   }
 
   const [form] = await patchSupabaseRows("posted_forms", `id=eq.${encodeURIComponent(formId)}`, row);
+  if (row.status === "open") await callSupabaseRpc("create_posted_form_notifications", { target_form_id: form.id });
   return normalizePostedForm(form);
 }
 
@@ -271,6 +277,7 @@ export async function reopenPostedForm(formId) {
     updated_at: now
   });
   await patchSupabaseRows("form_submissions", `posted_form_id=eq.${encodeURIComponent(formId)}`, { locked_at: null, updated_at: now });
+  await callSupabaseRpc("create_posted_form_notifications", { target_form_id: form.id });
   return normalizePostedForm(form);
 }
 

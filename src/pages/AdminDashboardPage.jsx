@@ -50,6 +50,10 @@ import {
   saveFaq,
   saveLeader,
   saveWebsiteContent,
+  readDashboardNotification,
+  readAllDashboardNotifications,
+  submitDashboardWebsiteContentRevision,
+  reviewDashboardWebsiteContentRevision,
   removeContactMessage,
   removeFaq,
   removeLeader,
@@ -79,6 +83,7 @@ import BlogPostPreview from "../components/BlogPostPreview.jsx";
 import FormattedText from "../components/FormattedText.jsx";
 import RichTextEditor from "../components/RichTextEditor.jsx";
 import UserAvatar from "../components/UserAvatar.jsx";
+import WebsiteContentEditor from "../components/WebsiteContentEditor.jsx";
 import { logAuditEvent } from "../services/auditService.js";
 import {
   canCreateGroupMeetings,
@@ -179,26 +184,34 @@ const emptyFaq = {
 };
 
 const websiteContentFields = [
-  ["home", "home_hero_title", "Home hero title", "text"],
-  ["home", "home_hero_subtitle", "Home hero subtitle", "textarea"],
-  ["home", "home_hero_image", "Home hero image", "image"],
-  ["home", "home_about_image", "Home about preview image", "image"],
-  ["home", "home_activity_image_1", "Life in Scouts image 1", "image"],
-  ["home", "home_activity_image_2", "Life in Scouts image 2", "image"],
-  ["home", "home_activity_image_3", "Life in Scouts image 3", "image"],
-  ["home", "home_activity_image_4", "Life in Scouts image 4", "image"],
-  ["home", "home_activity_image_5", "Life in Scouts image 5", "image"],
-  ["home", "home_activity_image_6", "Life in Scouts image 6", "image"],
-  ["home", "home_about_text", "Home about preview text", "textarea"],
-  ["home", "home_location_text", "Home location text", "text"],
-  ["about", "about_hero_image", "About header image", "image"],
-  ["about", "about_intro_image", "About story image", "image"],
-  ["about", "about_intro_text", "About intro text", "textarea"],
-  ["about", "about_history_text", "About history text", "textarea"],
-  ["about", "about_history_milestones", "About timeline milestones (Year | Title | Description)", "textarea"],
-  ["about", "about_mission_text", "About mission text", "textarea"]
+  ["home", "home_hero_image", "Hero background", "image"],
+  ["home", "home_hero_title", "Hero headline", "text"],
+  ["home", "home_hero_subtitle", "Hero subheading", "textarea"],
+  ["home", "home_hero_cta_text", "Hero CTA text", "text"],
+  ["home", "home_hero_cta_link", "Hero CTA destination", "text"],
+  ["home", "home_about_text", "About snippet", "textarea"],
+  ["home", "home_about_image", "About snippet image", "image"],
+  ["home", "home_events_heading", "Upcoming events heading", "text"],
+  ["home", "home_events_subtitle", "Upcoming events subtitle", "textarea"],
+  ["home", "home_blogs_heading", "Latest news heading", "text"],
+  ["home", "home_blogs_subtitle", "Latest news subtitle", "textarea"],
+  ["home", "home_albums_heading", "Albums heading", "text"],
+  ["home", "home_albums_subtitle", "Albums subtitle", "textarea"],
+  ["home", "home_contact_heading", "Contact heading", "text"],
+  ["home", "home_contact_intro", "Contact introduction", "textarea"],
+  ["home", "home_contact_email", "Contact email", "text"],
+  ["home", "home_contact_phone", "Contact phone", "text"],
+  ["home", "home_contact_location", "Contact location", "text"],
+  ["about", "about_hero_image", "About banner image", "image"],
+  ["about", "about_page_title", "About page title", "text"],
+  ["about", "about_intro_text", "Our story", "textarea"],
+  ["about", "about_intro_image", "Our story image", "image"],
+  ["about", "about_history_text", "History introduction", "textarea"],
+  ["about", "about_history_milestones", "History timeline", "textarea"],
+  ["about", "about_mission_text", "Mission statement", "textarea"],
+  ["about", "about_values", "Values", "textarea"],
+  ["about", "about_scout_groups", "Scout groups", "textarea"]
 ];
-
 const sections = [
   ["overview", "Overview", LayoutDashboard, "all"],
   ["myGroup", "My Group", Users, "chief"],
@@ -219,14 +232,13 @@ const sections = [
   ["myFormDrafts", "My Form Drafts", FileText, "forms"],
   ["mySubmittedForms", "Submitted Forms", FileText, "forms"],
   ["approvals", "Approval Requests", CheckCircle2, "admin"],
+  ["notifications", "Notifications", Bell, "all"],
   ["contactMessages", "Contact Messages", MessageSquare, "admin"],
   ["settings", "Settings", Settings, "admin"],
   ["usersPermissions", "Users & Permissions", LockKeyhole, "settings"],
   ["websiteContent", "Website Content", Image, "settings"],
   ["upload", "Registered Scout Upload", Upload, "settings"],
-  ["rules", "Groups & Sorting Rules", Settings, "settings"],
-  ["faqs", "FAQ Management", FileText, "settings"],
-  ["documents", "Documents", Folder, "settings"],
+  ["rules", "Groups & Sorting Rules", Settings, "settings"],  ["documents", "Documents", Folder, "settings"],
   ["reports", "Reports", Archive, "settings"],
   ["archives", "Archived Years", Archive, "settings"]
 ];
@@ -236,9 +248,7 @@ const settingSections = [
   ["scouts", "Scouts", Users, "Add, edit, and assign scout records."],
   ["upload", "Registered Scout Upload", Upload, "Upload the active scout registration sheet and preserve historical lists."],
   ["rules", "Groups & Sorting Rules", Settings, "Control automatic grouping by school grade, age, and gender rules."],
-  ["websiteContent", "Website Content", Image, "Edit public website text, images, leader headshots, and content blocks."],
-  ["faqs", "FAQ Management", FileText, "Create and edit the public home page FAQ accordion."],
-  ["documents", "Documents", Folder, "Store and prepare document publishing workflows."],
+  ["websiteContent", "Website Content", Image, "Edit public website text, images, leader headshots, and content blocks."],  ["documents", "Documents", Folder, "Store and prepare document publishing workflows."],
   ["reports", "Reports", Archive, "Review attendance and yearly reporting modules."],
   ["archives", "Archived Years", Archive, "Review current active year and prepare future archive workflows."]
 ];
@@ -436,9 +446,17 @@ function formatRelativeTime(value) {
   if (!value) return "Recently";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Recently";
+  const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  if (seconds < 60) return "Just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days}d ago`;
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
-
 function formatDubaiDateTime(value) {
   if (!value) return "Unknown";
   const date = new Date(value);
@@ -595,6 +613,14 @@ export default function AdminDashboardPage() {
   const [faqEdits, setFaqEdits] = useState({});
   const [newFaq, setNewFaq] = useState(emptyFaq);
   const [contactEdits, setContactEdits] = useState({});
+  const [selectedContactId, setSelectedContactId] = useState(null);
+  const [contactInboxSearch, setContactInboxSearch] = useState("");
+  const [contactInboxStatus, setContactInboxStatus] = useState("all");
+  const [websiteEditorPage, setWebsiteEditorPage] = useState("home");
+  const [websiteReviewOpen, setWebsiteReviewOpen] = useState(false);
+  const [websiteCollections, setWebsiteCollections] = useState({ faqs: null, leaders: null });
+  const [websiteEditorVersion, setWebsiteEditorVersion] = useState(0);
+  const [requestedFormId, setRequestedFormId] = useState(null);
   const [activeSetting, setActiveSetting] = useState("usersPermissions");
   const [lastDashboardSection, setLastDashboardSection] = useState("overview");
   const [sidebarMode, setSidebarMode] = useState(() => window.localStorage.getItem(sidebarModeKey) ?? "expanded");
@@ -637,7 +663,7 @@ export default function AdminDashboardPage() {
   const usersById = useMemo(() => new Map((data.users ?? []).map((profile) => [profile.id, profile])), [data.users]);
   const getSubmitterProfile = (submittedBy) => usersById.get(submittedBy) ?? null;
   const getSubmitterName = (item) => item.submitterName || getSubmitterProfile(item.submittedBy)?.name || (item.submittedBy && !String(item.submittedBy).includes("-") ? item.submittedBy : "Unknown");
-  const getSubmitterPicture = (item) => item.submitterProfilePictureUrl || getSubmitterProfile(item.submittedBy)?.profilePictureUrl || null;
+  const getSubmitterPicture = (item) => item.submitterProfilePictureUrl || item.profilePictureUrl || getSubmitterProfile(item.submittedBy)?.profilePictureUrl || null;
   const chiefs = data.users.filter((user) => user.role === "chief" || user.groupId || user.chiefLevel);
   const groupEquipes = (data.equipes ?? []).filter((equipe) => equipe.groupId === dashboardGroupId && equipe.isActive);
   const groupChiefs = chiefs.filter((chief) => chief.groupId === dashboardGroupId);
@@ -646,6 +672,7 @@ export default function AdminDashboardPage() {
   const allPhotos = data.allGalleryPhotos ?? allAlbums.flatMap((album) => album.photos ?? []);
   const allPhotoBatches = data.photoUploadBatches ?? [];
   const allPostedForms = data.postedForms ?? [];
+  const allWebsiteContentRevisions = data.siteContentRevisions ?? [];
   const allFormSubmissions = data.formSubmissions ?? [];
   const isPostedFormTargetedToUser = (form, targetUser = user) => {
     if (!targetUser) return false;
@@ -663,8 +690,10 @@ export default function AdminDashboardPage() {
       ...form,
       contentType: "Posted form",
       submittedBy: form.submittedBy ?? form.createdBy,
-      submitterName: getSubmitterProfile(form.submittedBy ?? form.createdBy)?.name
+      submitterName: form.submitterName ?? getSubmitterProfile(form.submittedBy ?? form.createdBy)?.name,
+      submitterProfilePictureUrl: form.submitterProfilePictureUrl ?? getSubmitterProfile(form.submittedBy ?? form.createdBy)?.profilePictureUrl
     }))
+    ,...allWebsiteContentRevisions.filter((revision) => revision.approvalStatus !== "draft").map((revision) => ({ ...revision, contentType: "Website Content" }))
   ];
   const profileReviewItems = (data.users ?? [])
     .filter((profile) => profile.profileChangeStatus === "pending")
@@ -679,19 +708,47 @@ export default function AdminDashboardPage() {
       description: profile.profileChangeComment ?? ""
     }));
   const pendingItems = [...reviewItems, ...profileReviewItems].filter((item) => ["pending", "pending_update", "needs_changes"].includes(item.approvalStatus));
-  const ownPendingItems = useMemo(
-    () => [
-      ...allPosts,
-      ...allAlbums,
-      ...data.plannedEvents
-    ]
-      .filter((item) => item.submittedBy === user?.id)
-      .filter((item) => ["draft", "pending", "pending_update", "needs_changes", "rejected"].includes(item.approvalStatus))
-      .map((item) => ({ ...item, contentType: item.contentType ?? (item.location ? "Calendar event" : item.photos ? "Album" : "Blog post") })),
-    [allPosts, allAlbums, data.plannedEvents, user?.id]
-  );
-  const notificationItems = canOpenSection("approvals", user) ? pendingItems : ownPendingItems;
-  const dashboardNotificationCount = notificationItems.length;
+  const openAssignedForms = allPostedForms
+    .filter((form) => form.approvalStatus === "open" && isPostedFormTargetedToUser(form, user))
+    .filter((form) => !allFormSubmissions.some((submission) => submission.postedFormId === form.id && submission.submittedBy === user?.id && submission.approvalStatus === "submitted"))
+    .map((form) => ({ ...form, contentType: "Posted form", title: form.title || "Assigned form" }));
+  const ownPendingItems = [
+    ...allPosts,
+    ...allAlbums,
+    ...data.plannedEvents,
+    ...allPostedForms.filter((form) => form.createdBy === user?.id || form.submittedBy === user?.id),
+    ...allWebsiteContentRevisions.filter((revision) => revision.submittedBy === user?.id)
+  ]
+    .filter((item) => item.submittedBy === user?.id || item.createdBy === user?.id)
+    .filter((item) => ["draft", "pending", "pending_update", "needs_changes", "rejected"].includes(item.approvalStatus))
+    .map((item) => ({ ...item, contentType: item.contentType ?? (item.targetType ? "Posted form" : item.location ? "Calendar event" : item.photos ? "Album" : "Blog post") }));
+  const pendingWorkItems = canOpenSection("approvals", user) ? [...pendingItems, ...openAssignedForms] : [...openAssignedForms, ...ownPendingItems];
+  const persistedNotifications = data.notifications ?? [];
+  const hasPersistedEntityNotification = (entityType, entityId) => persistedNotifications.some((item) => item.entityType === entityType && String(item.entityId) === String(entityId));
+  const formAttentionNotifications = openAssignedForms
+    .filter((form) => !hasPersistedEntityNotification("posted_form", form.id))
+    .map((form) => {
+      const hasDueDate = Boolean(form.dueDate);
+      const daysRemaining = hasDueDate ? Math.ceil((new Date(`${form.dueDate}T23:59:59`).getTime() - Date.now()) / 86400000) : null;
+      const dueSoon = daysRemaining !== null && daysRemaining >= 0 && daysRemaining <= 3;
+      return {
+        id: `open-form-${form.id}`,
+        type: "form",
+        title: dueSoon ? "Form due soon" : "Open form assigned",
+        message: hasDueDate ? `${form.title} is open and due ${form.dueDate}` : `${form.title} is open and waiting for your response`,
+        entityType: "posted_form",
+        entityId: form.id,
+        targetSection: "myForms",
+        isRead: false,
+        createdAt: form.postedAt || form.updatedAt || form.createdAt
+      };
+    });
+  const fallbackNotificationItems = (canOpenSection("approvals", user) ? pendingItems : ownPendingItems)
+    .filter((item) => !hasPersistedEntityNotification(item.contentType === "Posted form" ? "posted_form" : null, item.id))
+    .map((item) => ({ ...item, type: "approval", message: item.title, targetSection: canOpenSection("approvals", user) ? "approvals" : "overview", isRead: false, createdAt: item.updatedAt || item.createdAt }));
+  const notificationItems = [...formAttentionNotifications, ...persistedNotifications, ...fallbackNotificationItems]
+    .filter((item, index, items) => items.findIndex((candidate) => String(candidate.id) === String(item.id)) === index)
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());  const dashboardNotificationCount = notificationItems.filter((item) => !item.isRead).length;
   const selectedSection = sections.find(([id]) => id === activeSection);
   const sectionById = useMemo(() => new Map(sections.map((section) => [section[0], section])), []);
   const sidebarGroups = useMemo(() => {
@@ -699,6 +756,7 @@ export default function AdminDashboardPage() {
     const available = (ids) => ids.map(item).filter(Boolean).filter((section) => canOpenSection(section[0], user));
     const groups = [
       { id: "overview", type: "item", item: item("overview") },
+      { id: "notifications", type: "item", item: item("notifications") },
       { id: "myGroupGroup", type: "group", label: "My Group", Icon: Users, children: available(["myGroup", "equipes"]) },
       { id: "attendanceGroup", type: "group", label: "Attendance", Icon: CheckCircle2, children: available(["scoutAttendance", "attendanceSheets", "chiefAttendance"]) },
       { id: "contentGroup", type: "group", label: "Content", Icon: FileText, children: available(["calendar", "posts", "gallery"]) },
@@ -713,7 +771,7 @@ export default function AdminDashboardPage() {
         type: "group",
         label: "Settings",
         Icon: Settings,
-        children: available(["usersPermissions", "scouts", "upload", "rules", "websiteContent", "faqs", "documents", "reports", "archives"])
+        children: available(["usersPermissions", "scouts", "upload", "rules", "websiteContent", "documents", "reports", "archives"])
       });
     }
 
@@ -989,6 +1047,7 @@ export default function AdminDashboardPage() {
       "Posted form": "myForms"
     };
     const targetSection = sectionByContentType[item.contentType] ?? "overview";
+    if (item.contentType === "Posted form" && item.id) setRequestedFormId(item.id);
     openDashboardSection(canOpenSection(targetSection, user) ? targetSection : "overview");
   };
   const handleRegistrationUpload = async (event) => {
@@ -1312,6 +1371,9 @@ export default function AdminDashboardPage() {
       setProfileEdit((current) => ({ ...current, profilePictureFile: file, profilePicturePreview: URL.createObjectURL(file) }));
     }
 
+    if (target.type === "siteContent") {
+      setSiteImageFiles((current) => ({ ...current, [target.contentKey]: file }));
+    }
     if (target.type === "chief") {
       const chief = target.chief;
       const currentEdit = chiefEdits[chief.id] ?? toChiefForm(chief);
@@ -1685,6 +1747,8 @@ export default function AdminDashboardPage() {
       await reviewProfileChange(item, approvalStatus, payload.reviewerComment);
     } else if (item.contentType === "Posted form") {
       await reviewDashboardPostedForm(item.id, approvalStatus === "approved" ? "open" : approvalStatus, payload.reviewerComment);
+    } else if (item.contentType === "Website Content") {
+      await reviewDashboardWebsiteContentRevision(item, approvalStatus, payload.reviewerComment);
     } else {
       const save =
         item.contentType === "Blog post"
@@ -1760,40 +1824,60 @@ export default function AdminDashboardPage() {
       setUploadStatus(null);
     }
   };
-  const saveContentField = async (sectionName, contentKey, fieldType) => {
-    const current = data.siteContent?.[contentKey] ?? { sectionName, contentKey, textValue: "" };
-    const edit = siteContentEdits[contentKey] ?? current;
-    const file = siteImageFiles[contentKey] ?? null;
-
+  const saveContentField = async () => {
+    setSaveMessage("Change kept in the pending website draft.");
+  };
+  const normalizeFaqCollection = (items) => (items ?? []).map((item, index) => ({ id: item.id, question: item.question ?? "", answer: item.answer ?? "", displayOrder: index, isActive: item.isActive !== false, isNew: Boolean(item.isNew) }));
+  const normalizeLeaderCollection = (items) => (items ?? []).map((item, index) => ({ id: item.id, name: item.name ?? "", title: item.title ?? "", photoUrl: item.photoUrl ?? null, storagePath: item.storagePath ?? null, displayOrder: index, isActive: item.isActive !== false, isNew: Boolean(item.isNew), file: siteImageFiles[`leader:${item.id}`] ?? null }));
+  const currentFaqCollection = normalizeFaqCollection(data.faqs);
+  const editedFaqCollection = websiteCollections.faqs ? normalizeFaqCollection(websiteCollections.faqs) : null;
+  const currentLeaderCollection = normalizeLeaderCollection(data.leaders);
+  const editedLeaderCollection = websiteCollections.leaders ? normalizeLeaderCollection(websiteCollections.leaders) : null;
+  const faqOperations = editedFaqCollection ? [
+    ...editedFaqCollection.filter((item) => {
+      const current = currentFaqCollection.find((entry) => entry.id === item.id);
+      return item.isNew || !current || current.question !== item.question || current.answer !== item.answer || current.displayOrder !== item.displayOrder || current.isActive !== item.isActive;
+    }).map((item) => ({ action: "upsert", ...item })),
+    ...currentFaqCollection.filter((item) => !editedFaqCollection.some((entry) => entry.id === item.id)).map((item) => ({ action: "delete", id: item.id, question: item.question }))
+  ] : [];
+  const leaderOperations = editedLeaderCollection ? [
+    ...editedLeaderCollection.filter((item) => {
+      const current = currentLeaderCollection.find((entry) => entry.id === item.id);
+      return item.isNew || Boolean(item.file) || !current || current.name !== item.name || current.title !== item.title || current.displayOrder !== item.displayOrder || current.isActive !== item.isActive;
+    }).map((item) => ({ action: "upsert", ...item })),
+    ...currentLeaderCollection.filter((item) => !editedLeaderCollection.some((entry) => entry.id === item.id)).map((item) => ({ action: "delete", id: item.id, name: item.name, storagePath: item.storagePath }))
+  ] : [];
+  const websitePendingChanges = [
+    ...websiteContentFields
+      .filter(([, contentKey]) => siteContentEdits[contentKey] || siteImageFiles[contentKey])
+      .map(([sectionName, contentKey, label, fieldType]) => {
+        const current = data.siteContent?.[contentKey] ?? { sectionName, contentKey, textValue: "", imageUrl: null, storagePath: null };
+        const edit = siteContentEdits[contentKey] ?? current;
+        return { sectionName, contentKey, label, fieldType, textValue: fieldType === "image" ? current.textValue ?? "" : edit.textValue ?? "", imageUrl: current.imageUrl ?? null, storagePath: current.storagePath ?? null, previousStoragePath: current.storagePath ?? null, file: siteImageFiles[contentKey] ?? null };
+      }),
+    ...(faqOperations.length ? [{ entityType: "faqChanges", contentKey: "faq_changes", label: "FAQ changes", operations: faqOperations }] : []),
+    ...(leaderOperations.length ? [{ entityType: "leaderChanges", contentKey: "leader_changes", label: "Leader changes", operations: leaderOperations }] : [])
+  ];  const publishWebsiteContent = async () => {
+    if (!websitePendingChanges.length) {
+      setSaveMessage("No website content changes to submit.");
+      return;
+    }
+    setUploadStatus("Preparing website content approval request...");
     try {
-      setUploadStatus(file ? `Optimizing and uploading ${contentKey.replaceAll("_", " ")}...` : "Saving website content...");
-      await saveWebsiteContent({
-        sectionName,
-        contentKey,
-        textValue: fieldType === "image" ? current.textValue ?? "" : edit.textValue ?? "",
-        imageUrl: current.imageUrl ?? null,
-        storagePath: current.storagePath ?? null,
-        file
-      });
-      setSiteImageFiles((currentFiles) => ({ ...currentFiles, [contentKey]: null }));
-      setSaveMessage("Website content saved.");
+      await submitDashboardWebsiteContentRevision({ pageKey: websiteEditorPage, title: `${websiteEditorPage[0].toUpperCase()}${websiteEditorPage.slice(1)} website changes`, changes: websitePendingChanges });
+      setSiteContentEdits({});
+      setSiteImageFiles({});
+      setWebsiteCollections({ faqs: null, leaders: null });
+      setWebsiteEditorVersion((current) => current + 1);
+      setWebsiteReviewOpen(false);
+      setSaveMessage("Website content changes submitted for approval. The live site has not changed yet.");
       await refresh();
     } catch (error) {
-      setSaveMessage(`Website content save failed: ${error.message}`);
+      setSaveMessage(`Website content submission failed: ${error.message}`);
     } finally {
       setUploadStatus(null);
     }
-  };
-  const publishWebsiteContent = async () => {
-    for (const [sectionName, contentKey, , fieldType] of websiteContentFields) {
-    if (siteContentEdits[contentKey] || siteImageFiles[contentKey]) {
-        await saveContentField(sectionName, contentKey, fieldType);
-      }
-    }
-
-    setSaveMessage("Website content changes published.");
-  };
-  const getContentText = (contentKey, fallback = "") =>
+  };  const getContentText = (contentKey, fallback = "") =>
     siteContentEdits[contentKey]?.textValue ?? data.siteContent?.[contentKey]?.textValue ?? fallback;
   const getContentImage = (contentKey) => siteImagePreviews[contentKey] ?? data.siteContent?.[contentKey]?.imageUrl ?? null;
   const createManagedLeader = async (event) => {
@@ -1865,162 +1949,42 @@ export default function AdminDashboardPage() {
     setSaveMessage("Contact message deleted.");
     await refresh();
   };
-  const renderWebsiteContent = () => (
-    <div className="cms-panel-stack">
-      <div className="content-editor-shell">
-        <div className="content-editor-fields">
-          <div className="content-editor-toolbar">
-            <div>
-              <h2>Website Content</h2>
-              <p>Draft locally, preview the page, then publish changes into the public website content table.</p>
-            </div>
-            <div className="segmented-control">
-              <button type="button" className={contentPreviewMode === "web" ? "active" : ""} onClick={() => setContentPreviewMode("web")}>
-                Web Preview
-              </button>
-              <button type="button" className={contentPreviewMode === "mobile" ? "active" : ""} onClick={() => setContentPreviewMode("mobile")}>
-                <MonitorSmartphone size={16} aria-hidden="true" />
-                App Mobile Preview
-              </button>
-            </div>
-          </div>
-          <div className="website-content-grid">
-            {websiteContentFields.map(([sectionName, contentKey, label, fieldType]) => {
-              const current = data.siteContent?.[contentKey] ?? { sectionName, contentKey, textValue: "" };
-              const edit = siteContentEdits[contentKey] ?? current;
-              const previewImage = getContentImage(contentKey);
-              const setEdit = (value) =>
-                setSiteContentEdits((currentEdits) => ({
-                  ...currentEdits,
-                  [contentKey]: { ...edit, sectionName, contentKey, textValue: value }
-                }));
-
-              return (
-                <article className="cms-form" key={contentKey}>
-                  <h3>{label}</h3>
-                  {fieldType === "image" ? (
-                    <>
-                      {previewImage ? (
-                        <img className="website-image-preview" src={previewImage} alt="" loading="lazy" decoding="async" width={360} height={220} />
-                      ) : (
-                        <div className="website-image-empty">No image saved yet</div>
-                      )}
-                      <label className="file-picker">
-                        Choose image
-                        <input
-                          type="file"
-                          accept={acceptedImageTypes}
-                          onChange={(event) =>
-                            setSiteImageFiles((currentFiles) => ({
-                              ...currentFiles,
-                              [contentKey]: event.target.files?.[0] ?? null
-                            }))
-                          }
-                        />
-                      </label>
-                      {siteImageFiles[contentKey] && <span className="helper-text">{siteImageFiles[contentKey].name}</span>}
-                    </>
-                  ) : fieldType === "textarea" ? (
-                    <textarea rows="4" value={edit.textValue ?? ""} onChange={(event) => setEdit(event.target.value)} />
-                  ) : (
-                    <input value={edit.textValue ?? ""} onChange={(event) => setEdit(event.target.value)} />
-                  )}
-                  <button type="button" disabled={Boolean(uploadStatus)} onClick={() => saveContentField(sectionName, contentKey, fieldType)}>
-                    {uploadStatus ? "Working..." : `Publish ${label}`}
-                  </button>
-                </article>
-              );
-            })}
-          </div>
-          <div className="content-publish-bar">
-            <button type="button" className="inline-action" onClick={() => setSaveMessage("Draft kept in this editor until you publish.")}>
-              Save Draft
-            </button>
-            <button type="button" className="inline-action" onClick={() => setSaveMessage("Preview updated from current editor values.")}>
-              Preview
-            </button>
-            <button type="button" className="inline-action" onClick={publishWebsiteContent}>
-              <Send size={16} aria-hidden="true" />
-              Publish Changes
-            </button>
-            <button type="button" className="inline-action danger-action" onClick={() => {
-              setSiteContentEdits({});
-              setSiteImageFiles({});
-              setSaveMessage("Unpublished website content edits discarded.");
-            }}>
-              Discard
-            </button>
-          </div>
-        </div>
-        <aside className={`website-live-preview ${contentPreviewMode}`}>
-          <div className="preview-browser-bar">
-            <span />
-            <span />
-            <span />
-            <strong>{contentPreviewMode === "web" ? "Website" : "Mobile"}</strong>
-          </div>
-          <div
-            className="preview-hero"
-            style={{
-              backgroundImage: getContentImage("home_hero_image")
-                ? `linear-gradient(90deg, rgb(11 31 58 / 0.84), rgb(11 31 58 / 0.28)), url("${getContentImage("home_hero_image")}")`
-                : undefined
-            }}
-          >
-            <p className="eyebrow">Scout of Saint Mary</p>
-            <h2>{getContentText("home_hero_title", "Scout of Saint Mary")}</h2>
-            <p>{getContentText("home_hero_subtitle", "A living preview of the public home page.")}</p>
-          </div>
-          <div className="preview-content-block">
-            {getContentImage("home_about_image") && <img src={getContentImage("home_about_image")} alt="" loading="lazy" decoding="async" width={360} height={240} />}
-            <h3>About Preview</h3>
-            <p>{getContentText("home_about_text", "Update the about preview text to see it here before publishing.")}</p>
-          </div>
-          <div className="preview-activity-grid">
-            {["home_activity_image_1", "home_activity_image_2", "home_activity_image_3"].map((key) => (
-              <div key={key}>
-                {getContentImage(key) ? <img src={getContentImage(key)} alt="" loading="lazy" decoding="async" width={180} height={140} /> : <span>Life in Scouts</span>}
-              </div>
-            ))}
-          </div>
-        </aside>
-      </div>
-      <form className="inline-editor-grid leader-add-form" onSubmit={createManagedLeader}>
-        <input required placeholder="Leader name" value={newLeader.name} onChange={(event) => setNewLeader((current) => ({ ...current, name: event.target.value }))} />
-        <input required placeholder="Title" value={newLeader.title} onChange={(event) => setNewLeader((current) => ({ ...current, title: event.target.value }))} />
-        <input type="number" placeholder="Order" value={newLeader.displayOrder} onChange={(event) => setNewLeader((current) => ({ ...current, displayOrder: event.target.value }))} />
-        <label className="file-picker">Headshot<input type="file" accept={acceptedImageTypes} onChange={(event) => setNewLeader((current) => ({ ...current, file: event.target.files?.[0] ?? null }))} /></label>
-        <button type="submit" disabled={Boolean(uploadStatus)}>{uploadStatus ? "Saving..." : "Add leader"}</button>
-      </form>
-      <div className="table-panel">
-        <table className="editable-table">
-          <thead><tr><th>Photo</th><th>Name</th><th>Title</th><th>Order</th><th>Visible</th><th>Replace photo</th><th>Actions</th></tr></thead>
-          <tbody>
-            {(data.leaders ?? []).length ? data.leaders.map((leader) => {
-              const edit = leaderEdits[leader.id] ?? leader;
-              const setEdit = (field, value) => setLeaderEdits((current) => ({ ...current, [leader.id]: { ...edit, [field]: value } }));
-              return (
-                <tr key={leader.id}>
-                  <td>{leader.photoUrl ? <img className="leader-table-photo" src={leader.photoUrl} alt="" /> : "No photo"}</td>
-                  <td><input value={edit.name ?? ""} onChange={(event) => setEdit("name", event.target.value)} /></td>
-                  <td><input value={edit.title ?? ""} onChange={(event) => setEdit("title", event.target.value)} /></td>
-                  <td><input type="number" value={edit.displayOrder ?? 0} onChange={(event) => setEdit("displayOrder", event.target.value)} /></td>
-                  <td><label className="checkbox-cell"><input type="checkbox" checked={edit.isActive !== false} onChange={(event) => setEdit("isActive", event.target.checked)} /></label></td>
-                  <td><input type="file" accept={acceptedImageTypes} onChange={(event) => setEdit("file", event.target.files?.[0] ?? null)} /></td>
-                  <td className="table-actions">
-                    <button type="button" className="inline-action" disabled={Boolean(uploadStatus)} onClick={() => saveManagedLeader(leader.id)}>Save</button>
-                    <button type="button" className="inline-action danger-action" onClick={() => hideManagedLeader(leader.id)}>Hide</button>
-                  </td>
-                </tr>
-              );
-            }) : <tr><td colSpan="7">No managed leaders yet. Add leaders above to replace the automatic chief list.</td></tr>}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-
-  const renderFaqs = () => (
+  const renderWebsiteChangeComparison = (change) => {
+    let current = data.siteContent?.[change.contentKey] ?? {};
+    let label = change.label || change.contentKey?.replaceAll("_", " ") || change.entityType;
+    let before = current.textValue ?? "";
+    let after = change.textValue ?? "";
+    if (change.entityType === "faqChanges") {
+      return <article key="faq_changes"><h3>{label}</h3><div className="website-change-operation-list">{(change.operations ?? []).map((operation, index) => <section key={`${operation.action}-${operation.id ?? index}`}><span className={`forms-status-pill ${operation.action === "delete" ? "rejected" : "approved"}`}>{operation.action}</span><strong>{operation.question || "FAQ"}</strong>{operation.action === "upsert" && <FormattedText text={operation.answer} />}</section>)}</div></article>;
+    }
+    if (change.entityType === "leaderChanges") {
+      return <article key="leader_changes"><h3>{label}</h3><div className="website-change-operation-list">{(change.operations ?? []).map((operation, index) => <section key={`${operation.action}-${operation.id ?? index}`}><span className={`forms-status-pill ${operation.action === "delete" ? "rejected" : "approved"}`}>{operation.action}</span>{operation.action === "upsert" && (siteImagePreviews[`leader:${operation.id}`] || operation.photoUrl) && <img src={siteImagePreviews[`leader:${operation.id}`] || operation.photoUrl} alt="" />}<strong>{operation.name || "Leader"}</strong>{operation.title && <span>{operation.title}</span>}</section>)}</div></article>;
+    }
+    if (change.entityType === "leader") {
+      current = (data.leaders ?? []).find((item) => item.id === change.entityId) ?? {};
+      before = `${current.name ?? ""} - ${current.title ?? ""}`;
+      after = `${change.name ?? ""} - ${change.title ?? ""}`;
+    } else if (change.entityType === "faq") {
+      current = (data.faqs ?? []).find((item) => item.id === change.entityId) ?? {};
+      before = `${current.question ?? ""}\n${current.answer ?? ""}`;
+      after = `${change.question ?? ""}\n${change.answer ?? ""}`;
+    }
+    const isImage = change.fieldType === "image" || (!change.entityType && change.imageUrl);
+    const afterImage = change.file ? siteImagePreviews[change.contentKey] : change.imageUrl;
+    return <article key={change.contentKey ?? `${change.entityType}-${change.entityId}`}><h3>{label}</h3><div className="website-change-comparison"><div><small>Before</small>{isImage ? (current.imageUrl ? <img src={current.imageUrl} alt="" /> : <span>No image</span>) : <FormattedText text={before} fallback="Empty" />}</div><div><small>After</small>{isImage ? (afterImage ? <img src={afterImage} alt="" /> : <span>No image</span>) : <FormattedText text={after} fallback="Empty" />}</div></div></article>;
+  };
+  const renderWebsiteContent = () => {
+    const setContentEdit = (contentKey, value) => {
+      const sectionName = contentKey.startsWith("about_") ? "about" : "home";
+      const current = data.siteContent?.[contentKey] ?? { sectionName, contentKey, textValue: "" };
+      setSiteContentEdits((edits) => ({ ...edits, [contentKey]: { ...current, ...edits[contentKey], sectionName, contentKey, textValue: value } }));
+    };
+    return <div className="inline-site-editor">
+      <div className="inline-editor-toolbar"><div><p className="eyebrow">Website content</p><strong>{websiteEditorPage === "home" ? "Home" : "About"}</strong><small>Every change stays private until it is approved.</small></div><button type="button" className="primary-action" disabled={!websitePendingChanges.length || Boolean(uploadStatus)} onClick={() => setWebsiteReviewOpen(true)}>Review Changes ({websitePendingChanges.length})</button></div>
+      <WebsiteContentEditor key={`${websiteEditorPage}-${websiteEditorVersion}`} data={data} page={websiteEditorPage} onPageChange={setWebsiteEditorPage} valueFor={getContentText} imageFor={getContentImage} onFieldChange={setContentEdit} onChooseImage={(file, contentKey, shape) => openAvatarCrop(file, { type: "siteContent", contentKey, shape })} onCollectionsChange={(change) => setWebsiteCollections((current) => ({ ...current, ...change }))} />
+      {websiteReviewOpen && <div className="approval-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setWebsiteReviewOpen(false); }}><article className="approval-review-modal"><div className="approval-modal-header"><div><p className="eyebrow">Before submission</p><h2>Review Website Changes</h2></div><button type="button" className="modal-close-button" onClick={() => setWebsiteReviewOpen(false)}><X size={18} /></button></div><div className="approval-modal-body website-revision-preview">{websitePendingChanges.map(renderWebsiteChangeComparison)}</div><div className="approval-modal-footer"><button type="button" className="inline-action" onClick={() => setWebsiteReviewOpen(false)}>Back to editing</button><button type="button" className="primary-action" disabled={Boolean(uploadStatus)} onClick={publishWebsiteContent}>{uploadStatus ? "Submitting..." : "Submit for Approval"}</button></div></article></div>}
+    </div>;
+  };  const renderFaqs = () => (
     <div className="cms-panel-stack">
       <form className="cms-form" onSubmit={createFaqItem}>
         <h2>Create FAQ</h2>
@@ -2073,43 +2037,46 @@ export default function AdminDashboardPage() {
     </div>
   );
 
-  const renderContactMessages = () => (
-    <div className="table-panel">
-      <table className="editable-table">
-        <thead><tr><th>Name</th><th>Email</th><th>Subject</th><th>Message</th><th>Status</th><th>Notes</th><th>Created</th><th>Actions</th></tr></thead>
-        <tbody>
-          {visibleContactMessages.length ? visibleContactMessages.map((message) => {
-            const edit = contactEdits[message.id] ?? message;
-            const setEdit = (field, value) => setContactEdits((current) => ({ ...current, [message.id]: { ...edit, [field]: value } }));
+  const openContactMessage = async (message) => {
+    setSelectedContactId(message.id);
+    if (message.status === "new") {
+      setContactEdits((current) => ({ ...current, [message.id]: { ...message, status: "read" } }));
+      await saveContactMessage(message.id, { ...message, status: "read" });
+      await refresh();
+    }
+  };
 
-            return (
-              <tr key={message.id}>
-                <td>{message.name}</td>
-                <td><a href={`mailto:${message.email}`}>{message.email}</a></td>
-                <td>{message.subject}</td>
-                <td>{message.message}</td>
-                <td>
-                  <select value={edit.status} onChange={(event) => setEdit("status", event.target.value)}>
-                    {["new", "read", "responded", "archived"].map((status) => <option value={status} key={status}>{status}</option>)}
-                  </select>
-                </td>
-                <td><textarea rows="3" value={edit.notes ?? ""} onChange={(event) => setEdit("notes", event.target.value)} /></td>
-                <td>{message.createdAt?.slice(0, 10) ?? ""}</td>
-                <td className="table-actions">
-                  <button type="button" className="inline-action" onClick={() => saveContact(message.id, edit)}>Save</button>
-                  <button type="button" className="inline-action" onClick={() => saveContact(message.id, { ...edit, status: "read" })}>Read</button>
-                  <button type="button" className="inline-action" onClick={() => saveContact(message.id, { ...edit, status: "responded" })}>Responded</button>
-                  <button type="button" className="inline-action danger-action" onClick={() => saveContact(message.id, { ...edit, status: "archived" })}>Archive</button>
-                  <button type="button" className="inline-action danger-action" onClick={() => deleteContact(message.id)}>Delete</button>
-                </td>
-              </tr>
-            );
-          }) : <tr><td colSpan="8">No contact messages found.</td></tr>}
-        </tbody>
-      </table>
-    </div>
-  );
+  const renderContactMessages = () => {
+    const messages = (data.contactMessages ?? []).filter((message) => {
+      const matchesStatus = contactInboxStatus === "all" || message.status === contactInboxStatus;
+      const query = contactInboxSearch.trim().toLowerCase();
+      const matchesSearch = !query || [message.name, message.email, message.subject, message.message].some((value) => String(value ?? "").toLowerCase().includes(query));
+      return matchesStatus && matchesSearch;
+    });
+    const selected = (data.contactMessages ?? []).find((message) => message.id === selectedContactId) ?? messages[0] ?? null;
+    const edit = selected ? (contactEdits[selected.id] ?? selected) : null;
+    const setEdit = (field, value) => selected && setContactEdits((current) => ({ ...current, [selected.id]: { ...edit, [field]: value } }));
 
+    return <div className={`contact-inbox-shell ${selectedContactId ? "mobile-detail-open" : ""}`}>
+      <aside className="contact-inbox-list">
+        <div className="contact-inbox-filters"><input placeholder="Search messages" value={contactInboxSearch} onChange={(event) => setContactInboxSearch(event.target.value)} /><select value={contactInboxStatus} onChange={(event) => setContactInboxStatus(event.target.value)}>{["all", "new", "read", "replied", "archived"].map((status) => <option value={status} key={status}>{status === "all" ? "All messages" : status}</option>)}</select></div>
+        <div className="contact-message-list">{messages.length ? messages.map((message) => <button type="button" className={`contact-message-row ${selected?.id === message.id ? "active" : ""} ${message.status === "new" ? "unread" : ""}`} key={message.id} onClick={() => openContactMessage(message)}><div><strong>{message.name}</strong><span className={`contact-status-pill ${message.status}`}>{message.status}</span></div><b>{message.subject}</b><p>{message.message}</p><small>{formatRelativeTime(message.createdAt)}</small></button>) : <p className="empty-state">No messages match these filters.</p>}</div>
+      </aside>
+      <section className="contact-message-detail">
+        {selected && edit ? <><button type="button" className="inline-action contact-mobile-back" onClick={() => setSelectedContactId(null)}><ArrowLeft size={16} />Back to messages</button><div className="contact-detail-header"><div><p className="eyebrow">Contact message</p><h2>{selected.subject}</h2><span>Received {formatDubaiDateTime(selected.createdAt)}</span></div><span className={`contact-status-pill ${edit.status}`}>{edit.status}</span></div><dl className="contact-sender-details"><div><dt>From</dt><dd>{selected.name}</dd></div><div><dt>Email</dt><dd><a href={`mailto:${selected.email}`}>{selected.email}</a></dd></div>{selected.phone && <div><dt>Phone</dt><dd><a href={`tel:${selected.phone}`}>{selected.phone}</a></dd></div>}</dl><div className="contact-message-body">{selected.message}</div><label>Status<select value={edit.status} onChange={(event) => setEdit("status", event.target.value)}>{["new", "read", "replied", "archived"].map((status) => <option value={status} key={status}>{status}</option>)}</select></label><label>Internal notes<textarea rows="6" value={edit.notes ?? ""} onChange={(event) => setEdit("notes", event.target.value)} placeholder="Private notes for administrators..." /></label><div className="action-row"><button type="button" className="primary-action" onClick={() => saveContact(selected.id, edit)}>Save changes</button><button type="button" className="inline-action danger-action" onClick={() => deleteContact(selected.id)}>Delete</button></div></> : <div className="empty-approval-preview"><MessageSquare size={34} /><h3>Select a message</h3><p>Choose a message from the inbox to view its details.</p></div>}
+      </section>
+    </div>;
+  };
+
+  const openNotification = async (notification) => {
+    if ((data.notifications ?? []).some((item) => item.id === notification.id)) await readDashboardNotification(notification.id);
+    setIsNotificationsOpen(false);
+    if (notification.entityType === "posted_form" && notification.entityId) setRequestedFormId(notification.entityId);
+    openDashboardSection(canOpenSection(notification.targetSection, user) ? notification.targetSection : "overview");
+    await refresh();
+  };
+
+  const renderNotifications = () => <div className="notifications-page"><div className="notifications-page-toolbar"><div><p className="eyebrow">Updates</p><h2>Notifications</h2></div><button type="button" className="inline-action" onClick={async () => { await readAllDashboardNotifications(); await refresh(); }}>Mark all as read</button></div><div className="notifications-full-list">{notificationItems.length ? notificationItems.map((notification) => <button type="button" className={`notification-row ${notification.isRead ? "" : "unread"}`} key={notification.id ?? `${notification.contentType}-${notification.entityId ?? notification.title}`} onClick={() => openNotification(notification)}><span className="notification-type-icon">{notification.type === "contact" ? <MessageSquare size={18} /> : notification.type === "form" ? <FileText size={18} /> : notification.type === "profile" ? <Users size={18} /> : <CheckCircle2 size={18} />}</span><div><strong>{notification.title ?? notification.contentType}</strong><p>{notification.message ?? notification.title}</p><small>{formatRelativeTime(notification.createdAt)}</small></div>{!notification.isRead && <i aria-label="Unread" />}</button>) : <p className="empty-state">No notifications yet.</p>}</div></div>;
   const renderMyGroup = () => {
     const groupScouts = sortScouts(
       data.registeredScouts.filter((scout) => scout.groupId === dashboardGroupId),
@@ -2202,7 +2169,7 @@ export default function AdminDashboardPage() {
         </div>
         <div className="dashboard-overview-stack">
           <PendingWorkList
-            items={isAdmin ? pendingItems : ownPendingItems}
+            items={pendingWorkItems}
             getSubmitterName={isAdmin ? getSubmitterName : () => user.name}
             getSubmitterPicture={isAdmin ? getSubmitterPicture : () => user.profilePictureUrl}
             onOpen={openPendingWorkItem}
@@ -3044,7 +3011,12 @@ export default function AdminDashboardPage() {
             <FormPreview form={selectedApproval} disabled />
           </div>
         )}
-        {selectedApproval.contentType === "Album" && (
+        {selectedApproval.contentType === "Website Content" && (
+          <div className="website-revision-preview">
+            <p className="eyebrow">{selectedApproval.pageKey} page</p>
+            {Object.values(selectedApproval.proposedData ?? {}).map(renderWebsiteChangeComparison)}
+          </div>
+        )}        {selectedApproval.contentType === "Album" && (
           <div className="photo-batch-preview">
             <div className="preview-event-meta">
               <span>{selectedApproval.eventDate || "No date"}</span>
@@ -3117,7 +3089,7 @@ export default function AdminDashboardPage() {
           <span>{pendingItems.length} waiting</span>
         </div>
         <div className="approval-type-tabs" role="tablist" aria-label="Approval types">
-          {["all", "Blog post", "Album", "Calendar event", "Posted form", "Photo batch", "Photo", "Profile change"].map((type) => {
+          {["all", "Blog post", "Album", "Calendar event", "Posted form", "Website Content", "Photo batch", "Photo", "Profile change"].map((type) => {
             const count = [...reviewItems, ...profileReviewItems].filter((item) => (type === "all" || item.contentType === type) && ["pending", "pending_update", "needs_changes"].includes(item.approvalStatus)).length;
             return (
               <button type="button" key={type} className={approvalTypeFilter === type ? "active" : ""} onClick={() => setApprovalTypeFilter(type)}>
@@ -3168,15 +3140,21 @@ export default function AdminDashboardPage() {
             </div>
             <div className="approval-modal-body">
               {renderApprovalPreviewContent()}
-              <label className="approval-comment-box">
-                Review comments
-                <textarea
-                  rows="4"
-                  placeholder="Explain what changed, why it was rejected, or what the chief should edit."
-                  value={approvalComment}
-                  onChange={(event) => setApprovalComment(event.target.value)}
-                />
-              </label>
+              {selectedApproval.contentType === "Posted form" ? (
+                <div className="approval-comment-box">
+                  <RichTextEditor label="Review comments" value={approvalComment} onChange={setApprovalComment} minHeight={120} placeholder="Explain what changed, why it was rejected, or what the chief should edit." />
+                </div>
+              ) : (
+                <label className="approval-comment-box">
+                  Review comments
+                  <textarea
+                    rows="4"
+                    placeholder="Explain what changed, why it was rejected, or what the chief should edit."
+                    value={approvalComment}
+                    onChange={(event) => setApprovalComment(event.target.value)}
+                  />
+                </label>
+              )}
             </div>
             <div className="approval-modal-footer">
               <button type="button" className="inline-action" onClick={() => saveApprovalDecision(selectedApproval, "approved")}>Approve</button>
@@ -3205,12 +3183,13 @@ export default function AdminDashboardPage() {
     if (activeSection === "gallery") return renderGallery();
     if (activeSection === "faqs") return renderFaqs();
     if (activeSection === "contactMessages") return renderContactMessages();
+    if (activeSection === "notifications") return renderNotifications();
     if (activeSection === "approvals") return renderApprovals();
     if (activeSection === "scoutAttendance") return <ScoutAttendanceManager />;
     if (activeSection === "attendanceSheets") return <AttendanceSheetsManager />;
     if (activeSection === "chiefAttendance") return <ChiefAttendanceManager />;
     if (["manageForms", "formsCreate", "formTemplates", "postedForms", "formResponses", "myForms", "myFormDrafts", "mySubmittedForms"].includes(activeSection)) {
-      return <FormsDashboard data={data} user={user} isAdmin={isAdmin} mode={activeSection} onRefresh={refresh} setSaveMessage={setSaveMessage} />;
+      return <FormsDashboard data={data} user={user} isAdmin={isAdmin} mode={activeSection} initialFormId={requestedFormId} onRefresh={refresh} setSaveMessage={setSaveMessage} />;
     }
     if (activeSection === "calendar") return <CalendarManagement />;
     if (activeSection === "reports") return <EmptyAdminSection title="Reports" />;
@@ -3385,7 +3364,7 @@ export default function AdminDashboardPage() {
               <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
                 <option value="all">All statuses</option>
                 {(activeSection === "contactMessages"
-                  ? ["new", "read", "responded", "archived"]
+                  ? ["new", "read", "replied", "archived"]
                   : contentStatuses
                 ).map((status) => <option value={status} key={status}>{status}</option>)}
               </select>
@@ -3406,17 +3385,17 @@ export default function AdminDashboardPage() {
               {isNotificationsOpen && (
                 <div className="dashboard-notification-dropdown" role="menu">
                   <div className="notification-dropdown-header">
-                    <strong>Notifications</strong>
-                    <span>{dashboardNotificationCount}</span>
+                    <div><strong>Notifications</strong><span>{dashboardNotificationCount}</span></div>
+                    <div className="notification-dropdown-actions"><button type="button" className="inline-action" onClick={async () => { await readAllDashboardNotifications(); await refresh(); }}>Mark all read</button><button type="button" className="icon-button notification-mobile-close" aria-label="Close notifications" onClick={() => setIsNotificationsOpen(false)}><X size={18} /></button></div>
                   </div>
                   {visibleNotificationItems.length ? visibleNotificationItems.map((item) => (
-                    <button type="button" key={`${item.contentType}-${item.id}`} onClick={() => { setIsNotificationsOpen(false); openPendingWorkItem(item); }}>
-                      <span>{item.contentType}</span>
-                      <strong>{item.title || item.name || "Untitled request"}</strong>
-                      <small>{item.approvalStatus?.replace?.("_", " ") ?? "pending"}</small>
+                    <button type="button" className={`notification-row ${item.isRead ? "" : "unread"}`} key={item.id ?? `${item.contentType}-${item.entityId ?? item.title}`} onClick={() => openNotification(item)}>
+                      <span className="notification-type-icon">{item.type === "contact" ? <MessageSquare size={17} /> : item.type === "form" ? <FileText size={17} /> : item.type === "profile" ? <Users size={17} /> : <CheckCircle2 size={17} />}</span>
+                      <span><strong>{item.title || item.name || "Notification"}</strong><small>{item.message || item.contentType} - {formatRelativeTime(item.createdAt)}</small></span>
+                      {!item.isRead && <i aria-label="Unread" />}
                     </button>
                   )) : <p>No notifications right now.</p>}
-                  {dashboardNotificationCount > visibleNotificationItems.length && <button type="button" className="notification-view-all" onClick={() => { setIsNotificationsOpen(false); openDashboardSection(canOpenSection("approvals", user) ? "approvals" : "overview"); }}>View all</button>}
+                  <button type="button" className="notification-view-all" onClick={() => { setIsNotificationsOpen(false); openDashboardSection("notifications"); }}>See All</button>
                 </div>
               )}
             </div>
@@ -3491,7 +3470,10 @@ export default function AdminDashboardPage() {
       {avatarCropRequest && (
         <AvatarCropModal
           file={avatarCropRequest.file}
-          title="Crop profile picture"
+          title={avatarCropRequest.target?.type === "siteContent" ? "Crop website image" : "Crop profile picture"}
+          aspectRatio={avatarCropRequest.target?.type === "siteContent" ? (avatarCropRequest.target.shape === "circle" ? 1 : avatarCropRequest.target.shape === "hero" || avatarCropRequest.target.contentKey.includes("hero") ? 16 / 6 : 4 / 3) : 1}
+          shape={avatarCropRequest.target?.type === "siteContent" && avatarCropRequest.target.shape !== "circle" ? "square" : "circle"}
+          confirmLabel={avatarCropRequest.target?.type === "siteContent" ? "Replace image" : "Use picture"}
           onCancel={() => setAvatarCropRequest(null)}
           onConfirm={applyCroppedAvatar}
         />

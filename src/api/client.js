@@ -61,6 +61,8 @@ import {
 } from "../services/siteContentService.js";
 import { adminResetUserPassword, createDashboardUser, createProfile, getProfiles, reviewProfileChangeRequest, submitProfileChangeRequest, updateProfile } from "../services/userService.js";
 import { closePostedForm, deleteFormTemplateCascade, deletePostedFormCascade, getFormsData, reopenPostedForm, saveFormSubmission, saveFormTemplate, savePostedForm, updatePostedFormReview } from "../services/formService.js";
+import { getNotifications, markAllNotificationsRead, markNotificationRead } from "../services/notificationService.js";
+import { getWebsiteContentRevisions, reviewWebsiteContentRevision, submitWebsiteContentRevision } from "../services/websiteContentRevisionService.js";
 
 export const fallbackData = {
   users: demoUsers,
@@ -81,7 +83,9 @@ export const fallbackData = {
   leaders: [],
   faqs: defaultFaqs,
   contactMessages: [],
-  equipes: []
+  equipes: [],
+  notifications: [],
+  siteContentRevisions: []
 };
 
 export const loadingData = {
@@ -129,7 +133,9 @@ export async function getBootstrap() {
       getWebsiteContent(),
       getPublicEngagementData(),
       getEquipeData(),
-      getFormsData()
+      getFormsData(),
+      getNotifications(),
+      getWebsiteContentRevisions()
     ]);
     const valueAt = (index, fallback) =>
       results[index]?.status === "fulfilled" ? results[index].value : fallback;
@@ -155,6 +161,8 @@ export async function getBootstrap() {
     const engagementData = valueAt(7, { faqs: [], contactMessages: [] });
     const equipeData = valueAt(8, { equipes: [] });
     const formsData = valueAt(9, { formTemplates: [], formTemplateVersions: [], postedForms: [], formSubmissions: [], formAiSummaries: [] });
+    const notifications = valueAt(10, []);
+    const siteContentRevisions = valueAt(11, []);
 
     return {
       users,
@@ -167,6 +175,8 @@ export async function getBootstrap() {
       ...engagementData,
       ...equipeData,
       ...formsData,
+      notifications,
+      siteContentRevisions,
       contentSubmissions: [
         ...(contentData.allBlogPosts ?? []).map((post) => ({ ...post, contentType: "blog" })),
         ...(galleryData.allGalleryAlbums ?? []).map((album) => ({ ...album, contentType: "album" }))
@@ -661,4 +671,20 @@ export function saveDashboardFormSubmission(payload) {
   }
 
   return Promise.resolve(payload);
+}
+
+export function readDashboardNotification(notificationId) {
+  return isSupabaseConfigured ? markNotificationRead(notificationId) : Promise.resolve([]);
+}
+
+export function readAllDashboardNotifications() {
+  return isSupabaseConfigured ? markAllNotificationsRead() : Promise.resolve([]);
+}
+
+export function submitDashboardWebsiteContentRevision(payload) {
+  return isSupabaseConfigured ? submitWebsiteContentRevision(payload) : Promise.resolve(payload);
+}
+
+export function reviewDashboardWebsiteContentRevision(revision, status, comment) {
+  return isSupabaseConfigured ? reviewWebsiteContentRevision(revision, status, comment) : Promise.resolve({ ...revision, approvalStatus: status });
 }

@@ -81,6 +81,13 @@ export function getSupabaseRows(table, query = "select=*") {
   return getSupabaseTable(table, query);
 }
 
+export function callSupabaseRpc(functionName, payload = {}) {
+  return supabaseRequest(`/rest/v1/rpc/${functionName}`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
 export function insertSupabaseRow(table, row) {
   return supabaseRequest(`/rest/v1/${table}`, {
     method: "POST",

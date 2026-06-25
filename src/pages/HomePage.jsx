@@ -19,6 +19,7 @@ import { sendContactMessage } from "../api/client.js";
 import { getPublicHomeData } from "../api/publicClient.js";
 import { usePublicData } from "../api/usePublicData.js";
 import FadeInSection from "../components/FadeInSection.jsx";
+import FormattedText from "../components/FormattedText.jsx";
 import SafeImage from "../components/SafeImage.jsx";
 import { contentImage, contentText } from "../services/siteContentService.js";
 import { preloadImages } from "../utils/imagePreload.js";
@@ -93,7 +94,19 @@ export default function HomePage() {
     "home_location_text",
     "Located at St. Mary's Catholic Church, Dubai, United Arab Emirates."
   );
-  const getActivityImage = (index) =>
+  const heroCtaText = contentText(siteContent, "home_hero_cta_text", "Learn About Us");
+  const heroCtaLink = contentText(siteContent, "home_hero_cta_link", "/about");
+  const eventsHeading = contentText(siteContent, "home_events_heading", "What's happening next");
+  const eventsSubtitle = contentText(siteContent, "home_events_subtitle", "Stay updated with our upcoming scout meetings, church events, ceremonies, activities, and special gatherings.");
+  const blogsHeading = contentText(siteContent, "home_blogs_heading", "Stories from our scouting community");
+  const blogsSubtitle = contentText(siteContent, "home_blogs_subtitle", "Read the latest updates, announcements, activities, and stories from our scouting community.");
+  const albumsHeading = contentText(siteContent, "home_albums_heading", "Photos from meetings, camps, and ceremonies");
+  const albumsSubtitle = contentText(siteContent, "home_albums_subtitle", "Explore photos from our meetings, ceremonies, camps, activities, and special scout events.");
+  const contactHeading = contentText(siteContent, "home_contact_heading", "Got any questions, suggestions, or want to volunteer?");
+  const contactIntro = contentText(siteContent, "home_contact_intro", "We'd love to hear from you. Send us a message and our team will get back to you soon.");
+  const contactEmail = contentText(siteContent, "home_contact_email", "Email placeholder");
+  const contactPhone = contentText(siteContent, "home_contact_phone", "Phone placeholder");
+  const contactLocation = contentText(siteContent, "home_contact_location", "St. Mary's Catholic Church, Dubai, United Arab Emirates");  const getActivityImage = (index) =>
     contentImage(
       siteContent,
       `home_activity_image_${index + 1}`,
@@ -139,8 +152,8 @@ export default function HomePage() {
           <h1>{heroTitle}</h1>
           <p>{heroSubtitle}</p>
           <div className="hero-actions">
-            <Link className="primary-action" to="/about">
-              Learn About Us <ArrowRight size={18} aria-hidden="true" />
+            <Link className="primary-action" to={heroCtaLink || "/about"}>
+              {heroCtaText} <ArrowRight size={18} aria-hidden="true" />
             </Link>
             <Link className="secondary-action" to="/gallery">
               View Gallery
@@ -156,7 +169,7 @@ export default function HomePage() {
         <div>
           <p className="eyebrow">Who We Are</p>
           <h2>Growing Together in Faith and Service</h2>
-          <p>{aboutText}</p>
+          <FormattedText text={aboutText} />
           <p>
             Through weekly meetings, activities, camps, ceremonies, and community events, our
             scouts grow in confidence, faith, friendship, and character.
@@ -218,11 +231,8 @@ export default function HomePage() {
         <div className="section-heading-row">
           <div>
             <p className="eyebrow">Upcoming Events</p>
-            <h2>What's happening next</h2>
-            <p>
-              Stay updated with our upcoming scout meetings, church events, ceremonies,
-              activities, and special gatherings.
-            </p>
+            <h2>{eventsHeading}</h2>
+            <FormattedText text={eventsSubtitle} />
           </div>
           <Link className="inline-action" to="/calendar">View All Events</Link>
         </div>
@@ -256,8 +266,8 @@ export default function HomePage() {
         <div className="section-heading-row">
           <div>
             <p className="eyebrow">Latest News</p>
-            <h2>Stories from our scouting community</h2>
-            <p>Read the latest updates, announcements, activities, and stories from our scouting community.</p>
+            <h2>{blogsHeading}</h2>
+            <FormattedText text={blogsSubtitle} />
           </div>
           <Link className="inline-action" to="/blogs">Read More News</Link>
         </div>
@@ -297,8 +307,8 @@ export default function HomePage() {
         <div className="section-heading-row">
           <div>
             <p className="eyebrow">Moments From Our Journey</p>
-            <h2>Photos from meetings, camps, and ceremonies</h2>
-            <p>Explore photos from our meetings, ceremonies, camps, activities, and special scout events.</p>
+            <h2>{albumsHeading}</h2>
+            <FormattedText text={albumsSubtitle} />
           </div>
           <Link className="inline-action" to="/gallery">View Gallery</Link>
         </div>
@@ -357,7 +367,7 @@ export default function HomePage() {
                   <ChevronDown size={20} aria-hidden="true" />
                 </button>
                 <div className="faq-answer">
-                  <p>{faq.answer}</p>
+                  <FormattedText text={faq.answer} />
                 </div>
               </article>
             );
@@ -371,14 +381,12 @@ export default function HomePage() {
         <div className="contact-layout">
           <div className="contact-info-card">
             <p className="eyebrow">Contact Us</p>
-            <h2>Got any questions, suggestions, or want to volunteer?</h2>
-            <p>
-              We'd love to hear from you. Send us a message and our team will get back to you soon.
-            </p>
+            <h2>{contactHeading}</h2>
+            <FormattedText text={contactIntro} />
             <div className="contact-info-list">
-              <span><MapPin size={18} aria-hidden="true" /> St. Mary's Catholic Church, Dubai, United Arab Emirates</span>
-              <span><Mail size={18} aria-hidden="true" /> Email placeholder</span>
-              <span><Phone size={18} aria-hidden="true" /> Phone placeholder</span>
+              <span><MapPin size={18} aria-hidden="true" /> {contactLocation}</span>
+              <span><Mail size={18} aria-hidden="true" /> {contactEmail}</span>
+              <span><Phone size={18} aria-hidden="true" /> {contactPhone}</span>
               <a href="https://www.instagram.com/" target="_blank" rel="noreferrer">
                 <Instagram size={18} aria-hidden="true" /> Instagram
               </a>

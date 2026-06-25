@@ -32,11 +32,11 @@ export async function getPublicHomeData() {
   }
 
   const [websiteData, publicEvents, publicPosts, publicAlbums, faqs] = await Promise.all([
-    getWebsiteContent().catch(() => fallbackWebsiteData()),
-    getPublicCalendarEvents({ limit: 3 }).catch(() => []),
-    getPublicPosts({ limit: 3 }).catch(() => []),
-    getPublicGalleryAlbums({ limit: 3 }).catch(() => []),
-    getPublicFaqs().catch(() => defaultFaqs)
+    getWebsiteContent(),
+    getPublicCalendarEvents({ limit: 3 }),
+    getPublicPosts({ limit: 3 }),
+    getPublicGalleryAlbums({ limit: 3 }),
+    getPublicFaqs()
   ]);
 
   return {
@@ -44,7 +44,7 @@ export async function getPublicHomeData() {
     plannedEvents: publicEvents,
     blogPosts: publicPosts,
     galleryAlbums: publicAlbums,
-    faqs: faqs.length ? faqs : defaultFaqs
+    faqs
   };
 }
 
@@ -53,7 +53,7 @@ export async function getPublicAboutData() {
     return { ...fallbackWebsiteData(), users: demoUsers };
   }
 
-  return getWebsiteContent().catch(() => ({ ...fallbackWebsiteData(), users: [] }));
+  return getWebsiteContent();
 }
 
 export async function getPublicGalleryPage({ limit = 12, offset = 0 } = {}) {

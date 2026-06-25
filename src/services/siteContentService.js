@@ -33,7 +33,22 @@ export const defaultSiteContent = {
     contentKey: "home_location_text",
     textValue: "Located at St. Mary's Catholic Church, Dubai, United Arab Emirates."
   },
-  about_hero_image: {
+  home_hero_cta_text: { sectionName: "home", contentKey: "home_hero_cta_text", textValue: "Learn About Us" },
+  home_hero_cta_link: { sectionName: "home", contentKey: "home_hero_cta_link", textValue: "/about" },
+  home_events_heading: { sectionName: "home", contentKey: "home_events_heading", textValue: "What's happening next" },
+  home_events_subtitle: { sectionName: "home", contentKey: "home_events_subtitle", textValue: "Stay updated with our upcoming scout meetings, church events, ceremonies, activities, and special gatherings." },
+  home_blogs_heading: { sectionName: "home", contentKey: "home_blogs_heading", textValue: "Stories from our scouting community" },
+  home_blogs_subtitle: { sectionName: "home", contentKey: "home_blogs_subtitle", textValue: "Read the latest updates, announcements, activities, and stories from our scouting community." },
+  home_albums_heading: { sectionName: "home", contentKey: "home_albums_heading", textValue: "Photos from meetings, camps, and ceremonies" },
+  home_albums_subtitle: { sectionName: "home", contentKey: "home_albums_subtitle", textValue: "Explore photos from our meetings, ceremonies, camps, activities, and special scout events." },
+  home_contact_heading: { sectionName: "home", contentKey: "home_contact_heading", textValue: "Got any questions, suggestions, or want to volunteer?" },
+  home_contact_intro: { sectionName: "home", contentKey: "home_contact_intro", textValue: "We'd love to hear from you. Send us a message and our team will get back to you soon." },
+  home_contact_email: { sectionName: "home", contentKey: "home_contact_email", textValue: "Email placeholder" },
+  home_contact_phone: { sectionName: "home", contentKey: "home_contact_phone", textValue: "Phone placeholder" },
+  home_contact_location: { sectionName: "home", contentKey: "home_contact_location", textValue: "St. Mary's Catholic Church, Dubai, United Arab Emirates" },
+  about_page_title: { sectionName: "about", contentKey: "about_page_title", textValue: "About Us" },
+  about_values: { sectionName: "about", contentKey: "about_values", textValue: "" },
+  about_scout_groups: { sectionName: "about", contentKey: "about_scout_groups", textValue: "" },  about_hero_image: {
     sectionName: "about",
     contentKey: "about_hero_image",
     imageUrl: null,

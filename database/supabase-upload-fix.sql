@@ -944,3 +944,266 @@ CREATE INDEX IF NOT EXISTS posted_forms_status_idx ON posted_forms (status);
 CREATE INDEX IF NOT EXISTS posted_forms_created_by_idx ON posted_forms (created_by);
 CREATE INDEX IF NOT EXISTS form_submissions_posted_form_id_idx ON form_submissions (posted_form_id);
 CREATE INDEX IF NOT EXISTS form_submissions_submitted_by_idx ON form_submissions (submitted_by);
+
+-- Notifications and approval-gated website content revisions.
+CREATE TABLE IF NOT EXISTS notifications (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
+  notification_type text NOT NULL DEFAULT 'general',
+  title text NOT NULL,
+  message text NOT NULL,
+  entity_type text,
+  entity_id text,
+  target_section text NOT NULL DEFAULT 'overview',
+  is_read boolean NOT NULL DEFAULT false,
+  read_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS site_content_revisions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text NOT NULL DEFAULT 'Website content changes',
+  page_key text NOT NULL DEFAULT 'home',
+  proposed_data jsonb NOT NULL DEFAULT '{}',
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('draft', 'pending', 'needs_changes', 'approved', 'rejected', 'archived')),
+  submitted_by uuid REFERENCES user_profiles(id),
+  reviewed_by uuid REFERENCES user_profiles(id),
+  reviewer_comment text,
+  reviewed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE site_content_revisions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "users read own notifications" ON notifications;
+CREATE POLICY "users read own notifications" ON notifications FOR SELECT USING (user_id = auth.uid() OR public.is_admin());
+DROP POLICY IF EXISTS "users update own notifications" ON notifications;
+CREATE POLICY "users update own notifications" ON notifications FOR UPDATE USING (user_id = auth.uid() OR public.is_admin()) WITH CHECK (user_id = auth.uid() OR public.is_admin());
+DROP POLICY IF EXISTS "system inserts notifications" ON notifications;
+CREATE POLICY "system inserts notifications" ON notifications FOR INSERT WITH CHECK (public.is_admin() OR user_id = auth.uid());
+
+DROP POLICY IF EXISTS "admins manage site content revisions" ON site_content_revisions;
+CREATE POLICY "admins manage site content revisions" ON site_content_revisions FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+
+CREATE INDEX IF NOT EXISTS notifications_user_created_idx ON notifications (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS notifications_user_unread_idx ON notifications (user_id, is_read) WHERE is_read = false;
+CREATE INDEX IF NOT EXISTS site_content_revisions_status_idx ON site_content_revisions (status, updated_at DESC);
+
+CREATE OR REPLACE FUNCTION public.notify_admin_users(notification_type text, notification_title text, notification_message text, entity_type text, entity_id text, target_section text)
+RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  INSERT INTO notifications (user_id, notification_type, title, message, entity_type, entity_id, target_section)
+  SELECT id, notification_type, notification_title, notification_message, entity_type, entity_id, target_section
+  FROM user_profiles WHERE role = 'admin' AND account_status = 'active';
+$$;
+
+CREATE OR REPLACE FUNCTION public.notify_contact_message_created()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  PERFORM public.notify_admin_users('contact', 'New contact message', NEW.name || ' sent: ' || NEW.subject, 'contact_message', NEW.id::text, 'contactMessages');
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS contact_message_notification_trigger ON contact_messages;
+CREATE TRIGGER contact_message_notification_trigger AFTER INSERT ON contact_messages FOR EACH ROW EXECUTE FUNCTION public.notify_contact_message_created();
+
+CREATE OR REPLACE FUNCTION public.notify_website_revision_created()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  PERFORM public.notify_admin_users('approval', 'Website content approval requested', NEW.title, 'site_content_revision', NEW.id::text, 'approvals');
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS website_revision_notification_trigger ON site_content_revisions;
+CREATE TRIGGER website_revision_notification_trigger AFTER INSERT ON site_content_revisions FOR EACH ROW EXECUTE FUNCTION public.notify_website_revision_created();
+
+CREATE OR REPLACE FUNCTION public.notify_website_revision_result()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF OLD.status IS DISTINCT FROM NEW.status AND NEW.status IN ('approved', 'rejected', 'needs_changes') AND NEW.submitted_by IS NOT NULL THEN
+    INSERT INTO notifications (user_id, notification_type, title, message, entity_type, entity_id, target_section)
+    VALUES (NEW.submitted_by, 'approval_result', 'Website content ' || replace(NEW.status, '_', ' '), NEW.title || ' was ' || replace(NEW.status, '_', ' '), 'site_content_revision', NEW.id::text, 'websiteContent');
+  END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS website_revision_result_notification_trigger ON site_content_revisions;
+CREATE TRIGGER website_revision_result_notification_trigger AFTER UPDATE ON site_content_revisions FOR EACH ROW EXECUTE FUNCTION public.notify_website_revision_result();
+
+CREATE OR REPLACE FUNCTION public.notify_profile_change_result()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF OLD.profile_change_status IS DISTINCT FROM NEW.profile_change_status AND NEW.profile_change_status IN ('approved', 'rejected') THEN
+    INSERT INTO notifications (user_id, notification_type, title, message, entity_type, entity_id, target_section)
+    VALUES (NEW.id, 'profile', 'Profile change ' || NEW.profile_change_status, 'Your profile change request was ' || NEW.profile_change_status, 'profile', NEW.id::text, 'overview');
+  END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS profile_change_result_notification_trigger ON user_profiles;
+CREATE TRIGGER profile_change_result_notification_trigger AFTER UPDATE ON user_profiles FOR EACH ROW EXECUTE FUNCTION public.notify_profile_change_result();
+
+CREATE OR REPLACE FUNCTION public.notify_posted_form_opened()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF NEW.status = 'open' AND (TG_OP = 'INSERT' OR OLD.status IS DISTINCT FROM NEW.status) THEN
+    INSERT INTO notifications (user_id, notification_type, title, message, entity_type, entity_id, target_section)
+    SELECT p.id, 'form', 'New form assigned', NEW.title || CASE WHEN NEW.due_date IS NOT NULL THEN ' - due ' || NEW.due_date::text ELSE '' END, 'posted_form', NEW.id::text, 'myForms'
+    FROM user_profiles p
+    WHERE p.role = 'chief' AND p.account_status = 'active'
+      AND (NEW.target_type = 'all_chiefs' OR (NEW.target_type = 'groups' AND p.group_id = ANY(NEW.target_group_ids)) OR (NEW.target_type = 'users' AND p.id = ANY(NEW.target_user_ids)));
+  END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS posted_form_opened_notification_trigger ON posted_forms;
+CREATE TRIGGER posted_form_opened_notification_trigger AFTER INSERT OR UPDATE ON posted_forms FOR EACH ROW EXECUTE FUNCTION public.notify_posted_form_opened();
+ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS phone text;
+
+CREATE OR REPLACE FUNCTION public.notify_content_workflow()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  submitter uuid;
+  item_title text;
+  section_name text;
+  entity_name text;
+BEGIN
+  submitter := COALESCE(NULLIF(to_jsonb(NEW) ->> 'submitted_by', '')::uuid, NULLIF(to_jsonb(NEW) ->> 'created_by', '')::uuid);
+  item_title := COALESCE(to_jsonb(NEW) ->> 'title', 'Untitled submission');
+  section_name := CASE TG_TABLE_NAME WHEN 'posts' THEN 'posts' WHEN 'gallery_albums' THEN 'gallery' WHEN 'calendar_events' THEN 'calendar' ELSE 'overview' END;
+  entity_name := CASE TG_TABLE_NAME WHEN 'posts' THEN 'Blog post' WHEN 'gallery_albums' THEN 'Album' WHEN 'calendar_events' THEN 'Calendar event' ELSE 'Content' END;
+  IF TG_OP = 'INSERT' AND NEW.status::text IN ('pending', 'pending_update') THEN
+    PERFORM public.notify_admin_users('approval', 'New ' || lower(entity_name) || ' approval', item_title, TG_TABLE_NAME, NEW.id::text, 'approvals');
+  ELSIF TG_OP = 'UPDATE' AND OLD.status::text IS DISTINCT FROM NEW.status::text AND NEW.status::text IN ('approved', 'rejected', 'needs_changes') AND submitter IS NOT NULL THEN
+    INSERT INTO notifications (user_id, notification_type, title, message, entity_type, entity_id, target_section)
+    VALUES (submitter, 'approval_result', entity_name || ' ' || replace(NEW.status::text, '_', ' '), 'Your ' || lower(entity_name) || ' "' || item_title || '" was ' || replace(NEW.status::text, '_', ' '), TG_TABLE_NAME, NEW.id::text, section_name);
+  END IF;
+  RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS posts_workflow_notification_trigger ON posts;
+CREATE TRIGGER posts_workflow_notification_trigger AFTER INSERT OR UPDATE ON posts FOR EACH ROW EXECUTE FUNCTION public.notify_content_workflow();
+DROP TRIGGER IF EXISTS albums_workflow_notification_trigger ON gallery_albums;
+CREATE TRIGGER albums_workflow_notification_trigger AFTER INSERT OR UPDATE ON gallery_albums FOR EACH ROW EXECUTE FUNCTION public.notify_content_workflow();
+DROP TRIGGER IF EXISTS events_workflow_notification_trigger ON calendar_events;
+CREATE TRIGGER events_workflow_notification_trigger AFTER INSERT OR UPDATE ON calendar_events FOR EACH ROW EXECUTE FUNCTION public.notify_content_workflow();
+CREATE OR REPLACE FUNCTION public.notify_profile_change_result()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF OLD.profile_change_status IS DISTINCT FROM NEW.profile_change_status AND NEW.profile_change_status = 'pending' THEN
+    PERFORM public.notify_admin_users('approval', 'Profile change approval requested', NEW.name || ' submitted a profile change', 'profile', NEW.id::text, 'approvals');
+  ELSIF OLD.profile_change_status IS DISTINCT FROM NEW.profile_change_status AND NEW.profile_change_status IN ('approved', 'rejected') THEN
+    INSERT INTO notifications (user_id, notification_type, title, message, entity_type, entity_id, target_section)
+    VALUES (NEW.id, 'profile', 'Profile change ' || NEW.profile_change_status, 'Your profile change request was ' || NEW.profile_change_status, 'profile', NEW.id::text, 'overview');
+  END IF;
+  RETURN NEW;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.notify_posted_form_opened()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF TG_OP = 'INSERT' AND NEW.status = 'pending' THEN
+    PERFORM public.notify_admin_users('approval', 'New form approval', NEW.title, 'posted_form', NEW.id::text, 'approvals');
+  END IF;
+
+  IF NEW.status = 'open' AND (TG_OP = 'INSERT' OR OLD.status IS DISTINCT FROM NEW.status) THEN
+    INSERT INTO notifications (user_id, notification_type, title, message, entity_type, entity_id, target_section)
+    SELECT p.id, 'form', 'New form assigned', NEW.title || CASE WHEN NEW.due_date IS NOT NULL THEN ' - due ' || NEW.due_date::text ELSE '' END, 'posted_form', NEW.id::text, 'myForms'
+    FROM user_profiles p
+    WHERE p.role = 'chief' AND p.account_status = 'active'
+      AND (NEW.target_type = 'all_chiefs' OR (NEW.target_type = 'groups' AND p.group_id = ANY(NEW.target_group_ids)) OR (NEW.target_type = 'users' AND p.id = ANY(NEW.target_user_ids)));
+
+    IF TG_OP = 'UPDATE' AND NEW.created_by IS NOT NULL THEN
+      INSERT INTO notifications (user_id, notification_type, title, message, entity_type, entity_id, target_section)
+      VALUES (NEW.created_by, 'approval_result', 'Form approved', 'Your form "' || NEW.title || '" was approved and opened', 'posted_form', NEW.id::text, 'manageForms');
+    END IF;
+  ELSIF TG_OP = 'UPDATE' AND OLD.status IS DISTINCT FROM NEW.status AND NEW.status IN ('rejected', 'needs_changes') AND NEW.created_by IS NOT NULL THEN
+    INSERT INTO notifications (user_id, notification_type, title, message, entity_type, entity_id, target_section)
+    VALUES (NEW.created_by, 'approval_result', 'Form ' || replace(NEW.status, '_', ' '), 'Your form "' || NEW.title || '" was ' || replace(NEW.status, '_', ' '), 'posted_form', NEW.id::text, 'manageForms');
+  END IF;
+  RETURN NEW;
+END $$;
+-- Idempotent form assignment notifications. The trigger and client RPC both use
+-- this function so an approval transition cannot silently miss its recipients.
+CREATE OR REPLACE FUNCTION public.create_posted_form_notifications(target_form_id uuid)
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  target_form public.posted_forms%ROWTYPE;
+  inserted_count integer := 0;
+BEGIN
+  SELECT * INTO target_form FROM public.posted_forms WHERE id = target_form_id;
+  IF NOT FOUND OR target_form.status <> 'open' THEN
+    RETURN 0;
+  END IF;
+
+  INSERT INTO public.notifications (user_id, notification_type, title, message, entity_type, entity_id, target_section)
+  SELECT
+    profile.id,
+    'form',
+    'New form assigned',
+    'A new form "' || target_form.title || '" has been assigned to you' ||
+      CASE WHEN target_form.due_date IS NOT NULL THEN '. Due ' || target_form.due_date::text ELSE '' END,
+    'posted_form',
+    target_form.id::text,
+    'myForms'
+  FROM public.user_profiles profile
+  WHERE profile.role = 'chief'
+    AND profile.account_status = 'active'
+    AND (
+      target_form.target_type = 'all_chiefs'
+      OR (target_form.target_type = 'groups' AND profile.group_id = ANY(target_form.target_group_ids))
+      OR (target_form.target_type = 'users' AND profile.id = ANY(target_form.target_user_ids))
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM public.notifications existing
+      WHERE existing.user_id = profile.id
+        AND existing.notification_type = 'form'
+        AND existing.entity_type = 'posted_form'
+        AND existing.entity_id = target_form.id::text
+    );
+
+  GET DIAGNOSTICS inserted_count = ROW_COUNT;
+  RETURN inserted_count;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.notify_posted_form_opened()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF TG_OP = 'INSERT' AND NEW.status = 'pending' THEN
+    PERFORM public.notify_admin_users('approval', 'New form approval', NEW.title, 'posted_form', NEW.id::text, 'approvals');
+  END IF;
+
+  IF NEW.status = 'open' AND (TG_OP = 'INSERT' OR OLD.status IS DISTINCT FROM NEW.status) THEN
+    PERFORM public.create_posted_form_notifications(NEW.id);
+    IF TG_OP = 'UPDATE' AND NEW.created_by IS NOT NULL THEN
+      INSERT INTO public.notifications (user_id, notification_type, title, message, entity_type, entity_id, target_section)
+      SELECT NEW.created_by, 'approval_result', 'Form approved', 'Your form "' || NEW.title || '" was approved and opened', 'posted_form', NEW.id::text, 'manageForms'
+      WHERE NOT EXISTS (
+        SELECT 1 FROM public.notifications n
+        WHERE n.user_id = NEW.created_by AND n.notification_type = 'approval_result'
+          AND n.entity_type = 'posted_form' AND n.entity_id = NEW.id::text AND n.title = 'Form approved'
+      );
+    END IF;
+  ELSIF TG_OP = 'UPDATE' AND OLD.status IS DISTINCT FROM NEW.status AND NEW.status IN ('rejected', 'needs_changes') AND NEW.created_by IS NOT NULL THEN
+    INSERT INTO public.notifications (user_id, notification_type, title, message, entity_type, entity_id, target_section)
+    VALUES (NEW.created_by, 'approval_result', 'Form ' || replace(NEW.status, '_', ' '), 'Your form "' || NEW.title || '" was ' || replace(NEW.status, '_', ' '), 'posted_form', NEW.id::text, 'manageForms');
+  END IF;
+  RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS posted_form_opened_notification_trigger ON public.posted_forms;
+CREATE TRIGGER posted_form_opened_notification_trigger
+AFTER INSERT OR UPDATE ON public.posted_forms
+FOR EACH ROW EXECUTE FUNCTION public.notify_posted_form_opened();
+DO $$
+DECLARE
+  open_form record;
+BEGIN
+  FOR open_form IN SELECT id FROM public.posted_forms WHERE status = 'open' LOOP
+    PERFORM public.create_posted_form_notifications(open_form.id);
+  END LOOP;
+END $$;

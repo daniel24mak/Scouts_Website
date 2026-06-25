@@ -2,6 +2,8 @@ import { insertSupabaseRow, isSupabaseConfigured } from "./supabaseClient.js";
 
 const maxTextLength = 4000;
 const siteLoadErrorEvent = "scouts:site-load-error";
+const recentNotifications = new Map();
+const notificationThrottleMs = 12000;
 
 function limitText(value) {
   if (value === null || value === undefined) return "";
@@ -46,15 +48,26 @@ export async function logSiteError(error, context = {}) {
 }
 
 export function notifySiteLoadError(error, context = {}) {
-  logSiteError(error, context);
+  if (typeof window === "undefined") {
+    logSiteError(error, context);
+    return;
+  }
 
-  if (typeof window === "undefined") return;
+  const source = context.source || "client";
+  const signature = getErrorSignature(error, source);
+  const lastNotification = recentNotifications.get(signature) || 0;
+  if (Date.now() - lastNotification < notificationThrottleMs) return;
+  recentNotifications.set(signature, Date.now());
+  logSiteError(error, context);
 
   window.dispatchEvent(new CustomEvent(siteLoadErrorEvent, {
     detail: {
       error,
-      source: context.source || "client",
-      message: error?.message || "Some page content could not be loaded."
+      source,
+      kind: context.kind || "content",
+      autoReload: context.autoReload !== false,
+      message: context.message || error?.message || "Some page content could not be loaded.",
+      metadata: context.metadata || {}
     }
   }));
 }

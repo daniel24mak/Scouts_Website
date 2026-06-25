@@ -1,8 +1,9 @@
-import { Compass, HeartHandshake, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
+import { Church, Compass, Flag, HeartHandshake, ShieldCheck, Sparkles, Star, Users, UsersRound } from "lucide-react";
 import { useEffect } from "react";
 import { getPublicAboutData } from "../api/publicClient.js";
 import { usePublicData } from "../api/usePublicData.js";
 import SafeImage from "../components/SafeImage.jsx";
+import FormattedText from "../components/FormattedText.jsx";
 import { scoutGroups } from "../data/groups.js";
 import { contentImage, contentText } from "../services/siteContentService.js";
 import { preloadImages } from "../utils/imagePreload.js";
@@ -15,6 +16,8 @@ const goals = [
   ["Discipline", "Building commitment, respect, responsibility, and self-control."],
   ["Character", "Helping every scout become honest, kind, brave, and dependable."]
 ];
+
+const valueIcons = { Church, Compass, Flag, HeartHandshake, ShieldCheck, Sparkles, Star, Users };
 
 function groupRange(group) {
   if (group.assignmentBasis === "age") {
@@ -89,6 +92,16 @@ function parseHistoryMilestones(siteContent, fallbackText) {
     }
   ];
 }
+function parseManagedList(siteContent, key, fallback) {
+  const raw = contentText(siteContent, key, "").trim();
+  if (!raw) return fallback;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
 function initials(name) {
   return String(name)
     .split(/\s+/)
@@ -127,6 +140,9 @@ export default function AboutPage() {
   const heroImage = contentImage(siteContent, "about_hero_image", "");
   const aboutImage = contentImage(siteContent, "about_intro_image", "");
   const historyMilestones = parseHistoryMilestones(siteContent, historyText);
+  const pageTitle = contentText(siteContent, "about_page_title", "About Us");
+  const managedValues = parseManagedList(siteContent, "about_values", goals.map(([name, description], index) => ({ id: `value-${index}`, name, description })));
+  const managedGroups = parseManagedList(siteContent, "about_scout_groups", scoutGroups.map((group) => ({ id: group.id, name: group.name, ageRange: groupRange(group), description: "" })));
 
   useEffect(() => {
     preloadImages([heroImage, aboutImage]);
@@ -137,7 +153,7 @@ export default function AboutPage() {
       <section className="about-hero public-hero" style={heroImage ? { "--hero-image": `url("${heroImage}")` } : undefined}>
         <div>
           <p className="eyebrow">St. Mary's Scouts Dubai</p>
-          <h1>About Us</h1>
+          <h1>{pageTitle}</h1>
           <p>A scouting family rooted in faith, service, leadership, and community.</p>
         </div>
       </section>
@@ -146,7 +162,7 @@ export default function AboutPage() {
         <div className="about-intro-copy">
           <p className="eyebrow">Our Story</p>
           <h2>Growing together through scouting values and friendship.</h2>
-          <p>{aboutIntro}</p>
+          <FormattedText text={aboutIntro} />
           <p>
             We believe scouting helps children and youth become confident, disciplined, and
             caring individuals who are ready to serve their community and live with strong values.
@@ -174,7 +190,7 @@ export default function AboutPage() {
         <div className="about-history-copy">
           <p className="eyebrow">Our History</p>
           <h2>Built through faith, friendship, and service.</h2>
-          <p>{historyText}</p>
+          <FormattedText text={historyText} />
           <p>
             Over the years, our scout group has continued to grow through weekly meetings,
             ceremonies, camps, church celebrations, teamwork activities, and community service.
@@ -201,7 +217,7 @@ export default function AboutPage() {
           <Sparkles size={28} aria-hidden="true" />
           <p className="eyebrow">Our Mission</p>
           <h2>Helping young people grow with purpose.</h2>
-          <p>{missionText}</p>
+          <FormattedText text={missionText} />
         </div>
         <article className="about-vision-card">
           <ShieldCheck size={28} aria-hidden="true" />
@@ -217,11 +233,11 @@ export default function AboutPage() {
         <p className="eyebrow">Our Values</p>
         <h2>Values that shape our scouts.</h2>
         <div className="goal-grid">
-          {goals.map(([title, text]) => (
-            <article className="goal-card" key={title}>
+          {managedValues.map((value) => (
+            <article className="goal-card" key={value.id ?? value.name}>
               <Compass size={26} aria-hidden="true" />
-              <h3>{title}</h3>
-              <p>{text}</p>
+              <h3>{value.name}</h3>
+              <p>{value.description}</p>
             </article>
           ))}
         </div>
@@ -231,10 +247,11 @@ export default function AboutPage() {
         <p className="eyebrow">Scout Groups</p>
         <h2>Every age has a place to grow.</h2>
         <div className="about-group-strip">
-          {scoutGroups.map((group) => (
-            <article className="about-group-card" key={group.id}>
+          {managedGroups.map((group) => (
+            <article className="about-group-card" key={group.id ?? group.name}>
               <h3>{group.name}</h3>
-              <span>{groupRange(group)}</span>
+              <span>{group.ageRange}</span>
+              {group.description && <p>{group.description}</p>}
             </article>
           ))}
         </div>
