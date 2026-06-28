@@ -153,7 +153,7 @@ export default function AvatarCropModal({ file, title = "Edit image", aspectRati
     }
   };
 
-  return <div className="profile-modal-backdrop avatar-crop-backdrop" role="presentation" onMouseMove={moveDrag} onMouseUp={() => setDragStart(null)} onMouseLeave={() => setDragStart(null)} onTouchMove={moveDrag} onTouchEnd={() => setDragStart(null)}>
+  return <div className="profile-modal-backdrop avatar-crop-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onCancel(); }} onMouseMove={moveDrag} onMouseUp={() => setDragStart(null)} onMouseLeave={() => setDragStart(null)} onTouchMove={moveDrag} onTouchEnd={() => setDragStart(null)}>
     <div className="profile-modal avatar-crop-modal" role="dialog" aria-modal="true" aria-label={title}>
       <div><p className="eyebrow">{croppedFile ? "Confirm replacement" : "Crop and position"}</p><h2>{croppedFile ? "Replace the current image?" : title}</h2><p className="helper-text">{croppedFile ? "This is the exact image that will be saved." : "Drag to position the image. The locked frame is the exact saved crop."}</p></div>
       <div ref={frameRef} className={`avatar-crop-frame ${shape === "circle" ? "circle" : ""}`} style={{ aspectRatio }} onMouseDown={beginDrag} onTouchStart={beginDrag}>

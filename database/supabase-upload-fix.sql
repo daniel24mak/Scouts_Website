@@ -1207,3 +1207,132 @@ BEGIN
     PERFORM public.create_posted_form_notifications(open_form.id);
   END LOOP;
 END $$;
+-- Public contact submissions and notification cleanup policy refresh.
+ALTER TABLE public.contact_messages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "public submit contact messages" ON public.contact_messages;
+DROP POLICY IF EXISTS "Allow anonymous contact submissions" ON public.contact_messages;
+CREATE POLICY "Allow anonymous contact submissions" ON public.contact_messages
+  FOR INSERT TO anon, authenticated
+  WITH CHECK (
+    status = 'new'
+    AND length(trim(name)) > 0
+    AND length(trim(email)) > 0
+    AND length(trim(subject)) > 0
+    AND length(trim(message)) > 0
+  );
+
+DROP POLICY IF EXISTS "users delete own notifications" ON public.notifications;
+CREATE POLICY "users delete own notifications" ON public.notifications
+  FOR DELETE USING (user_id = auth.uid());
+-- Automatically complete stale related notifications when work is handled.
+CREATE OR REPLACE FUNCTION public.mark_entity_notifications_done(target_entity_type text, target_entity_id text, target_user_id uuid DEFAULT NULL)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE public.notifications
+  SET is_read = true,
+      read_at = COALESCE(read_at, now())
+  WHERE entity_type = target_entity_type
+    AND entity_id = target_entity_id
+    AND is_read = false
+    AND (target_user_id IS NULL OR user_id = target_user_id);
+END $$;
+
+CREATE OR REPLACE FUNCTION public.complete_approval_notifications_on_status_change()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  old_status text;
+  new_status text;
+  entity_name text;
+BEGIN
+  old_status := COALESCE(to_jsonb(OLD) ->> 'status', to_jsonb(OLD) ->> 'profile_change_status');
+  new_status := COALESCE(to_jsonb(NEW) ->> 'status', to_jsonb(NEW) ->> 'profile_change_status');
+  entity_name := CASE TG_TABLE_NAME
+    WHEN 'posts' THEN 'posts'
+    WHEN 'gallery_albums' THEN 'gallery_albums'
+    WHEN 'calendar_events' THEN 'calendar_events'
+    WHEN 'posted_forms' THEN 'posted_form'
+    WHEN 'site_content_revisions' THEN 'site_content_revision'
+    WHEN 'user_profiles' THEN 'profile'
+    ELSE TG_TABLE_NAME
+  END;
+
+  IF old_status IS DISTINCT FROM new_status AND new_status NOT IN ('pending', 'pending_update') THEN
+    PERFORM public.mark_entity_notifications_done(entity_name, NEW.id::text);
+  END IF;
+
+  RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS complete_posts_notifications_trigger ON public.posts;
+CREATE TRIGGER complete_posts_notifications_trigger AFTER UPDATE ON public.posts FOR EACH ROW EXECUTE FUNCTION public.complete_approval_notifications_on_status_change();
+DROP TRIGGER IF EXISTS complete_albums_notifications_trigger ON public.gallery_albums;
+CREATE TRIGGER complete_albums_notifications_trigger AFTER UPDATE ON public.gallery_albums FOR EACH ROW EXECUTE FUNCTION public.complete_approval_notifications_on_status_change();
+DROP TRIGGER IF EXISTS complete_events_notifications_trigger ON public.calendar_events;
+CREATE TRIGGER complete_events_notifications_trigger AFTER UPDATE ON public.calendar_events FOR EACH ROW EXECUTE FUNCTION public.complete_approval_notifications_on_status_change();
+DROP TRIGGER IF EXISTS complete_posted_forms_notifications_trigger ON public.posted_forms;
+CREATE TRIGGER complete_posted_forms_notifications_trigger AFTER UPDATE ON public.posted_forms FOR EACH ROW EXECUTE FUNCTION public.complete_approval_notifications_on_status_change();
+DROP TRIGGER IF EXISTS complete_site_content_notifications_trigger ON public.site_content_revisions;
+CREATE TRIGGER complete_site_content_notifications_trigger AFTER UPDATE ON public.site_content_revisions FOR EACH ROW EXECUTE FUNCTION public.complete_approval_notifications_on_status_change();
+DROP TRIGGER IF EXISTS complete_profile_notifications_trigger ON public.user_profiles;
+CREATE TRIGGER complete_profile_notifications_trigger AFTER UPDATE ON public.user_profiles FOR EACH ROW EXECUTE FUNCTION public.complete_approval_notifications_on_status_change();
+
+CREATE OR REPLACE FUNCTION public.complete_form_notification_on_submission()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  PERFORM public.mark_entity_notifications_done('posted_form', NEW.posted_form_id::text, NEW.submitted_by);
+  RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS complete_form_notification_on_submission_trigger ON public.form_submissions;
+CREATE TRIGGER complete_form_notification_on_submission_trigger AFTER INSERT OR UPDATE ON public.form_submissions FOR EACH ROW EXECUTE FUNCTION public.complete_form_notification_on_submission();
+-- Public contact message RPC. Use this instead of direct public table inserts.
+CREATE OR REPLACE FUNCTION public.submit_contact_message(
+  contact_name text,
+  contact_email text,
+  contact_subject text,
+  contact_message text,
+  contact_phone text DEFAULT NULL
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  new_message_id uuid;
+BEGIN
+  IF length(trim(COALESCE(contact_name, ''))) = 0
+    OR length(trim(COALESCE(contact_email, ''))) = 0
+    OR length(trim(COALESCE(contact_subject, ''))) = 0
+    OR length(trim(COALESCE(contact_message, ''))) = 0 THEN
+    RAISE EXCEPTION 'Missing required contact message fields';
+  END IF;
+
+  INSERT INTO public.contact_messages (name, email, phone, subject, message, status)
+  VALUES (
+    left(trim(contact_name), 120),
+    left(lower(trim(contact_email)), 180),
+    NULLIF(left(trim(COALESCE(contact_phone, '')), 40), ''),
+    left(trim(contact_subject), 180),
+    left(trim(contact_message), 3000),
+    'new'
+  )
+  RETURNING id INTO new_message_id;
+
+  RETURN new_message_id;
+END $$;
+
+REVOKE ALL ON FUNCTION public.submit_contact_message(text, text, text, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.submit_contact_message(text, text, text, text, text) TO anon, authenticated;

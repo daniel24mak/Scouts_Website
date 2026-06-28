@@ -13022,3 +13022,1314 @@ textarea:focus-visible {
 .home-page .faq-item.open .faq-answer {
   max-height: 1200px;
 }
+/* Site content image preview/crop actions and notification cleanup controls. */
+.website-image-preview-button,
+.website-image-empty-picker {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-height: 170px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px dashed #9aa4b7;
+  border-radius: 6px;
+  background: #f7f8fb;
+  color: inherit;
+  cursor: pointer;
+}
+
+.website-image-preview-button img,
+.website-image-empty-picker img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.website-content-image-control.hero .website-image-preview-button,
+.website-content-image-control.hero .website-image-empty-picker {
+  aspect-ratio: 16 / 9;
+  min-height: 150px;
+}
+
+.website-content-image-control.circle .website-image-preview-button,
+.website-content-image-control.circle .website-image-empty-picker {
+  width: 132px;
+  min-height: 132px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+}
+
+.website-image-preview-button small {
+  position: absolute;
+  inset: auto 10px 10px;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgb(13 18 34 / 0.72);
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.website-image-empty-picker input,
+.website-image-upload-action input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.website-image-action-modal {
+  width: min(760px, calc(100vw - 32px));
+}
+
+.website-image-large-preview {
+  display: grid;
+  width: 100%;
+  max-height: 55vh;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #eef1f7;
+}
+
+.website-image-large-preview.circle {
+  width: min(360px, 78vw);
+  margin-inline: auto;
+  border-radius: 50%;
+}
+
+.website-image-large-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.notification-row-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.notification-row-main {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.notification-delete-button,
+.notification-delete-inline {
+  display: inline-grid;
+  place-items: center;
+  color: #b42318;
+}
+
+.notification-delete-inline {
+  margin-left: auto;
+}
+
+.home-page .home-hero .hero-subtitle {
+  max-width: 760px;
+  color: rgb(255 255 255 / 0.9);
+  font-size: clamp(1rem, 2.2vw, 1.24rem);
+  line-height: 1.75;
+}
+
+.home-page .home-hero .hero-subtitle p {
+  margin: 0;
+  color: inherit;
+}
+/* Premium form completion experience. */
+.premium-form-experience,
+.premium-review-shell,
+.premium-completion-shell {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: clamp(18px, 3vw, 34px) clamp(10px, 2vw, 20px) 118px;
+}
+
+.premium-back-link {
+  margin-bottom: 18px;
+}
+
+.premium-form-card {
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.premium-form-header {
+  display: grid;
+  gap: 18px;
+  margin-bottom: clamp(22px, 4vw, 38px);
+  border: 1px solid rgb(226 232 240 / 0.95);
+  border-radius: 18px;
+  padding: clamp(24px, 5vw, 48px);
+  background:
+    radial-gradient(circle at top right, rgb(64 85 166 / 0.12), transparent 34%),
+    linear-gradient(180deg, #ffffff, #f8fafc);
+  box-shadow: 0 24px 70px rgb(15 23 42 / 0.08);
+}
+
+.premium-form-kicker {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgb(64 85 166 / 0.18);
+  border-radius: 999px;
+  padding: 7px 12px;
+  color: #4055a6;
+  background: rgb(64 85 166 / 0.07);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.premium-form-header h2,
+.forms-review-experience h2,
+.forms-submission-success-card h2 {
+  margin: 0;
+  color: #172033;
+  font-size: clamp(2rem, 5vw, 3.8rem);
+  line-height: 1.02;
+  letter-spacing: 0;
+}
+
+.premium-form-header .formatted-text {
+  max-width: 780px;
+  color: #526071;
+  font-size: 1.02rem;
+  line-height: 1.8;
+}
+
+.premium-form-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.premium-form-meta-grid span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border: 1px solid #e7ebf3;
+  border-radius: 12px;
+  padding: 12px;
+  background: rgb(255 255 255 / 0.78);
+  color: #697386;
+  font-size: 0.78rem;
+}
+
+.premium-form-meta-grid svg {
+  color: #4055a6;
+}
+
+.premium-form-meta-grid strong {
+  color: #1c2537;
+  font-size: 0.9rem;
+}
+
+.premium-form-progress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.premium-form-progress > div {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e7ebf3;
+}
+
+.premium-form-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #4055a6, #2f7d6d);
+  transition: width 220ms ease;
+}
+
+.premium-form-progress strong {
+  color: #4055a6;
+  font-size: 0.82rem;
+}
+
+.forms-preview-instructions.premium {
+  border: 1px solid rgb(245 191 21 / 0.36);
+  border-radius: 14px;
+  padding: 16px;
+  background: rgb(245 191 21 / 0.08);
+}
+
+.premium-question-stack {
+  display: grid;
+  gap: clamp(16px, 3vw, 26px);
+}
+
+.premium-question-card {
+  display: grid;
+  gap: 18px;
+  border: 1px solid #e5eaf3;
+  border-radius: 16px;
+  padding: clamp(20px, 4vw, 34px);
+  background: #ffffff;
+  box-shadow: 0 18px 50px rgb(15 23 42 / 0.06);
+  animation: premium-form-card-in 260ms ease both;
+}
+
+@keyframes premium-form-card-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.premium-question-card.has-error {
+  border-color: rgb(180 35 24 / 0.45);
+  box-shadow: 0 18px 50px rgb(180 35 24 / 0.08);
+}
+
+.premium-question-topline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.premium-question-number {
+  display: inline-grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgb(64 85 166 / 0.24);
+  border-radius: 12px;
+  background: transparent;
+  color: #4055a6;
+  font-weight: 900;
+}
+
+.forms-status-pill.neutral {
+  background: #eef2ff;
+  color: #4055a6;
+}
+
+.premium-question-topline em,
+.premium-question-topline small {
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.premium-question-topline em {
+  background: rgb(180 35 24 / 0.09);
+  color: #b42318;
+}
+
+.premium-question-topline small {
+  background: #f3f5f9;
+  color: #697386;
+}
+
+.premium-question-card label {
+  display: grid;
+  gap: 10px;
+}
+
+.premium-question-title {
+  color: #172033;
+  font-size: clamp(1.05rem, 2vw, 1.3rem);
+  font-weight: 850;
+  line-height: 1.3;
+}
+
+.premium-question-helper {
+  color: #697386;
+  font-size: 0.86rem;
+}
+
+.forms-premium-input,
+.premium-question-card input:not([type="radio"]):not([type="checkbox"]),
+.premium-question-card select,
+.premium-question-card textarea {
+  min-height: 48px;
+  border: 1px solid #d8dee9;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #fbfcff;
+  color: #172033;
+  font: inherit;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.forms-premium-input:focus,
+.premium-question-card input:focus,
+.premium-question-card select:focus,
+.premium-question-card textarea:focus {
+  border-color: #4055a6;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgb(64 85 166 / 0.12);
+  outline: none;
+}
+
+.forms-choice-stack.premium {
+  display: grid;
+  gap: 10px;
+}
+
+.forms-choice-stack.premium label {
+  position: relative;
+  display: flex;
+  min-height: 48px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #dfe5ef;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #fbfcff;
+  cursor: pointer;
+}
+
+.forms-choice-stack.premium input {
+  position: absolute;
+  opacity: 0;
+}
+
+.forms-choice-stack.premium label > span {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 2px solid #9aa6ba;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.forms-choice-stack.premium.checkboxes label > span {
+  border-radius: 6px;
+}
+
+.forms-choice-stack.premium input:checked + span {
+  border-color: #4055a6;
+  background: #4055a6;
+  box-shadow: inset 0 0 0 4px #fff;
+}
+
+.forms-choice-stack.premium.checkboxes input:checked + span {
+  box-shadow: inset 0 0 0 3px #fff;
+}
+
+.forms-segmented-control.premium,
+.forms-rating-control.premium {
+  gap: 8px;
+  border: 1px solid #dfe5ef;
+  border-radius: 14px;
+  padding: 6px;
+  background: #f7f9fc;
+}
+
+.forms-segmented-control.premium button,
+.forms-rating-control.premium button {
+  min-height: 44px;
+  border-radius: 10px;
+}
+
+.forms-fill-actions.premium-sticky-actions {
+  position: sticky;
+  z-index: 12;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 26px;
+  border: 1px solid rgb(226 232 240 / 0.95);
+  border-radius: 18px;
+  padding: 12px;
+  background: rgb(255 255 255 / 0.92);
+  box-shadow: 0 18px 54px rgb(15 23 42 / 0.14);
+  backdrop-filter: blur(18px);
+}
+
+.forms-fill-actions.premium-sticky-actions > div:first-child {
+  display: grid;
+  margin-right: auto;
+  color: #697386;
+  font-size: 0.8rem;
+}
+
+.forms-fill-actions.premium-sticky-actions > div:first-child strong {
+  color: #172033;
+}
+
+.forms-submit-progress.premium {
+  position: sticky;
+  bottom: 96px;
+  z-index: 13;
+  max-width: 520px;
+  margin: 18px auto;
+}
+
+.forms-review-experience,
+.forms-submission-success-card {
+  display: grid;
+  gap: 18px;
+  border: 1px solid #e5eaf3;
+  border-radius: 20px;
+  padding: clamp(24px, 5vw, 48px);
+  background: #fff;
+  box-shadow: 0 24px 70px rgb(15 23 42 / 0.08);
+}
+
+.forms-review-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.forms-review-stats-grid div {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #e5eaf3;
+  border-radius: 14px;
+  padding: 16px;
+  background: #f8fafc;
+}
+
+.forms-review-stats-grid strong {
+  color: #4055a6;
+  font-size: 1.65rem;
+}
+
+.forms-review-stats-grid span {
+  color: #697386;
+  font-size: 0.82rem;
+}
+
+.forms-review-warning,
+.forms-review-ready {
+  display: grid;
+  gap: 10px;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.forms-review-warning {
+  border: 1px solid rgb(180 35 24 / 0.24);
+  background: rgb(180 35 24 / 0.06);
+}
+
+.forms-review-warning button {
+  border: 0;
+  background: transparent;
+  color: #b42318;
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.forms-review-ready {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  border: 1px solid rgb(47 125 109 / 0.24);
+  background: rgb(47 125 109 / 0.08);
+  color: #2f7d6d;
+  font-weight: 800;
+}
+
+.forms-review-answer-list {
+  display: grid;
+  gap: 10px;
+}
+
+.forms-review-answer-list section {
+  display: grid;
+  gap: 5px;
+  border: 1px solid #edf1f6;
+  border-radius: 12px;
+  padding: 14px;
+  background: #fbfcff;
+}
+
+.forms-review-answer-list small {
+  color: #697386;
+  font-weight: 800;
+}
+
+.forms-review-answer-list strong {
+  color: #172033;
+}
+
+.forms-review-answer-list p {
+  margin: 0;
+  color: #526071;
+  white-space: pre-wrap;
+}
+
+.forms-submission-success-card {
+  max-width: 760px;
+  margin: 30px auto;
+  text-align: center;
+  justify-items: center;
+}
+
+.forms-success-icon {
+  display: grid;
+  width: 84px;
+  height: 84px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgb(47 125 109 / 0.1);
+  color: #2f7d6d;
+}
+
+@media (max-width: 780px) {
+  .premium-form-meta-grid,
+  .forms-review-stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .forms-fill-actions.premium-sticky-actions {
+    align-items: stretch;
+  }
+
+  .forms-fill-actions.premium-sticky-actions > div:first-child {
+    width: 100%;
+  }
+
+  .forms-fill-actions.premium-sticky-actions button {
+    flex: 1 1 140px;
+  }
+}
+
+@media (max-width: 520px) {
+  .premium-form-experience,
+  .premium-review-shell,
+  .premium-completion-shell {
+    padding-inline: 0;
+  }
+
+  .premium-form-header,
+  .premium-question-card,
+  .forms-review-experience,
+  .forms-submission-success-card {
+    border-radius: 14px;
+  }
+
+  .premium-form-meta-grid,
+  .forms-review-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+/* Dashboard-only dark mode. */
+.admin-cms-shell.dashboard-theme-dark {
+  --dashboard-bg: #0b1020;
+  --dashboard-surface: #111827;
+  --dashboard-surface-2: #172033;
+  --dashboard-line: #273247;
+  --dashboard-text: #eef4ff;
+  --dashboard-muted: #a9b4c7;
+  --dashboard-accent: #8ea2ff;
+  --dashboard-accent-strong: #f5bf15;
+  background: var(--dashboard-bg);
+  color: var(--dashboard-text);
+}
+
+.admin-cms-shell.dashboard-theme-dark .admin-main,
+.admin-cms-shell.dashboard-theme-dark .cms-panel-stack,
+.admin-cms-shell.dashboard-theme-dark .notifications-page {
+  background: var(--dashboard-bg);
+  color: var(--dashboard-text);
+}
+
+.admin-cms-shell.dashboard-theme-dark .admin-sidebar,
+.admin-cms-shell.dashboard-theme-dark .dashboard-topbar,
+.admin-cms-shell.dashboard-theme-dark .dashboard-mobile-reveal-bar,
+.admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs,
+.admin-cms-shell.dashboard-theme-dark .dashboard-more-sheet,
+.admin-cms-shell.dashboard-theme-dark .dashboard-notification-dropdown,
+.admin-cms-shell.dashboard-theme-dark .dashboard-profile-dropdown,
+.admin-cms-shell.dashboard-theme-dark .cms-form,
+.admin-cms-shell.dashboard-theme-dark .table-panel,
+.admin-cms-shell.dashboard-theme-dark .settings-card-grid button,
+.admin-cms-shell.dashboard-theme-dark .forms-management-card,
+.admin-cms-shell.dashboard-theme-dark .forms-preview-card,
+.admin-cms-shell.dashboard-theme-dark .forms-review-experience,
+.admin-cms-shell.dashboard-theme-dark .forms-submission-success-card,
+.admin-cms-shell.dashboard-theme-dark .calendar-create-panel,
+.admin-cms-shell.dashboard-theme-dark .editor-panel,
+.admin-cms-shell.dashboard-theme-dark .dashboard-card,
+.admin-cms-shell.dashboard-theme-dark .overview-card,
+.admin-cms-shell.dashboard-theme-dark .approval-review-modal,
+.admin-cms-shell.dashboard-theme-dark .profile-modal {
+  border-color: var(--dashboard-line) !important;
+  background: var(--dashboard-surface) !important;
+  color: var(--dashboard-text) !important;
+  box-shadow: 0 18px 55px rgb(0 0 0 / 0.28);
+}
+
+.admin-cms-shell.dashboard-theme-dark .dashboard-topbar-title,
+.admin-cms-shell.dashboard-theme-dark .dashboard-topbar strong,
+.admin-cms-shell.dashboard-theme-dark .admin-sidebar-title strong,
+.admin-cms-shell.dashboard-theme-dark h1,
+.admin-cms-shell.dashboard-theme-dark h2,
+.admin-cms-shell.dashboard-theme-dark h3,
+.admin-cms-shell.dashboard-theme-dark h4,
+.admin-cms-shell.dashboard-theme-dark .premium-question-title,
+.admin-cms-shell.dashboard-theme-dark .forms-review-answer-list strong,
+.admin-cms-shell.dashboard-theme-dark .notification-row strong,
+.admin-cms-shell.dashboard-theme-dark .dashboard-notification-dropdown button strong {
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .dashboard-topbar span,
+.admin-cms-shell.dashboard-theme-dark .admin-sidebar-title span,
+.admin-cms-shell.dashboard-theme-dark p,
+.admin-cms-shell.dashboard-theme-dark small,
+.admin-cms-shell.dashboard-theme-dark .helper-text,
+.admin-cms-shell.dashboard-theme-dark .formatted-text,
+.admin-cms-shell.dashboard-theme-dark .dashboard-notification-dropdown button span,
+.admin-cms-shell.dashboard-theme-dark .dashboard-notification-dropdown button small,
+.admin-cms-shell.dashboard-theme-dark .premium-question-helper {
+  color: var(--dashboard-muted) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark input,
+.admin-cms-shell.dashboard-theme-dark select,
+.admin-cms-shell.dashboard-theme-dark textarea,
+.admin-cms-shell.dashboard-theme-dark .forms-premium-input,
+.admin-cms-shell.dashboard-theme-dark .rich-text-editor,
+.admin-cms-shell.dashboard-theme-dark .rich-text-editor-content {
+  border-color: var(--dashboard-line) !important;
+  background: #0f172a !important;
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark input::placeholder,
+.admin-cms-shell.dashboard-theme-dark textarea::placeholder {
+  color: #748198 !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .dashboard-theme-toggle,
+.admin-cms-shell.dashboard-theme-dark .dashboard-notification-button,
+.admin-cms-shell.dashboard-theme-dark .dashboard-profile-button,
+.admin-cms-shell.dashboard-theme-dark .inline-action,
+.admin-cms-shell.dashboard-theme-dark .icon-button,
+.admin-cms-shell.dashboard-theme-dark .sidebar-control-button,
+.admin-cms-shell.dashboard-theme-dark .admin-sidebar button {
+  border-color: var(--dashboard-line) !important;
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .dashboard-theme-toggle:hover,
+.admin-cms-shell.dashboard-theme-dark .dashboard-theme-toggle:focus-visible,
+.admin-cms-shell.dashboard-theme-dark .dashboard-notification-button:hover,
+.admin-cms-shell.dashboard-theme-dark .dashboard-profile-button:hover,
+.admin-cms-shell.dashboard-theme-dark .admin-sidebar button:hover,
+.admin-cms-shell.dashboard-theme-dark .admin-sidebar button.active,
+.admin-cms-shell.dashboard-theme-dark .sidebar-group.active-group > .sidebar-group-trigger {
+  background: rgb(142 162 255 / 0.16) !important;
+  color: var(--dashboard-accent) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .primary-action,
+.admin-cms-shell.dashboard-theme-dark button.primary-action {
+  border-color: #4055a6 !important;
+  background: #4055a6 !important;
+  color: #ffffff !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .table-panel th,
+.admin-cms-shell.dashboard-theme-dark .editable-table th,
+.admin-cms-shell.dashboard-theme-dark .editable-table td,
+.admin-cms-shell.dashboard-theme-dark .table-panel td {
+  border-color: var(--dashboard-line) !important;
+  background: var(--dashboard-surface) !important;
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .table-panel tbody tr:hover,
+.admin-cms-shell.dashboard-theme-dark .notification-row:hover,
+.admin-cms-shell.dashboard-theme-dark .notification-row.unread,
+.admin-cms-shell.dashboard-theme-dark .forms-choice-stack.premium label,
+.admin-cms-shell.dashboard-theme-dark .premium-question-card,
+.admin-cms-shell.dashboard-theme-dark .forms-review-answer-list section,
+.admin-cms-shell.dashboard-theme-dark .premium-form-meta-grid span {
+  border-color: var(--dashboard-line) !important;
+  background: var(--dashboard-surface-2) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-status-pill,
+.admin-cms-shell.dashboard-theme-dark .premium-question-number {
+  border-color: rgb(142 162 255 / 0.34) !important;
+  background: rgb(142 162 255 / 0.12) !important;
+  color: var(--dashboard-accent) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .dashboard-sidebar-overlay {
+  background: rgb(0 0 0 / 0.56);
+}
+.dashboard-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  min-width: 42px;
+  min-height: 40px;
+  border: 1px solid var(--dashboard-line, #dfe6d8);
+  border-radius: 999px;
+  padding: 0;
+  background: #ffffff;
+  color: var(--dashboard-text, #172044);
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.dashboard-theme-toggle:hover,
+.dashboard-theme-toggle:focus-visible {
+  border-color: #4055a6;
+  color: #4055a6;
+  background: rgb(64 85 166 / 0.08);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .dashboard-theme-toggle {
+    width: 38px !important;
+    min-width: 38px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+  }
+}
+/* Strong dashboard dark-mode surface coverage. Keep scoped to dashboard only. */
+.admin-cms-shell.dashboard-theme-dark :where(
+  .cms-form,
+  .table-panel,
+  .editor-panel,
+  .calendar-create-panel,
+  .dashboard-card,
+  .overview-card,
+  .metric-card,
+  .settings-card-grid button,
+  .cms-stat-card,
+  .approval-card,
+  .approval-review-modal,
+  .profile-modal,
+  .calendar-detail-modal,
+  .forms-management-card,
+  .forms-builder-shell,
+  .forms-builder-topbar,
+  .forms-wizard-panel,
+  .forms-question-card,
+  .forms-preview-card,
+  .forms-fill-question,
+  .forms-review-experience,
+  .forms-submission-success-card,
+  .forms-ai-summary-card,
+  .forms-submissions-table,
+  .forms-filter-bar,
+  .forms-choice-stack label,
+  .forms-section-tabs,
+  .notifications-full-list,
+  .notification-row,
+  .notification-row-main,
+  .contact-message-card,
+  .website-editor-card,
+  .inline-editor-panel,
+  .website-change-card,
+  .website-image-preview-button,
+  .website-image-empty-picker,
+  .image-crop-modal,
+  .modal-card,
+  .modal-content,
+  .blog-preview-card,
+  .album-preview-card,
+  .calendar-event-card,
+  .calendar-grid,
+  .calendar-day,
+  .calendar-toolbar,
+  .attendance-card,
+  .attendance-sheet-card,
+  .my-group-card,
+  .my-group-reference,
+  .equipe-card,
+  .equipe-assignment-zone,
+  .profile-settings-card,
+  .dashboard-context-header,
+  .quick-shortcuts-row button,
+  .mini-list,
+  .empty-state
+) {
+  border-color: var(--dashboard-line) !important;
+  background: var(--dashboard-surface) !important;
+  color: var(--dashboard-text) !important;
+  box-shadow: 0 16px 44px rgb(0 0 0 / 0.22) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .cms-form > *,
+  .table-panel thead,
+  .table-panel tbody,
+  .editable-table,
+  .editable-table tr,
+  .editable-table th,
+  .editable-table td,
+  .mini-list button,
+  .forms-review-answer-list section,
+  .premium-form-meta-grid span,
+  .forms-review-stats-grid div,
+  .forms-choice-stack.premium label,
+  .forms-segmented-control,
+  .forms-rating-control,
+  .forms-preview-instructions,
+  .dashboard-notification-dropdown button,
+  .dashboard-profile-dropdown button,
+  .notification-dropdown-header,
+  .sidebar-account,
+  .sidebar-group,
+  .sidebar-subitems,
+  .rich-text-toolbar,
+  .ql-toolbar,
+  .ql-container,
+  .ql-editor,
+  .ql-picker-options
+) {
+  border-color: var(--dashboard-line) !important;
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .cms-form input,
+  .cms-form select,
+  .cms-form textarea,
+  .editable-table input,
+  .editable-table select,
+  .editable-table textarea,
+  .forms-premium-input,
+  .forms-question-card input,
+  .forms-question-card select,
+  .forms-question-card textarea,
+  .dashboard-topbar-search input,
+  .dashboard-topbar-search select,
+  .rich-text-editor,
+  .rich-text-editor-content,
+  .ql-editor
+) {
+  border-color: var(--dashboard-line) !important;
+  background: #0b1224 !important;
+  color: var(--dashboard-text) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .cms-form input:focus,
+  .cms-form select:focus,
+  .cms-form textarea:focus,
+  .editable-table input:focus,
+  .editable-table select:focus,
+  .editable-table textarea:focus,
+  .forms-premium-input:focus,
+  .dashboard-topbar-search input:focus
+) {
+  border-color: var(--dashboard-accent) !important;
+  box-shadow: 0 0 0 4px rgb(142 162 255 / 0.18) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  strong,
+  label,
+  th,
+  td,
+  .dashboard-topbar-title,
+  .forms-section-heading h2,
+  .forms-section-heading h3,
+  .admin-sidebar button,
+  .sidebar-control-button,
+  .sidebar-brand strong,
+  .dashboard-profile-button,
+  .dashboard-theme-toggle,
+  .dashboard-notification-button
+) {
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  p,
+  small,
+  span,
+  .helper-text,
+  .eyebrow,
+  .formatted-text,
+  .dashboard-topbar-kicker,
+  .sidebar-brand span,
+  .forms-count-badge,
+  .forms-response-count,
+  .premium-question-helper,
+  .forms-field-error
+) {
+  color: var(--dashboard-muted) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .primary-action,
+  button.primary-action,
+  .admin-sidebar button.active,
+  .approval-type-tabs button.active,
+  .forms-section-tabs button.active,
+  .forms-mode-toggle button.active,
+  .sidebar-group.active-group > .sidebar-group-trigger
+) {
+  border-color: #4055a6 !important;
+  background: #4055a6 !important;
+  color: #ffffff !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  button:not(.primary-action),
+  .inline-action,
+  .icon-button,
+  .approval-type-tabs button,
+  .forms-section-tabs button,
+  .forms-mode-toggle button,
+  .dashboard-bottom-tab-link,
+  .dashboard-more-grid button
+) {
+  border-color: var(--dashboard-line) !important;
+  background-color: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  button:not(.primary-action):hover,
+  button:not(.primary-action):focus-visible,
+  .inline-action:hover,
+  .icon-button:hover,
+  .dashboard-bottom-tab-link.active,
+  .dashboard-more-grid button.active
+) {
+  border-color: rgb(142 162 255 / 0.52) !important;
+  background-color: rgb(142 162 255 / 0.16) !important;
+  color: var(--dashboard-accent) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .danger-action,
+  .forms-field-error,
+  .error-banner
+) {
+  color: #ffb4a9 !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .success-banner,
+  .forms-review-ready,
+  .forms-success-icon
+) {
+  border-color: rgb(52 211 153 / 0.35) !important;
+  background: rgb(52 211 153 / 0.12) !important;
+  color: #86efac !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .forms-review-warning,
+  .warning-banner,
+  .upload-progress
+) {
+  border-color: rgb(245 191 21 / 0.34) !important;
+  background: rgb(245 191 21 / 0.12) !important;
+  color: #fde68a !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(img, video, canvas) {
+  color-scheme: light;
+}
+/* Final dashboard dark-mode specificity override for legacy white section rules. */
+.admin-cms-shell.dashboard-theme-dark,
+.admin-cms-shell.dashboard-theme-dark .admin-main,
+.admin-cms-shell.dashboard-theme-dark main,
+.admin-cms-shell.dashboard-theme-dark aside {
+  background: var(--dashboard-bg) !important;
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark article,
+.admin-cms-shell.dashboard-theme-dark form,
+.admin-cms-shell.dashboard-theme-dark table,
+.admin-cms-shell.dashboard-theme-dark thead,
+.admin-cms-shell.dashboard-theme-dark tbody,
+.admin-cms-shell.dashboard-theme-dark tr,
+.admin-cms-shell.dashboard-theme-dark th,
+.admin-cms-shell.dashboard-theme-dark td,
+.admin-cms-shell.dashboard-theme-dark label,
+.admin-cms-shell.dashboard-theme-dark [class*="panel"],
+.admin-cms-shell.dashboard-theme-dark [class*="card"],
+.admin-cms-shell.dashboard-theme-dark [class*="box"],
+.admin-cms-shell.dashboard-theme-dark [class*="row"],
+.admin-cms-shell.dashboard-theme-dark [class*="list"],
+.admin-cms-shell.dashboard-theme-dark [class*="grid"],
+.admin-cms-shell.dashboard-theme-dark [class*="table"],
+.admin-cms-shell.dashboard-theme-dark [class*="toolbar"],
+.admin-cms-shell.dashboard-theme-dark [class*="modal"],
+.admin-cms-shell.dashboard-theme-dark [class*="preview"],
+.admin-cms-shell.dashboard-theme-dark [class*="form"],
+.admin-cms-shell.dashboard-theme-dark [class*="dropdown"],
+.admin-cms-shell.dashboard-theme-dark [class*="tabs"],
+.admin-cms-shell.dashboard-theme-dark [class*="sheet"],
+.admin-cms-shell.dashboard-theme-dark [class*="state"],
+.admin-cms-shell.dashboard-theme-dark [class*="detail"],
+.admin-cms-shell.dashboard-theme-dark [class*="workspace"],
+.admin-cms-shell.dashboard-theme-dark [class*="canvas"],
+.admin-cms-shell.dashboard-theme-dark [class*="section"] {
+  border-color: var(--dashboard-line) !important;
+  background: var(--dashboard-surface) !important;
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark [class*="row"]:hover,
+.admin-cms-shell.dashboard-theme-dark [class*="item"]:hover,
+.admin-cms-shell.dashboard-theme-dark [class*="card"]:hover,
+.admin-cms-shell.dashboard-theme-dark tr:hover,
+.admin-cms-shell.dashboard-theme-dark .unread,
+.admin-cms-shell.dashboard-theme-dark .active,
+.admin-cms-shell.dashboard-theme-dark [aria-selected="true"] {
+  background: var(--dashboard-surface-2) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark input,
+.admin-cms-shell.dashboard-theme-dark select,
+.admin-cms-shell.dashboard-theme-dark textarea,
+.admin-cms-shell.dashboard-theme-dark [contenteditable="true"],
+.admin-cms-shell.dashboard-theme-dark .ql-editor,
+.admin-cms-shell.dashboard-theme-dark .ql-toolbar,
+.admin-cms-shell.dashboard-theme-dark .ql-container {
+  border-color: var(--dashboard-line) !important;
+  background: #0b1224 !important;
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark button,
+.admin-cms-shell.dashboard-theme-dark a.sidebar-control-button,
+.admin-cms-shell.dashboard-theme-dark .inline-action,
+.admin-cms-shell.dashboard-theme-dark .icon-button {
+  border-color: var(--dashboard-line) !important;
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .primary-action,
+.admin-cms-shell.dashboard-theme-dark button.primary-action,
+.admin-cms-shell.dashboard-theme-dark button.active,
+.admin-cms-shell.dashboard-theme-dark .active > button,
+.admin-cms-shell.dashboard-theme-dark .forms-section-tabs button.active,
+.admin-cms-shell.dashboard-theme-dark .approval-type-tabs button.active {
+  border-color: #4055a6 !important;
+  background: #4055a6 !important;
+  color: #ffffff !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark h1,
+.admin-cms-shell.dashboard-theme-dark h2,
+.admin-cms-shell.dashboard-theme-dark h3,
+.admin-cms-shell.dashboard-theme-dark h4,
+.admin-cms-shell.dashboard-theme-dark h5,
+.admin-cms-shell.dashboard-theme-dark h6,
+.admin-cms-shell.dashboard-theme-dark strong,
+.admin-cms-shell.dashboard-theme-dark b,
+.admin-cms-shell.dashboard-theme-dark dt,
+.admin-cms-shell.dashboard-theme-dark dd,
+.admin-cms-shell.dashboard-theme-dark th,
+.admin-cms-shell.dashboard-theme-dark td {
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark p,
+.admin-cms-shell.dashboard-theme-dark span,
+.admin-cms-shell.dashboard-theme-dark small,
+.admin-cms-shell.dashboard-theme-dark em,
+.admin-cms-shell.dashboard-theme-dark .helper-text,
+.admin-cms-shell.dashboard-theme-dark .eyebrow,
+.admin-cms-shell.dashboard-theme-dark .formatted-text {
+  color: var(--dashboard-muted) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark svg,
+.admin-cms-shell.dashboard-theme-dark button svg {
+  color: currentColor !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark img,
+.admin-cms-shell.dashboard-theme-dark video,
+.admin-cms-shell.dashboard-theme-dark canvas,
+.admin-cms-shell.dashboard-theme-dark svg,
+.admin-cms-shell.dashboard-theme-dark path {
+  background: transparent !important;
+}
+/* Mobile-first repair for website image preview and crop popups. */
+.profile-modal-backdrop.website-image-action-backdrop,
+.profile-modal-backdrop.avatar-crop-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 5000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)) !important;
+  overflow: hidden !important;
+  background: rgb(8 13 28 / 0.72) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+.profile-modal.website-image-action-modal,
+.profile-modal.avatar-crop-modal {
+  position: relative !important;
+  display: grid !important;
+  width: min(100%, 720px) !important;
+  max-height: calc(100dvh - 20px) !important;
+  overflow: auto !important;
+  overscroll-behavior: contain !important;
+  gap: 14px !important;
+  border: 1px solid rgb(226 232 240 / 0.95) !important;
+  border-radius: 14px !important;
+  padding: 18px !important;
+  background: #ffffff !important;
+  color: #172033 !important;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 0.34) !important;
+}
+
+.profile-modal.website-image-action-modal .modal-close-button,
+.profile-modal.avatar-crop-modal .modal-close-button {
+  position: absolute !important;
+  top: 10px !important;
+  right: 10px !important;
+  z-index: 3 !important;
+}
+
+.website-image-large-preview {
+  width: 100% !important;
+  max-height: min(52dvh, 520px) !important;
+  min-height: 180px !important;
+  border: 1px solid #dfe5ef !important;
+  border-radius: 12px !important;
+  background: #eef2f8 !important;
+}
+
+.website-image-large-preview img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+}
+
+.website-image-large-preview.circle {
+  width: min(78vw, 360px) !important;
+  max-height: none !important;
+  aspect-ratio: 1 !important;
+}
+
+.avatar-crop-frame,
+.avatar-crop-frame:not(.circle) {
+  width: min(100%, 86vw) !important;
+  max-width: 620px !important;
+  max-height: 52dvh !important;
+  margin: 0 auto !important;
+  touch-action: none !important;
+  user-select: none !important;
+}
+
+.avatar-crop-frame.circle {
+  width: min(78vw, 340px) !important;
+  max-width: 340px !important;
+  max-height: 340px !important;
+}
+
+.profile-modal.avatar-crop-modal .action-row,
+.profile-modal.website-image-action-modal .action-row {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 10px !important;
+  margin-top: 4px !important;
+}
+
+.profile-modal.avatar-crop-modal .action-row button,
+.profile-modal.website-image-action-modal .action-row button,
+.profile-modal.website-image-action-modal .website-image-upload-action {
+  width: 100% !important;
+  justify-content: center !important;
+  min-height: 44px !important;
+}
+
+.avatar-zoom-control {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  border: 1px solid #dfe5ef;
+  border-radius: 12px;
+  padding: 10px;
+  background: #ffffff;
+}
+
+@media (min-width: 720px) {
+  .profile-modal-backdrop.website-image-action-backdrop,
+  .profile-modal-backdrop.avatar-crop-backdrop {
+    padding: 24px !important;
+  }
+
+  .profile-modal.website-image-action-modal,
+  .profile-modal.avatar-crop-modal {
+    max-height: min(860px, calc(100vh - 48px)) !important;
+    padding: 24px !important;
+  }
+
+  .profile-modal.avatar-crop-modal .action-row,
+  .profile-modal.website-image-action-modal .action-row {
+    display: flex !important;
+    justify-content: flex-end !important;
+  }
+
+  .profile-modal.avatar-crop-modal .action-row button,
+  .profile-modal.website-image-action-modal .action-row button,
+  .profile-modal.website-image-action-modal .website-image-upload-action {
+    width: auto !important;
+  }
+}
+
+.admin-cms-shell.dashboard-theme-dark .profile-modal-backdrop.website-image-action-backdrop,
+.admin-cms-shell.dashboard-theme-dark .profile-modal-backdrop.avatar-crop-backdrop {
+  background: rgb(0 0 0 / 0.76) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .profile-modal.website-image-action-modal,
+.admin-cms-shell.dashboard-theme-dark .profile-modal.avatar-crop-modal,
+.admin-cms-shell.dashboard-theme-dark .avatar-zoom-control {
+  border-color: var(--dashboard-line) !important;
+  background: var(--dashboard-surface) !important;
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .website-image-large-preview,
+.admin-cms-shell.dashboard-theme-dark .avatar-crop-frame {
+  border-color: var(--dashboard-line) !important;
+  background: #0b1224 !important;
+}

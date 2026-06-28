@@ -61,7 +61,7 @@ import {
 } from "../services/siteContentService.js";
 import { adminResetUserPassword, createDashboardUser, createProfile, getProfiles, reviewProfileChangeRequest, submitProfileChangeRequest, updateProfile } from "../services/userService.js";
 import { closePostedForm, deleteFormTemplateCascade, deletePostedFormCascade, getFormsData, reopenPostedForm, saveFormSubmission, saveFormTemplate, savePostedForm, updatePostedFormReview } from "../services/formService.js";
-import { getNotifications, markAllNotificationsRead, markNotificationRead } from "../services/notificationService.js";
+import { deleteNotification, getNotifications, markAllNotificationsRead, markNotificationRead, markNotificationsDoneForEntity } from "../services/notificationService.js";
 import { getWebsiteContentRevisions, reviewWebsiteContentRevision, submitWebsiteContentRevision } from "../services/websiteContentRevisionService.js";
 
 export const fallbackData = {
@@ -665,9 +665,11 @@ export function deleteDashboardPostedForm(formId) {
   return Promise.resolve(null);
 }
 
-export function saveDashboardFormSubmission(payload) {
+export async function saveDashboardFormSubmission(payload) {
   if (isSupabaseConfigured) {
-    return saveFormSubmission(payload);
+    const saved = await saveFormSubmission(payload);
+    await markNotificationsDoneForEntity("posted_form", payload.postedFormId).catch(() => {});
+    return saved;
   }
 
   return Promise.resolve(payload);
@@ -681,6 +683,13 @@ export function readAllDashboardNotifications() {
   return isSupabaseConfigured ? markAllNotificationsRead() : Promise.resolve([]);
 }
 
+export function completeDashboardEntityNotifications(entityType, entityId) {
+  return isSupabaseConfigured ? markNotificationsDoneForEntity(entityType, entityId) : Promise.resolve([]);
+}
+
+export function deleteDashboardNotification(notificationId) {
+  return isSupabaseConfigured ? deleteNotification(notificationId) : Promise.resolve([]);
+}
 export function submitDashboardWebsiteContentRevision(payload) {
   return isSupabaseConfigured ? submitWebsiteContentRevision(payload) : Promise.resolve(payload);
 }

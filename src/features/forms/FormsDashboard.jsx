@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, CalendarDays, CheckCircle2, Copy, FileText, GripVertical, Plus, Search, Star, Trash2, Users } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, CalendarDays, CheckCircle2, Clock, Copy, FileText, GripVertical, Plus, Save, Search, Send, ShieldCheck, Star, Trash2, Users } from "lucide-react";
 import {
   closeDashboardPostedForm,
   deleteDashboardFormTemplate,
@@ -63,6 +63,47 @@ function isTargetedToUser(form, user) {
   return false;
 }
 
+
+function isAnswerFilled(value) {
+  return !(value === undefined || value === null || value === "" || (Array.isArray(value) && !value.length));
+}
+
+function getQuestionTypeLabel(type) {
+  return formQuestionTypes.find(([id]) => id === type)?.[1] ?? "Question";
+}
+
+function getQuestionPlaceholder(question) {
+  if (question.type === "number") return "Enter a number";
+  if (question.type === "date") return "Select a date";
+  if (question.type === "dropdown") return "Select an option";
+  if (question.type === "long_text") return "Type your response here...";
+  return /name/i.test(question.text ?? "") ? "Enter full name" : "Type your answer...";
+}
+
+function getQuestionHelper(question) {
+  if (question.required) return "This question is required.";
+  if (question.type === "number") return "Numbers only.";
+  if (question.type === "rating") return "Choose one rating from 1 to 5.";
+  if (question.type === "checkboxes") return "Select all options that apply.";
+  if (question.type === "multiple_choice") return "Select one option.";
+  return "Optional";
+}
+
+function getFormStats(form, answers) {
+  const questions = safeSchema(form.schemaJson).questions;
+  const completed = questions.filter((question) => isAnswerFilled(answers[question.id])).length;
+  const required = questions.filter((question) => question.required).length;
+  const missingRequired = questions.filter((question) => question.required && !isAnswerFilled(answers[question.id]));
+  return {
+    questions,
+    completed,
+    required,
+    missingRequired,
+    optionalUnanswered: questions.filter((question) => !question.required && !isAnswerFilled(answers[question.id])).length,
+    percent: questions.length ? Math.round((completed / questions.length) * 100) : 0,
+    estimateMinutes: Math.max(2, Math.ceil(questions.length * 0.7))
+  };
+}
 function answerToText(value) {
   if (Array.isArray(value)) return value.join("; ");
   return value ?? "";
@@ -94,49 +135,63 @@ function downloadCsv({ form, submissions, users, groups }) {
 }
 
 function QuestionInput({ question, value, onChange, disabled = false }) {
+  const placeholder = getQuestionPlaceholder(question);
   if (question.type === "long_text") {
     if (disabled) return value ? <FormattedText text={value} className="formatted-text forms-rich-answer" /> : <div className="forms-rich-answer-placeholder">Long answer</div>;
-    return <RichTextEditor value={value ?? ""} onChange={onChange} minHeight={130} placeholder="Write a formatted answer..." />;
+    return <div className="forms-premium-rich-input"><RichTextEditor value={value ?? ""} onChange={onChange} minHeight={150} placeholder={placeholder} /></div>;
   }
-  if (question.type === "number") return <input disabled={disabled} type="number" value={value ?? ""} onChange={(event) => onChange(event.target.value)} />;
+  if (question.type === "number") return <input className="forms-premium-input" disabled={disabled} type="number" value={value ?? ""} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />;
   if (question.type === "rating") {
-    return <div className="forms-rating-control" role="radiogroup" aria-label={question.text}>{[1, 2, 3, 4, 5].map((rating) => <button type="button" key={rating} disabled={disabled} className={String(value ?? "") === String(rating) ? "selected" : ""} onClick={() => onChange(rating)} aria-label={`${rating} out of 5`}><Star size={18} fill={String(value ?? "") === String(rating) ? "currentColor" : "none"} /><span>{rating}</span></button>)}</div>;
+    return <div className="forms-rating-control premium" role="radiogroup" aria-label={question.text}>{[1, 2, 3, 4, 5].map((rating) => <button type="button" key={rating} disabled={disabled} className={String(value ?? "") === String(rating) ? "selected" : ""} onClick={() => onChange(rating)} aria-label={`${rating} out of 5`}><Star size={19} fill={String(value ?? "") === String(rating) ? "currentColor" : "none"} /><span>{rating}</span></button>)}</div>;
   }
-  if (question.type === "yes_no") return <div className="forms-segmented-control">{["Yes", "No"].map((choice) => <button type="button" key={choice} disabled={disabled} className={value === choice ? "selected" : ""} onClick={() => onChange(choice)}>{choice}</button>)}</div>;
-  if (question.type === "multiple_choice") return <div className="forms-choice-stack">{question.options.map((option) => <label key={option}><input disabled={disabled} type="radio" checked={value === option} onChange={() => onChange(option)} />{option}</label>)}</div>;
+  if (question.type === "yes_no") return <div className="forms-segmented-control premium">{["Yes", "No"].map((choice) => <button type="button" key={choice} disabled={disabled} className={value === choice ? "selected" : ""} onClick={() => onChange(choice)}>{choice}</button>)}</div>;
+  if (question.type === "multiple_choice") return <div className="forms-choice-stack premium">{question.options.map((option) => <label key={option}><input disabled={disabled} type="radio" checked={value === option} onChange={() => onChange(option)} /><span />{option}</label>)}</div>;
   if (question.type === "checkboxes") {
     const selected = Array.isArray(value) ? value : [];
-    return <div className="forms-choice-stack">{question.options.map((option) => <label key={option}><input disabled={disabled} type="checkbox" checked={selected.includes(option)} onChange={(event) => onChange(event.target.checked ? [...selected, option] : selected.filter((item) => item !== option))} />{option}</label>)}</div>;
+    return <div className="forms-choice-stack premium checkboxes">{question.options.map((option) => <label key={option}><input disabled={disabled} type="checkbox" checked={selected.includes(option)} onChange={(event) => onChange(event.target.checked ? [...selected, option] : selected.filter((item) => item !== option))} /><span />{option}</label>)}</div>;
   }
-  if (question.type === "dropdown") return <select disabled={disabled} value={value ?? ""} onChange={(event) => onChange(event.target.value)}><option value="">Choose</option>{question.options.map((option) => <option key={option} value={option}>{option}</option>)}</select>;
-  if (question.type === "date") return <input disabled={disabled} type="date" value={value ?? ""} onChange={(event) => onChange(event.target.value)} />;
-  return <input disabled={disabled} value={value ?? ""} onChange={(event) => onChange(event.target.value)} placeholder="Short answer text" />;
+  if (question.type === "dropdown") return <select className="forms-premium-input" disabled={disabled} value={value ?? ""} onChange={(event) => onChange(event.target.value)}><option value="">{placeholder}</option>{question.options.map((option) => <option key={option} value={option}>{option}</option>)}</select>;
+  if (question.type === "date") return <input className="forms-premium-input" disabled={disabled} type="date" value={value ?? ""} onChange={(event) => onChange(event.target.value)} aria-label={placeholder} />;
+  return <input className="forms-premium-input" disabled={disabled} value={value ?? ""} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />;
 }
 
-export function FormPreview({ form, answers = {}, onAnswerChange = null, disabled = false, errorQuestionIds = [] }) {
+export function FormPreview({ form, answers = {}, onAnswerChange = null, disabled = false, errorQuestionIds = [], meta = null, showHeader = true }) {
   const schema = safeSchema(form.schemaJson);
+  const stats = getFormStats(form, answers);
   return (
-    <article className="forms-preview-card">
-      <div className="forms-preview-header">
+    <article className="forms-preview-card premium-form-card">
+      {showHeader && <div className="forms-preview-header premium-form-header">
         <h2>{form.title || "Untitled form"}</h2>
         <FormattedText text={form.description} />
-        {form.instructions && <div className="forms-preview-instructions"><strong>Instructions</strong><FormattedText text={form.instructions} /></div>}
-      </div>
-      <div className="forms-preview-questions">
+        <div className="premium-form-meta-grid">
+          <span><Users size={16} />Assigned by <strong>{meta?.assignedBy ?? "Scouts Admin"}</strong></span>
+          <span><CalendarDays size={16} />Posted <strong>{formatDate(meta?.postedAt ?? form.postedAt ?? form.createdAt)}</strong></span>
+          <span><CalendarDays size={16} />Due <strong>{formatDate(form.dueDate)}</strong></span>
+          <span><Clock size={16} />Estimated <strong>{stats.estimateMinutes} min</strong></span>
+        </div>
+        <div className="premium-form-progress" aria-label={`${stats.percent}% complete`}><div><span style={{ width: `${stats.percent}%` }} /></div><strong>{stats.percent}% complete</strong></div>
+        {form.instructions && <div className="forms-preview-instructions premium"><strong>Instructions</strong><FormattedText text={form.instructions} /></div>}
+      </div>}
+      <div className="forms-preview-questions premium-question-stack">
         {schema.questions.map((question, index) => (
-          <div className={`forms-fill-question ${errorQuestionIds.includes(question.id) ? "has-error" : ""}`} key={question.id} data-question-id={question.id}>
+          <section className={`forms-fill-question premium-question-card ${errorQuestionIds.includes(question.id) ? "has-error" : ""}`} key={question.id} data-question-id={question.id}>
+            <div className="premium-question-topline">
+              <span className="premium-question-number">{String(index + 1).padStart(2, "0")}</span>
+              <span className="forms-status-pill neutral">{getQuestionTypeLabel(question.type)}</span>
+              {question.required ? <em>Required</em> : <small>Optional</small>}
+            </div>
             <label>
-              <span>{index + 1}. {question.text}{question.required && <em>*</em>}</span>
+              <span className="premium-question-title">{question.text}</span>
+              <small className="premium-question-helper">{errorQuestionIds.includes(question.id) ? "This question is required before submission." : getQuestionHelper(question)}</small>
               <QuestionInput question={question} value={answers[question.id]} disabled={disabled || !onAnswerChange} onChange={(nextValue) => onAnswerChange?.(question.id, nextValue)} />
               {errorQuestionIds.includes(question.id) && <small className="forms-field-error">This question is required.</small>}
             </label>
-          </div>
+          </section>
         ))}
       </div>
     </article>
   );
 }
-
 function WizardStepper({ step }) {
   return <div className="forms-wizard-stepper" aria-label={`Step ${step + 1} of ${builderSteps.length}`}>{builderSteps.map((label, index) => <div className={`forms-wizard-step ${index < step ? "complete" : ""} ${index === step ? "current" : ""}`} key={label}><span>{index < step ? <CheckCircle2 size={18} /> : index + 1}</span><small>{label}</small></div>)}</div>;
 }
@@ -262,14 +317,23 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
   const [isSaving, setIsSaving] = useState(false);
   const [submitProgress, setSubmitProgress] = useState(null);
   const [requiredErrors, setRequiredErrors] = useState([]);
+  const [isReviewingForm, setIsReviewingForm] = useState(false);
+  const [submittedSuccess, setSubmittedSuccess] = useState(null);
   const [submissionFormFilter, setSubmissionFormFilter] = useState("all");
   const [submissionGroupFilter, setSubmissionGroupFilter] = useState("all");
   const [submissionDateFrom, setSubmissionDateFrom] = useState("");
   const [submissionDateTo, setSubmissionDateTo] = useState("");
   const [selectedSubmissionIds, setSelectedSubmissionIds] = useState([]);
   const progressTimerRef = useRef(null);
+  const handledInitialFormIdRef = useRef(null);
 
   useEffect(() => {
+    setActiveFormId(null);
+    setRequiredErrors([]);
+    setIsReviewingForm(false);
+    setSubmittedSuccess(null);
+    setSubmitProgress(null);
+
     if (mode === "manageForms") {
       setView((current) => ["formsCreate", "formTemplates", "postedForms", "formResponses"].includes(current) ? current : "formTemplates");
       return;
@@ -293,15 +357,26 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
   const mySubmissions = submissions.filter((submission) => submission.submittedBy === user?.id);
   const activeForm = postedForms.find((form) => form.id === activeFormId);
   useEffect(() => {
-    if (!initialFormId) return;
+    if (!initialFormId) {
+      handledInitialFormIdRef.current = null;
+      return;
+    }
+    if (mode !== "myForms" || handledInitialFormIdRef.current === initialFormId) return;
     const requested = postedForms.find((form) => form.id === initialFormId);
     if (!requested || requested.approvalStatus !== "open" || !isTargetedToUser(requested, user)) return;
     const existing = submissions.find((submission) => submission.postedFormId === requested.id && submission.submittedBy === user?.id);
+    if (activeFormId === requested.id) {
+      handledInitialFormIdRef.current = initialFormId;
+      return;
+    }
     setView("myForms");
     setAnswers(existing?.answersJson ?? {});
     setRequiredErrors([]);
+    setIsReviewingForm(false);
+    setSubmittedSuccess(null);
+    handledInitialFormIdRef.current = initialFormId;
     setActiveFormId(requested.id);
-  }, [initialFormId, postedForms, submissions, user]);
+  }, [initialFormId, mode, postedForms, submissions, user, activeFormId]);
   const filteredSubmissions = useMemo(() => submissions.filter((submission) => {
     if (submissionFormFilter !== "all" && submission.postedFormId !== submissionFormFilter) return false;
     if (submissionGroupFilter !== "all" && submission.groupId !== submissionGroupFilter) return false;
@@ -322,10 +397,12 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
     const existing = submissions.find((submission) => submission.postedFormId === form.id && submission.submittedBy === user?.id);
     setAnswers(existing?.answersJson ?? {});
     setRequiredErrors([]);
+    setIsReviewingForm(false);
+    setSubmittedSuccess(null);
     setActiveFormId(form.id);
   };
 
-  const submitCurrentForm = async (status = "submitted") => {
+  const submitCurrentForm = async (status = "submitted", options = {}) => {
     if (!activeForm) return;
     const missing = activeForm.schemaJson.questions?.filter((question) => {
       const answer = answers[question.id];
@@ -339,6 +416,10 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
       return;
     }
     setRequiredErrors([]);
+    if (status === "submitted" && !options.confirmed) {
+      setIsReviewingForm(true);
+      return;
+    }
     setIsSaving(true);
     setSubmitProgress({ percent: 15, label: status === "draft" ? "Saving draft..." : "Submitting form..." });
     setSaveMessage(status === "draft" ? "Saving draft..." : "Submitting form...");
@@ -348,9 +429,14 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
       await saveDashboardFormSubmission({ postedFormId: activeForm.id, submittedBy: user.id, groupId: user.groupId, answersJson: answers, status });
       setSubmitProgress({ percent: 82, label: "Refreshing..." });
       setSaveMessage("Refreshing...");
-      setActiveFormId(null);
       await onRefresh();
       setSubmitProgress({ percent: 100, label: "Complete" });
+      if (status === "submitted") {
+        setIsReviewingForm(false);
+        setSubmittedSuccess({ title: activeForm.title, timestamp: new Date().toISOString(), locked: !activeForm.allowEdits });
+      } else {
+        setActiveFormId(null);
+      }
       setSaveMessage(status === "draft" ? "Form draft saved." : "Form submitted.");
     } finally {
       window.clearTimeout(progressTimerRef.current);
@@ -365,26 +451,39 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
   if (activeForm) {
     const existing = submissions.find((submission) => submission.postedFormId === activeForm.id && submission.submittedBy === user?.id);
     const locked = activeForm.approvalStatus === "closed" || Boolean(existing?.lockedAt) || (existing?.approvalStatus === "submitted" && !activeForm.allowEdits);
+    const stats = getFormStats(activeForm, answers);
+    const assignedBy = getUserName(data.users ?? [], activeForm.createdBy ?? activeForm.submittedBy);
+    const returnToForms = () => { setSubmittedSuccess(null); setIsReviewingForm(false); setActiveFormId(null); };
+
+    if (submittedSuccess) {
+      return <div className="forms-fill-shell premium-completion-shell"><article className="forms-submission-success-card"><div className="forms-success-icon"><CheckCircle2 size={42} /></div><p className="eyebrow">Submission complete</p><h2>{submittedSuccess.title}</h2><p>Your response was submitted successfully and saved securely.</p><div className="premium-form-meta-grid"><span><CalendarDays size={16} />Submitted <strong>{formatDate(submittedSuccess.timestamp)}</strong></span><span><ShieldCheck size={16} />Editing <strong>{submittedSuccess.locked ? "Locked" : "Available while open"}</strong></span></div><button type="button" className="primary-action" onClick={returnToForms}>Return to My Forms</button></article></div>;
+    }
+
+    if (isReviewingForm) {
+      return <div className="forms-fill-shell premium-review-shell"><button type="button" className="inline-action" onClick={() => setIsReviewingForm(false)}><ArrowLeft size={16} />Back to answers</button><article className="forms-review-experience"><div className="premium-form-kicker"><ShieldCheck size={18} /><span>Final review</span></div><h2>Review your answers before submitting</h2><p>Check the summary below. You can still go back and edit anything before final submission.</p><div className="forms-review-stats-grid"><div><strong>{stats.completed}</strong><span>Completed</span></div><div><strong>{stats.questions.length}</strong><span>Total questions</span></div><div><strong>{stats.missingRequired.length}</strong><span>Missing required</span></div><div><strong>{stats.optionalUnanswered}</strong><span>Optional unanswered</span></div></div>{stats.missingRequired.length ? <div className="forms-review-warning"><strong>Missing required answers</strong>{stats.missingRequired.map((question) => <button type="button" key={question.id} onClick={() => { setIsReviewingForm(false); setRequiredErrors(stats.missingRequired.map((item) => item.id)); window.requestAnimationFrame(() => document.querySelector(`[data-question-id="${question.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" })); }}>{question.text}</button>)}</div> : <div className="forms-review-ready"><CheckCircle2 size={22} /><span>All required questions are complete.</span></div>}<div className="forms-review-answer-list">{stats.questions.map((question, index) => <section key={question.id}><small>{index + 1}. {getQuestionTypeLabel(question.type)}</small><strong>{question.text}</strong><p>{isAnswerFilled(answers[question.id]) ? answerToText(answers[question.id]) : "No answer provided"}</p></section>)}</div><div className="forms-fill-actions premium-sticky-actions review"><button type="button" className="inline-action" disabled={isSaving || locked} onClick={() => submitCurrentForm("draft")}>{isSaving ? "Working..." : "Save Draft"}</button><button type="button" className="inline-action" onClick={() => setIsReviewingForm(false)}>Edit Answers</button><button type="button" className="primary-action" disabled={isSaving || locked || Boolean(stats.missingRequired.length)} onClick={() => submitCurrentForm("submitted", { confirmed: true })}><Send size={17} />{isSaving ? "Submitting..." : "Submit Form"}</button></div></article></div>;
+    }
+
     return (
-      <div className="forms-fill-shell">
-        <button type="button" className="inline-action" onClick={() => setActiveFormId(null)}>Back to forms</button>
-        <FormPreview form={activeForm} answers={answers} disabled={locked} errorQuestionIds={requiredErrors} onAnswerChange={(questionId, value) => { setAnswers((current) => ({ ...current, [questionId]: value })); setRequiredErrors((current) => current.filter((id) => id !== questionId)); }} />
+      <div className="forms-fill-shell premium-form-experience">
+        <button type="button" className="inline-action premium-back-link" onClick={returnToForms}><ArrowLeft size={16} />Back to forms</button>
+        <FormPreview form={activeForm} answers={answers} disabled={locked} errorQuestionIds={requiredErrors} meta={{ assignedBy, postedAt: activeForm.postedAt ?? activeForm.createdAt }} onAnswerChange={(questionId, value) => { setAnswers((current) => ({ ...current, [questionId]: value })); setRequiredErrors((current) => current.filter((id) => id !== questionId)); }} />
         {submitProgress && (
-          <div className="upload-progress compact forms-submit-progress" aria-label={submitProgress.label}>
+          <div className="upload-progress compact forms-submit-progress premium" aria-label={submitProgress.label}>
             <div><span style={{ width: `${submitProgress.percent}%` }} /></div>
             <strong>{submitProgress.percent}%</strong>
             <small>{submitProgress.label}</small>
           </div>
         )}
-        <div className="action-row forms-fill-actions">
-          <button type="button" className="inline-action" disabled={isSaving || locked} onClick={() => submitCurrentForm("draft")}>{isSaving ? "Working..." : "Save Draft"}</button>
-          <button type="button" className="primary-action" disabled={isSaving || locked} onClick={() => submitCurrentForm("submitted")}>{isSaving ? "Submitting..." : existing?.approvalStatus === "submitted" ? "Update Response" : "Submit Form"}</button>
+        <div className="forms-fill-actions premium-sticky-actions">
+          <div><strong>{stats.percent}% complete</strong><span>{stats.completed} of {stats.questions.length} answered</span></div>
+          <button type="button" className="inline-action" disabled={isSaving || locked} onClick={() => submitCurrentForm("draft")}><Save size={17} />{isSaving ? "Working..." : "Save Draft"}</button>
+          <button type="button" className="inline-action" disabled={isSaving} onClick={() => submitCurrentForm("submitted")}>Review Answers</button>
+          <button type="button" className="primary-action" disabled={isSaving || locked} onClick={() => submitCurrentForm("submitted")}><Send size={17} />{isSaving ? "Submitting..." : existing?.approvalStatus === "submitted" ? "Update Response" : "Submit Form"}</button>
           {locked && <span className="helper-text">This form is locked because it is closed or editing is disabled.</span>}
         </div>
       </div>
     );
   }
-
   const manageTabs = [
     ...(canManageTemplates || canPostForms ? [["formsCreate", "Create Form"], ["formTemplates", "Templates"], ["postedForms", "Posted Forms"]] : []),
     ...(canViewAllForms || canPostForms ? [["formResponses", "Submissions"]] : [])

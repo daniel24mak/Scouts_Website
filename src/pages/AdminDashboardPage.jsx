@@ -8,6 +8,7 @@ import {
   Folder,
   GalleryHorizontal,
   MonitorSmartphone,
+  Moon,
   Image,
   LayoutDashboard,
   LockKeyhole,
@@ -18,11 +19,12 @@ import {
   ArrowLeft,
   PanelLeftClose,
   PanelLeftOpen,
-  RefreshCw,
   Send,
   Settings,
   ShieldCheck,
+  Sun,
   Upload,
+  Trash2,
   Users
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -50,6 +52,8 @@ import {
   saveFaq,
   saveLeader,
   saveWebsiteContent,
+  completeDashboardEntityNotifications,
+  deleteDashboardNotification,
   readDashboardNotification,
   readAllDashboardNotifications,
   submitDashboardWebsiteContentRevision,
@@ -83,7 +87,7 @@ import BlogPostPreview from "../components/BlogPostPreview.jsx";
 import FormattedText from "../components/FormattedText.jsx";
 import RichTextEditor from "../components/RichTextEditor.jsx";
 import UserAvatar from "../components/UserAvatar.jsx";
-import WebsiteContentEditor from "../components/WebsiteContentEditor.jsx";
+import WebsiteContentEditor, { getSiteImageCropConfig } from "../components/WebsiteContentEditor.jsx";
 import { logAuditEvent } from "../services/auditService.js";
 import {
   canCreateGroupMeetings,
@@ -98,6 +102,7 @@ import {
 } from "../services/permissions.js";
 import { subscribeDashboardRealtime } from "../services/realtimeService.js";
 import { isSupabaseConfigured } from "../services/supabaseClient.js";
+import { isStructuredSiteContentKey } from "../services/siteContentService.js";
 
 const emptyScout = {
   name: "",
@@ -256,6 +261,7 @@ const settingSections = [
 const contentStatuses = ["draft", "pending", "pending_update", "needs_changes", "approved", "rejected", "archived"];
 const reviewStatuses = ["pending", "pending_update", "needs_changes", "rejected", "archived"];
 const sidebarModeKey = "scouts-dashboard-sidebar-mode";
+const dashboardThemeKey = "scouts-dashboard-theme";
 const acceptedImageTypes = ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif";
 const wizardSteps = ["Details", "Media", "Review"];
 
@@ -624,6 +630,7 @@ export default function AdminDashboardPage() {
   const [activeSetting, setActiveSetting] = useState("usersPermissions");
   const [lastDashboardSection, setLastDashboardSection] = useState("overview");
   const [sidebarMode, setSidebarMode] = useState(() => window.localStorage.getItem(sidebarModeKey) ?? "expanded");
+  const [dashboardTheme, setDashboardTheme] = useState(() => window.localStorage.getItem(dashboardThemeKey) ?? "light");
   const [openSidebarGroups, setOpenSidebarGroups] = useState({});
   const [isSidebarTemporarilyExpanded, setIsSidebarTemporarilyExpanded] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -723,8 +730,45 @@ export default function AdminDashboardPage() {
     .filter((item) => ["draft", "pending", "pending_update", "needs_changes", "rejected"].includes(item.approvalStatus))
     .map((item) => ({ ...item, contentType: item.contentType ?? (item.targetType ? "Posted form" : item.location ? "Calendar event" : item.photos ? "Album" : "Blog post") }));
   const pendingWorkItems = canOpenSection("approvals", user) ? [...pendingItems, ...openAssignedForms] : [...openAssignedForms, ...ownPendingItems];
-  const persistedNotifications = data.notifications ?? [];
-  const hasPersistedEntityNotification = (entityType, entityId) => persistedNotifications.some((item) => item.entityType === entityType && String(item.entityId) === String(entityId));
+  const isRelatedNotificationResolved = (notification) => {
+    const entityType = notification?.entityType;
+    const entityId = String(notification?.entityId ?? "");
+    if (!entityType || !entityId) return false;
+
+    if (entityType === "contact_message") {
+      const message = (data.contactMessages ?? []).find((item) => String(item.id) === entityId);
+      return !message || message.status !== "new";
+    }
+
+    if (entityType === "posted_form") {
+      const form = allPostedForms.find((item) => String(item.id) === entityId);
+      const submitted = allFormSubmissions.some((submission) => String(submission.postedFormId) === entityId && submission.submittedBy === user?.id && submission.approvalStatus === "submitted");
+      if (!form) return true;
+      if (notification.type === "form") return submitted || form.approvalStatus !== "open";
+      if (notification.type === "approval") return !["pending", "pending_update"].includes(form.approvalStatus);
+      return false;
+    }
+
+    if (entityType === "profile") {
+      const profile = (data.users ?? []).find((item) => String(item.id) === entityId);
+      return !profile || profile.profileChangeStatus !== "pending";
+    }
+
+    if (entityType === "site_content_revision") {
+      const revision = allWebsiteContentRevisions.find((item) => String(item.id) === entityId);
+      return !revision || !["pending", "pending_update"].includes(revision.approvalStatus);
+    }
+
+    const entityLists = {
+      posts: allPosts,
+      gallery_albums: allAlbums,
+      calendar_events: data.plannedEvents ?? []
+    };
+    const item = entityLists[entityType]?.find((entry) => String(entry.id) === entityId);
+    return !item || !["pending", "pending_update"].includes(item.approvalStatus);
+  };
+  const persistedNotifications = (data.notifications ?? []).map((item) => ({ ...item, isRead: item.isRead || isRelatedNotificationResolved(item) }));
+  const hasPersistedEntityNotification = (entityType, entityId) => persistedNotifications.some((item) => item.entityType === entityType && String(item.entityId) === String(entityId) && !item.isRead);
   const formAttentionNotifications = openAssignedForms
     .filter((form) => !hasPersistedEntityNotification("posted_form", form.id))
     .map((form) => {
@@ -748,7 +792,9 @@ export default function AdminDashboardPage() {
     .map((item) => ({ ...item, type: "approval", message: item.title, targetSection: canOpenSection("approvals", user) ? "approvals" : "overview", isRead: false, createdAt: item.updatedAt || item.createdAt }));
   const notificationItems = [...formAttentionNotifications, ...persistedNotifications, ...fallbackNotificationItems]
     .filter((item, index, items) => items.findIndex((candidate) => String(candidate.id) === String(item.id)) === index)
-    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());  const dashboardNotificationCount = notificationItems.filter((item) => !item.isRead).length;
+    .sort((a, b) => Number(Boolean(a.isRead)) - Number(Boolean(b.isRead)) || new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  const activeNotificationItems = notificationItems.filter((item) => !item.isRead);
+  const dashboardNotificationCount = activeNotificationItems.length;
   const selectedSection = sections.find(([id]) => id === activeSection);
   const sectionById = useMemo(() => new Map(sections.map((section) => [section[0], section])), []);
   const sidebarGroups = useMemo(() => {
@@ -781,6 +827,14 @@ export default function AdminDashboardPage() {
     () => sidebarGroups.flatMap((group) => group.type === "item" ? [group.item] : group.children),
     [sidebarGroups]
   );
+  useEffect(() => {
+    const staleNotifications = (data.notifications ?? []).filter((notification) => !notification.isRead && isRelatedNotificationResolved(notification));
+    if (!staleNotifications.length) return;
+
+    staleNotifications.forEach((notification) => {
+      completeDashboardEntityNotifications(notification.entityType, notification.entityId).catch(() => {});
+    });
+  }, [data.notifications, data.contactMessages, data.users, data.plannedEvents, allPostedForms, allFormSubmissions, allWebsiteContentRevisions, allPosts, allAlbums, user?.id]);
 
   useEffect(() => {
     setProfileEdit((current) => ({
@@ -816,6 +870,9 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     window.localStorage.setItem(sidebarModeKey, sidebarMode);
   }, [sidebarMode]);
+  useEffect(() => {
+    window.localStorage.setItem(dashboardThemeKey, dashboardTheme);
+  }, [dashboardTheme]);
   useEffect(() => {
     if (!canOpenSection(activeSection, user)) {
       setActiveSection("overview");
@@ -1353,7 +1410,7 @@ export default function AdminDashboardPage() {
   };
   const openAvatarCrop = (file, target) => {
     if (!file) return;
-    setAvatarCropRequest({ file, target });
+    setAvatarCropRequest({ file, target: target?.type === "siteContent" ? { ...target, cropConfig: getSiteImageCropConfig(target.contentKey, target.shape) } : target });
   };
 
   const applyCroppedAvatar = (file) => {
@@ -1763,6 +1820,8 @@ export default function AdminDashboardPage() {
 
       await save(item.id, payload);
     }
+    const notificationEntityType = item.contentType === "Posted form" ? "posted_form" : item.contentType === "Website Content" ? "site_content_revision" : item.contentType === "Profile change" ? "profile" : item.contentType === "Blog post" ? "posts" : item.contentType === "Calendar event" ? "calendar_events" : item.contentType === "Album" ? "gallery_albums" : null;
+    if (notificationEntityType) await completeDashboardEntityNotifications(notificationEntityType, item.id).catch(() => {});
     await logAuditEvent(`content_${approvalStatus}`, item.contentType, item.id, {
       title: item.title,
       reviewerComment: payload.reviewerComment
@@ -1941,13 +2000,42 @@ export default function AdminDashboardPage() {
   };
   const saveContact = async (messageId, payload) => {
     await saveContactMessage(messageId, payload);
+    if (payload.status !== "new") await completeDashboardEntityNotifications("contact_message", messageId).catch(() => {});
     setSaveMessage("Contact message updated.");
     await refresh();
   };
   const deleteContact = async (messageId) => {
     await removeContactMessage(messageId);
+    await completeDashboardEntityNotifications("contact_message", messageId).catch(() => {});
     setSaveMessage("Contact message deleted.");
     await refresh();
+  };
+  const parseStructuredWebsiteList = (value) => {
+    if (!value) return [];
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+  const renderStructuredWebsiteValue = (contentKey, value) => {
+    const items = parseStructuredWebsiteList(value);
+    if (!items.length) return <span className="empty-state">No entries</span>;
+
+    if (contentKey === "about_history_milestones") {
+      return <div className="website-change-operation-list structured-content-preview">{items.map((item, index) => <section key={item.id ?? `${item.year}-${index}`}><span className="forms-status-pill approved">{item.year || "Year"}</span><strong>{item.title || "Milestone"}</strong>{item.text && <p>{item.text}</p>}</section>)}</div>;
+    }
+
+    if (contentKey === "about_values") {
+      return <div className="website-change-operation-list structured-content-preview">{items.map((item, index) => <section key={item.id ?? `${item.name}-${index}`}><strong>{item.name || "Value"}</strong>{item.description && <p>{item.description}</p>}</section>)}</div>;
+    }
+
+    if (contentKey === "about_scout_groups") {
+      return <div className="website-change-operation-list structured-content-preview">{items.map((item, index) => <section key={item.id ?? `${item.name}-${index}`}><strong>{item.name || "Scout group"}</strong>{(item.ageRange || item.gradeRange) && <span>{item.ageRange || item.gradeRange}</span>}{item.description && <p>{item.description}</p>}</section>)}</div>;
+    }
+
+    return <pre className="structured-content-preview">{JSON.stringify(items, null, 2)}</pre>;
   };
   const renderWebsiteChangeComparison = (change) => {
     let current = data.siteContent?.[change.contentKey] ?? {};
@@ -1970,8 +2058,9 @@ export default function AdminDashboardPage() {
       after = `${change.question ?? ""}\n${change.answer ?? ""}`;
     }
     const isImage = change.fieldType === "image" || (!change.entityType && change.imageUrl);
+    const isStructured = isStructuredSiteContentKey(change.contentKey);
     const afterImage = change.file ? siteImagePreviews[change.contentKey] : change.imageUrl;
-    return <article key={change.contentKey ?? `${change.entityType}-${change.entityId}`}><h3>{label}</h3><div className="website-change-comparison"><div><small>Before</small>{isImage ? (current.imageUrl ? <img src={current.imageUrl} alt="" /> : <span>No image</span>) : <FormattedText text={before} fallback="Empty" />}</div><div><small>After</small>{isImage ? (afterImage ? <img src={afterImage} alt="" /> : <span>No image</span>) : <FormattedText text={after} fallback="Empty" />}</div></div></article>;
+    return <article key={change.contentKey ?? `${change.entityType}-${change.entityId}`}><h3>{label}</h3><div className="website-change-comparison"><div><small>Before</small>{isImage ? (current.imageUrl ? <img src={current.imageUrl} alt="" /> : <span>No image</span>) : isStructured ? renderStructuredWebsiteValue(change.contentKey, before) : <FormattedText text={before} fallback="Empty" />}</div><div><small>After</small>{isImage ? (afterImage ? <img src={afterImage} alt="" /> : <span>No image</span>) : isStructured ? renderStructuredWebsiteValue(change.contentKey, after) : <FormattedText text={after} fallback="Empty" />}</div></div></article>;
   };
   const renderWebsiteContent = () => {
     const setContentEdit = (contentKey, value) => {
@@ -2042,6 +2131,7 @@ export default function AdminDashboardPage() {
     if (message.status === "new") {
       setContactEdits((current) => ({ ...current, [message.id]: { ...message, status: "read" } }));
       await saveContactMessage(message.id, { ...message, status: "read" });
+      await completeDashboardEntityNotifications("contact_message", message.id).catch(() => {});
       await refresh();
     }
   };
@@ -2076,7 +2166,17 @@ export default function AdminDashboardPage() {
     await refresh();
   };
 
-  const renderNotifications = () => <div className="notifications-page"><div className="notifications-page-toolbar"><div><p className="eyebrow">Updates</p><h2>Notifications</h2></div><button type="button" className="inline-action" onClick={async () => { await readAllDashboardNotifications(); await refresh(); }}>Mark all as read</button></div><div className="notifications-full-list">{notificationItems.length ? notificationItems.map((notification) => <button type="button" className={`notification-row ${notification.isRead ? "" : "unread"}`} key={notification.id ?? `${notification.contentType}-${notification.entityId ?? notification.title}`} onClick={() => openNotification(notification)}><span className="notification-type-icon">{notification.type === "contact" ? <MessageSquare size={18} /> : notification.type === "form" ? <FileText size={18} /> : notification.type === "profile" ? <Users size={18} /> : <CheckCircle2 size={18} />}</span><div><strong>{notification.title ?? notification.contentType}</strong><p>{notification.message ?? notification.title}</p><small>{formatRelativeTime(notification.createdAt)}</small></div>{!notification.isRead && <i aria-label="Unread" />}</button>) : <p className="empty-state">No notifications yet.</p>}</div></div>;
+  const deleteNotificationItem = async (event, notification) => {
+    event.stopPropagation();
+    if (!notification?.id || String(notification.id).startsWith("open-form-")) return;
+    if (!window.confirm("Delete this notification?")) return;
+    await deleteDashboardNotification(notification.id);
+    await refresh();
+  };
+
+  const notificationIcon = (notification, size = 18) => notification.type === "contact" ? <MessageSquare size={size} /> : notification.type === "form" ? <FileText size={size} /> : notification.type === "profile" ? <Users size={size} /> : <CheckCircle2 size={size} />;
+
+  const renderNotifications = () => <div className="notifications-page"><div className="notifications-page-toolbar"><div><p className="eyebrow">Updates</p><h2>Notifications</h2></div><button type="button" className="inline-action" onClick={async () => { await readAllDashboardNotifications(); await refresh(); }}>Mark all as read</button></div><div className="notifications-full-list">{notificationItems.length ? notificationItems.map((notification) => <div className={`notification-row notification-row-shell ${notification.isRead ? "" : "unread"}`} key={notification.id ?? `${notification.contentType}-${notification.entityId ?? notification.title}`}><button type="button" className="notification-row-main" onClick={() => openNotification(notification)}><span className="notification-type-icon">{notificationIcon(notification, 18)}</span><div><strong>{notification.title ?? notification.contentType}</strong><p>{notification.message ?? notification.title}</p><small>{formatRelativeTime(notification.createdAt)}</small></div>{!notification.isRead && <i aria-label="Unread" />}</button>{notification.id && !String(notification.id).startsWith("open-form-") && <button type="button" className="icon-button notification-delete-button danger-action" aria-label="Delete notification" onClick={(event) => deleteNotificationItem(event, notification)}><Trash2 size={16} /></button>}</div>) : <p className="empty-state">No notifications yet.</p>}</div></div>;
   const renderMyGroup = () => {
     const groupScouts = sortScouts(
       data.registeredScouts.filter((scout) => scout.groupId === dashboardGroupId),
@@ -3205,10 +3305,10 @@ export default function AdminDashboardPage() {
   const mobileMoreItems = flatSidebarItems.filter(([id]) => !mobilePrimaryIdSet.has(id));
   const hasMobileMoreItems = mobileMoreItems.length > 0;
   const isMobilePrimaryActive = (id) => activeSection === id;
-  const visibleNotificationItems = notificationItems.slice(0, 8);
+  const visibleNotificationItems = activeNotificationItems.slice(0, 8);
 
   return (
-    <section className={`admin-cms-shell sidebar-${sidebarMode} ${isSidebarTemporarilyExpanded ? "sidebar-temporary-expanded" : ""} ${isMobileSidebarOpen ? "mobile-sidebar-open" : ""} ${showMobileMenuBar ? "mobile-menu-bar-visible" : ""}`}>
+    <section className={`admin-cms-shell dashboard-theme-${dashboardTheme} sidebar-${sidebarMode} ${isSidebarTemporarilyExpanded ? "sidebar-temporary-expanded" : ""} ${isMobileSidebarOpen ? "mobile-sidebar-open" : ""} ${showMobileMenuBar ? "mobile-menu-bar-visible" : ""}`}>
       <div className="dashboard-mobile-reveal-bar" aria-hidden={!showMobileMenuBar}>
         <button type="button" className="dashboard-menu-button" aria-expanded={isMobileSidebarOpen} aria-controls="dashboard-sidebar" onClick={() => setIsMobileSidebarOpen(true)}>
           <Menu size={18} aria-hidden="true" />
@@ -3371,11 +3471,8 @@ export default function AdminDashboardPage() {
             )}
           </div>
           <div className="dashboard-topbar-actions">
-            <button type="button" className="dashboard-refresh-button" onClick={async () => {
-              await refresh();
-              setLastLiveUpdate(new Date());
-            }} title="Refresh dashboard data" aria-label="Refresh dashboard data">
-              <RefreshCw size={16} aria-hidden="true" />
+            <button type="button" className="dashboard-theme-toggle" onClick={() => setDashboardTheme((current) => current === "dark" ? "light" : "dark")} title={dashboardTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"} aria-label={dashboardTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"} aria-pressed={dashboardTheme === "dark"}>
+              {dashboardTheme === "dark" ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
             </button>
             <div className="dashboard-notification-menu">
               <button type="button" className="dashboard-notification-button" onClick={() => { setIsNotificationsOpen((current) => !current); setIsProfileMenuOpen(false); }} title={canOpenSection("approvals", user) ? "Pending approvals" : "My pending work"} aria-expanded={isNotificationsOpen} aria-haspopup="menu">
@@ -3390,9 +3487,10 @@ export default function AdminDashboardPage() {
                   </div>
                   {visibleNotificationItems.length ? visibleNotificationItems.map((item) => (
                     <button type="button" className={`notification-row ${item.isRead ? "" : "unread"}`} key={item.id ?? `${item.contentType}-${item.entityId ?? item.title}`} onClick={() => openNotification(item)}>
-                      <span className="notification-type-icon">{item.type === "contact" ? <MessageSquare size={17} /> : item.type === "form" ? <FileText size={17} /> : item.type === "profile" ? <Users size={17} /> : <CheckCircle2 size={17} />}</span>
+                      <span className="notification-type-icon">{notificationIcon(item, 17)}</span>
                       <span><strong>{item.title || item.name || "Notification"}</strong><small>{item.message || item.contentType} - {formatRelativeTime(item.createdAt)}</small></span>
                       {!item.isRead && <i aria-label="Unread" />}
+                      {item.id && !String(item.id).startsWith("open-form-") && <span role="button" tabIndex={0} className="notification-delete-inline" aria-label="Delete notification" onClick={(event) => deleteNotificationItem(event, item)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") deleteNotificationItem(event, item); }}><Trash2 size={14} /></span>}
                     </button>
                   )) : <p>No notifications right now.</p>}
                   <button type="button" className="notification-view-all" onClick={() => { setIsNotificationsOpen(false); openDashboardSection("notifications"); }}>See All</button>
@@ -3471,8 +3569,8 @@ export default function AdminDashboardPage() {
         <AvatarCropModal
           file={avatarCropRequest.file}
           title={avatarCropRequest.target?.type === "siteContent" ? "Crop website image" : "Crop profile picture"}
-          aspectRatio={avatarCropRequest.target?.type === "siteContent" ? (avatarCropRequest.target.shape === "circle" ? 1 : avatarCropRequest.target.shape === "hero" || avatarCropRequest.target.contentKey.includes("hero") ? 16 / 6 : 4 / 3) : 1}
-          shape={avatarCropRequest.target?.type === "siteContent" && avatarCropRequest.target.shape !== "circle" ? "square" : "circle"}
+          aspectRatio={avatarCropRequest.target?.type === "siteContent" ? avatarCropRequest.target.cropConfig?.aspect ?? 4 / 3 : 1}
+          shape={avatarCropRequest.target?.type === "siteContent" ? avatarCropRequest.target.cropConfig?.shape ?? "square" : "circle"}
           confirmLabel={avatarCropRequest.target?.type === "siteContent" ? "Replace image" : "Use picture"}
           onCancel={() => setAvatarCropRequest(null)}
           onConfirm={applyCroppedAvatar}

@@ -1,10 +1,12 @@
 import {
+  callSupabaseRpc,
   deleteSupabaseRows,
   getCurrentSupabaseUserId,
   getSupabaseRows,
   insertSupabaseRow,
   patchSupabaseRows
 } from "./supabaseClient.js";
+import { normalizeRichTextInput } from "../utils/richText.js";
 
 export const defaultFaqs = [
   {
@@ -44,11 +46,15 @@ export const defaultFaqs = [
   }
 ];
 
+function cleanContactValue(value, maxLength) {
+  return String(value ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, maxLength);
+}
+
 function normalizeFaq(row) {
   return {
     id: row.id,
     question: row.question,
-    answer: row.answer,
+    answer: normalizeRichTextInput(row.answer),
     displayOrder: Number(row.display_order ?? row.displayOrder ?? 0),
     isActive: row.is_active ?? row.isActive ?? true,
     createdAt: row.created_at ?? row.createdAt ?? null,
@@ -125,15 +131,28 @@ export function deleteFaq(faqId) {
   return deleteSupabaseRows("faqs", `id=eq.${encodeURIComponent(faqId)}`);
 }
 
-export function submitContactMessage(message) {
-  return insertSupabaseRow("contact_messages", {
-    name: message.name,
-    email: message.email,
-    phone: message.phone ?? null,
-    subject: message.subject,
-    message: message.message,
-    status: "new"
-  });
+export async function submitContactMessage(message) {
+  const payload = {
+    contact_name: cleanContactValue(message.name, 120),
+    contact_email: cleanContactValue(message.email, 180).toLowerCase(),
+    contact_phone: cleanContactValue(message.phone, 40) || null,
+    contact_subject: cleanContactValue(message.subject, 180),
+    contact_message: cleanContactValue(message.message, 3000)
+  };
+
+  try {
+    return await callSupabaseRpc("submit_contact_message", payload);
+  } catch (error) {
+    if (!String(error?.message ?? "").includes("submit_contact_message")) throw error;
+    return insertSupabaseRow("contact_messages", {
+      name: payload.contact_name,
+      email: payload.contact_email,
+      phone: payload.contact_phone,
+      subject: payload.contact_subject,
+      message: payload.contact_message,
+      status: "new"
+    });
+  }
 }
 
 export function updateContactMessage(messageId, message) {

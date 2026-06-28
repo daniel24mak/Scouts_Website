@@ -5,7 +5,7 @@ import { usePublicData } from "../api/usePublicData.js";
 import SafeImage from "../components/SafeImage.jsx";
 import FormattedText from "../components/FormattedText.jsx";
 import { scoutGroups } from "../data/groups.js";
-import { contentImage, contentText } from "../services/siteContentService.js";
+import { contentImage, contentText, rawContentText } from "../services/siteContentService.js";
 import { preloadImages } from "../utils/imagePreload.js";
 
 const goals = [
@@ -47,7 +47,7 @@ function titleForLeader(user) {
 }
 
 function parseHistoryMilestones(siteContent, fallbackText) {
-  const raw = contentText(siteContent, "about_history_milestones", "").trim();
+  const raw = rawContentText(siteContent, "about_history_milestones", "").trim();
 
   if (!raw) {
     return [
@@ -93,7 +93,7 @@ function parseHistoryMilestones(siteContent, fallbackText) {
   ];
 }
 function parseManagedList(siteContent, key, fallback) {
-  const raw = contentText(siteContent, key, "").trim();
+  const raw = rawContentText(siteContent, key, "").trim();
   if (!raw) return fallback;
   try {
     const parsed = JSON.parse(raw);

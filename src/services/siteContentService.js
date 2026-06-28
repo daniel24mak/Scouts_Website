@@ -9,6 +9,14 @@ import {
   upsertSupabaseRows
 } from "./supabaseClient.js";
 import { IMAGE_CACHE_CONTROL, optimizedImagePath, optimizeImageForUpload } from "./imageOptimizationService.js";
+import { normalizeRichTextInput } from "../utils/richText.js";
+
+
+const structuredSiteContentKeys = new Set(["about_history_milestones", "about_values", "about_scout_groups"]);
+
+export function isStructuredSiteContentKey(key) {
+  return structuredSiteContentKeys.has(String(key ?? ""));
+}
 
 export const defaultSiteContent = {
   home_hero_title: {
@@ -108,7 +116,12 @@ function normalizeLeader(row) {
 }
 
 export function contentText(siteContent, key, fallback = "") {
-  return siteContent?.[key]?.textValue || fallback;
+  const value = siteContent?.[key]?.textValue ?? fallback;
+  return isStructuredSiteContentKey(key) ? String(value ?? "") : normalizeRichTextInput(value);
+}
+
+export function rawContentText(siteContent, key, fallback = "") {
+  return String(siteContent?.[key]?.textValue ?? fallback ?? "");
 }
 
 export function contentImage(siteContent, key, fallback = "") {

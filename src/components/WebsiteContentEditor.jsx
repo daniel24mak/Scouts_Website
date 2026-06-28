@@ -1,9 +1,31 @@
-import { ArrowDown, ArrowUp, GripVertical, ImagePlus, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Crop, GripVertical, ImagePlus, Plus, Trash2, Upload, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import FormattedText from "./FormattedText.jsx";
 import RichTextEditor from "./RichTextEditor.jsx";
 
 const makeId = (prefix) => `${prefix}-${crypto.randomUUID()}`;
+
+export const SITE_IMAGE_CROP_CONFIG = {
+  home_hero_image: { aspect: 16 / 9, label: "Home hero image", shape: "square" },
+  home_about_image: { aspect: 4 / 3, label: "Home about image", shape: "square" },
+  about_hero_image: { aspect: 16 / 9, label: "About hero image", shape: "square" },
+  about_intro_image: { aspect: 4 / 3, label: "About story image", shape: "square" },
+  leaderPhoto: { aspect: 1, label: "Leader/profile photo", shape: "circle" },
+  albumThumbnail: { aspect: 4 / 3, label: "Album thumbnail", shape: "square" },
+  defaultCard: { aspect: 4 / 3, label: "Website image", shape: "square" }
+};
+
+export function getSiteImageCropConfig(contentKey, shape = "square") {
+  if (shape === "circle" || String(contentKey ?? "").startsWith("leader:")) return SITE_IMAGE_CROP_CONFIG.leaderPhoto;
+  return SITE_IMAGE_CROP_CONFIG[contentKey] ?? SITE_IMAGE_CROP_CONFIG.defaultCard;
+}
+
+async function imageUrlToFile(url, fileName = "current-site-image.webp") {
+  const response = await fetch(url, { mode: "cors" });
+  if (!response.ok) throw new Error("The current image could not be loaded for cropping.");
+  const blob = await response.blob();
+  return new File([blob], fileName, { type: blob.type || "image/webp" });
+}
 
 const homeSections = [
   { id: "hero", title: "Hero Section", fields: [
@@ -75,17 +97,58 @@ function ReorderCard({ children, index, total, onMove, onDelete, onDragStart, on
   </article>;
 }
 
-function ImageField({ label, image, shape = "square", onChoose }) {
-  return <label className={`website-content-image-control ${shape}`} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); onChoose(event.dataTransfer.files?.[0] ?? null); }}>
+function ImageField({ label, image, shape = "square", contentKey, onChoose }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [status, setStatus] = useState("");
+  const cropConfig = getSiteImageCropConfig(contentKey, shape);
+  const handleFile = (file) => {
+    setStatus("");
+    setIsModalOpen(false);
+    onChoose(file ?? null);
+  };
+  const cropCurrent = async () => {
+    if (!image) return;
+    try {
+      setStatus("Preparing current image...");
+      const file = await imageUrlToFile(image, `${contentKey || "site-image"}.webp`);
+      handleFile(file);
+    } catch (error) {
+      setStatus(error?.message || "The current image could not be opened for cropping.");
+    }
+  };
+
+  return <div className={`website-content-image-control ${shape}`} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); handleFile(event.dataTransfer.files?.[0] ?? null); }}>
     <span>{label}</span>
-    <div>{image ? <img src={image} alt="" /> : <span><ImagePlus size={25} />Drop or choose image</span>}</div>
-    <input type="file" accept="image/*,.heic,.heif" onChange={(event) => { onChoose(event.target.files?.[0] ?? null); event.target.value = ""; }} />
-  </label>;
+    {image ? (
+      <button type="button" className="website-image-preview-button" onClick={() => setIsModalOpen(true)}>
+        <img src={image} alt="" />
+        <small>Click to preview, crop, or replace</small>
+      </button>
+    ) : (
+      <label className="website-image-empty-picker">
+        <span><ImagePlus size={25} />Drop or choose image</span>
+        <input type="file" accept="image/*,.heic,.heif" onChange={(event) => { handleFile(event.target.files?.[0] ?? null); event.target.value = ""; }} />
+      </label>
+    )}
+    {status && <small className="helper-text">{status}</small>}
+    {isModalOpen && image && <div className="profile-modal-backdrop website-image-action-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setIsModalOpen(false); }}>
+      <article className="profile-modal website-image-action-modal" role="dialog" aria-modal="true" aria-label={`Edit ${label}`}>
+        <button type="button" className="modal-close-button" aria-label="Close image preview" onClick={() => setIsModalOpen(false)}><X size={18} /></button>
+        <div><p className="eyebrow">{cropConfig.label}</p><h2>{label}</h2><p className="helper-text">Preview the current image, crop it to the public website ratio, or upload a new replacement.</p></div>
+        <div className={`website-image-large-preview ${cropConfig.shape === "circle" ? "circle" : ""}`} style={{ aspectRatio: cropConfig.aspect }}><img src={image} alt="" /></div>
+        <div className="action-row">
+          <button type="button" className="inline-action" onClick={cropCurrent}><Crop size={16} />Crop Image</button>
+          <label className="primary-action website-image-upload-action"><Upload size={16} />Upload New Image<input type="file" accept="image/*,.heic,.heif" onChange={(event) => { handleFile(event.target.files?.[0] ?? null); event.target.value = ""; }} /></label>
+        </div>
+        {status && <p className="form-status">{status}</p>}
+      </article>
+    </div>}
+  </div>;
 }
 
 function FieldEditor({ field, value, image, onChange, onChooseImage }) {
   const [key, label, type, imageShape] = field;
-  if (type === "image") return <ImageField label={label} image={image} shape={imageShape} onChoose={(file) => onChooseImage(file, key, imageShape)} />;
+  if (type === "image") return <ImageField label={label} image={image} shape={imageShape} contentKey={key} onChoose={(file) => onChooseImage(file, key, imageShape)} />;
   if (type === "rich") return <RichTextEditor label={label} value={value} onChange={(next) => onChange(key, next)} minHeight={115} />;
   return <label className="forms-field-label">{label}<input value={value} onChange={(event) => onChange(key, event.target.value)} /></label>;
 }
@@ -154,7 +217,7 @@ export default function WebsiteContentEditor({ data, page, onPageChange, valueFo
         <section className="website-content-builder-section"><div className="website-content-form-column"><div className="website-content-section-heading"><p className="eyebrow">About</p><h3>History Timeline</h3></div>{renderJsonList("timeline", "about_history_milestones", timeline, [["year", "Year"], ["title", "Title"], ["text", "Description", "textarea"]], "Timeline Entry", { year: "", title: "", text: "" })}</div><aside className="website-content-preview-column"><span>Live preview</span><div className="about-history-timeline website-live-snippet">{timeline.map((item) => <article key={item.id}><strong>{item.year || "Year"}</strong><h3>{item.title || "Milestone"}</h3><p>{item.text || "Description"}</p></article>)}</div></aside></section>
         <section className="website-content-builder-section"><div className="website-content-form-column"><div className="website-content-section-heading"><p className="eyebrow">About</p><h3>Mission & Values</h3></div>{renderJsonList("value", "about_values", values, [["icon", "Icon", "select"], ["name", "Value name"], ["description", "Description", "textarea"]], "Value", { icon: "Compass", name: "", description: "" })}</div><aside className="website-content-preview-column"><span>Live preview</span><div className="goal-grid website-live-snippet">{values.map((item) => <article className="goal-card" key={item.id}><h3>{item.name || "Value"}</h3><p>{item.description || "Description"}</p></article>)}</div></aside></section>
         <section className="website-content-builder-section"><div className="website-content-form-column"><div className="website-content-section-heading"><p className="eyebrow">About</p><h3>Scout Groups</h3></div>{renderJsonList("group", "about_scout_groups", groups, [["name", "Group name"], ["ageRange", "Age or grade range"], ["description", "Description", "textarea"]], "Scout Group", { name: "", ageRange: "", description: "" })}</div><aside className="website-content-preview-column"><span>Live preview</span><div className="about-group-strip website-live-snippet">{groups.map((item) => <article className="about-group-card" key={item.id}><h3>{item.name || "Group"}</h3><span>{item.ageRange || "Range"}</span><p>{item.description}</p></article>)}</div></aside></section>
-        <section className="website-content-builder-section"><div className="website-content-form-column"><div className="website-content-section-heading"><p className="eyebrow">About</p><h3>Leaders</h3></div><div className="website-repeatable-list">{leaders.map((leader, index) => <ReorderCard key={leader.id} index={index} total={leaders.length} label="Leader" onDragStart={() => setDragState({ kind: "leader", index })} onDrop={() => dropList("leader", leaders, index, commitLeaders)} onMove={(direction) => commitLeaders(move(leaders, index, direction))} onDelete={() => { if (window.confirm("Delete this leader?")) commitLeaders(leaders.filter((_, itemIndex) => itemIndex !== index)); }}><ImageField label="Photo" shape="circle" image={imageFor(`leader:${leader.id}`) || leader.photoUrl} onChoose={(file) => { commitLeaders(leaders); onChooseImage(file, `leader:${leader.id}`, "circle"); }} /><label>Name<input value={leader.name ?? ""} onChange={(event) => commitLeaders(leaders.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item))} /></label><label>Role<input value={leader.title ?? ""} onChange={(event) => commitLeaders(leaders.map((item, itemIndex) => itemIndex === index ? { ...item, title: event.target.value } : item))} /></label></ReorderCard>)}<button type="button" className="inline-action" onClick={() => commitLeaders([...leaders, { id: makeId("leader"), name: "", title: "", photoUrl: "", storagePath: "", isNew: true, isActive: true }])}><Plus size={16} />Add Leader</button></div></div><aside className="website-content-preview-column"><span>Live preview</span><div className="leaders-grid website-live-snippet">{leaders.map((leader) => <article className="leader-card" key={leader.id}>{(imageFor(`leader:${leader.id}`) || leader.photoUrl) && <img src={imageFor(`leader:${leader.id}`) || leader.photoUrl} alt="" />}<h3>{leader.name || "Leader name"}</h3><span>{leader.title || "Role"}</span></article>)}</div></aside></section>
+        <section className="website-content-builder-section"><div className="website-content-form-column"><div className="website-content-section-heading"><p className="eyebrow">About</p><h3>Leaders</h3></div><div className="website-repeatable-list">{leaders.map((leader, index) => <ReorderCard key={leader.id} index={index} total={leaders.length} label="Leader" onDragStart={() => setDragState({ kind: "leader", index })} onDrop={() => dropList("leader", leaders, index, commitLeaders)} onMove={(direction) => commitLeaders(move(leaders, index, direction))} onDelete={() => { if (window.confirm("Delete this leader?")) commitLeaders(leaders.filter((_, itemIndex) => itemIndex !== index)); }}><ImageField label="Photo" shape="circle" contentKey={`leader:${leader.id}`} image={imageFor(`leader:${leader.id}`) || leader.photoUrl} onChoose={(file) => { commitLeaders(leaders); onChooseImage(file, `leader:${leader.id}`, "circle"); }} /><label>Name<input value={leader.name ?? ""} onChange={(event) => commitLeaders(leaders.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item))} /></label><label>Role<input value={leader.title ?? ""} onChange={(event) => commitLeaders(leaders.map((item, itemIndex) => itemIndex === index ? { ...item, title: event.target.value } : item))} /></label></ReorderCard>)}<button type="button" className="inline-action" onClick={() => commitLeaders([...leaders, { id: makeId("leader"), name: "", title: "", photoUrl: "", storagePath: "", isNew: true, isActive: true }])}><Plus size={16} />Add Leader</button></div></div><aside className="website-content-preview-column"><span>Live preview</span><div className="leaders-grid website-live-snippet">{leaders.map((leader) => <article className="leader-card" key={leader.id}>{(imageFor(`leader:${leader.id}`) || leader.photoUrl) && <img src={imageFor(`leader:${leader.id}`) || leader.photoUrl} alt="" />}<h3>{leader.name || "Leader name"}</h3><span>{leader.title || "Role"}</span></article>)}</div></aside></section>
       </>}
     </div>
   </div>;

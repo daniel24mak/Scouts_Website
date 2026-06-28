@@ -150,7 +150,7 @@ export default function HomePage() {
         <div className="hero-copy">
           <p className="eyebrow">St. Mary's Scouts Dubai</p>
           <h1>{heroTitle}</h1>
-          <p>{heroSubtitle}</p>
+          <FormattedText text={heroSubtitle} className="hero-subtitle formatted-text" />
           <div className="hero-actions">
             <Link className="primary-action" to={heroCtaLink || "/about"}>
               {heroCtaText} <ArrowRight size={18} aria-hidden="true" />

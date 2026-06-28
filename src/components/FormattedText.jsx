@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { hasHtmlMarkup, sanitizeRichHtml } from "../utils/richText.js";
+import { hasHtmlMarkup, normalizeRichTextInput, sanitizeRichHtml } from "../utils/richText.js";
 
 function isSafeHref(href) {
   return /^(https?:\/\/|mailto:|tel:|\/)/i.test(String(href ?? ""));
@@ -47,7 +47,7 @@ function renderInline(text, keyPrefix) {
 }
 
 export default function FormattedText({ text, fallback = "", className = "formatted-text" }) {
-  const value = String(text || fallback || "").trim();
+  const value = normalizeRichTextInput(text || fallback || "").trim();
 
   if (!value) {
     return null;
