@@ -4,6 +4,16 @@ import { useBootstrap } from "../../api/useBootstrap.js";
 
 const attendanceStatuses = ["Present", "Absent", "Late", "Excused"];
 
+
+function getTodayDateInputValue() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 function hasChiefAccess(user) {
   return user.role === "chief" || Boolean(user.groupId && user.chiefLevel);
 }
@@ -11,12 +21,10 @@ function hasChiefAccess(user) {
 export default function ChiefAttendanceManager() {
   const { data, refresh } = useBootstrap();
   const chiefs = data.users.filter(hasChiefAccess);
-  const [selectedDate, setSelectedDate] = useState("2026-06-03");
+  const [selectedDate, setSelectedDate] = useState(getTodayDateInputValue);
   const [records, setRecords] = useState({});
   const [saveMessage, setSaveMessage] = useState("");
-  const meeting =
-    data.chiefAttendanceMeetings.find((item) => item.date === selectedDate) ??
-    data.chiefAttendanceMeetings[0];
+  const meeting = data.chiefAttendanceMeetings.find((item) => item.date === selectedDate);
   const effectiveRecords = { ...(meeting?.records ?? {}), ...records };
   const handleSave = async () => {
     await saveChiefAttendance({

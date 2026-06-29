@@ -6,6 +6,16 @@ import { useAuth } from "../../auth/AuthProvider.jsx";
 const attendanceStatuses = ["Present", "Absent", "Late", "Excused"];
 const attendedStatuses = ["Present", "Late"];
 
+
+function getTodayDateInputValue() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 function sortScouts(scouts, sortBy) {
   return [...scouts].sort((a, b) =>
     String(a[sortBy]).localeCompare(String(b[sortBy]))
@@ -31,7 +41,7 @@ function getAttendancePercentage(scoutId, groupMeetings) {
 export default function ScoutAttendanceManager() {
   const { user } = useAuth();
   const { data, refresh } = useBootstrap();
-  const [selectedDate, setSelectedDate] = useState("2026-06-07");
+  const [selectedDate, setSelectedDate] = useState(getTodayDateInputValue);
   const [attendanceScope, setAttendanceScope] = useState("group");
   const [selectedEquipeId, setSelectedEquipeId] = useState("");
   const [records, setRecords] = useState({});
@@ -55,8 +65,7 @@ export default function ScoutAttendanceManager() {
       ),
     [data.attendanceMeetings, effectiveEquipeId, effectiveScope, selectedGroup]
   );
-  const selectedMeeting =
-    groupMeetings.find((meeting) => meeting.date === selectedDate) ?? groupMeetings[0];
+  const selectedMeeting = groupMeetings.find((meeting) => meeting.date === selectedDate);
   const attendanceSheet = data.attendanceSheets.find((sheet) => sheet.groupId === selectedGroup?.id);
   const scouts = sortScouts(
     data.registeredScouts.filter((scout) =>

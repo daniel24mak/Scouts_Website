@@ -1529,13 +1529,6 @@ h2 {
   overflow-x: hidden;
 }
 
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within {
-  width: 270px;
-  max-width: 270px;
-  box-shadow: 18px 0 44px rgb(11 31 58 / 0.12);
-}
-
 .admin-sidebar {
   position: sticky;
   top: 77px;
@@ -1651,26 +1644,6 @@ h2 {
 .admin-cms-shell.sidebar-collapsed .admin-sidebar button {
   justify-content: center;
   padding-inline: 8px;
-}
-
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .admin-sidebar-title strong,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .admin-sidebar-title span,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover button span,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-badge,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .admin-sidebar-title strong,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .admin-sidebar-title span,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within button span,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-badge {
-  position: static;
-  width: auto;
-  height: auto;
-  overflow: visible;
-  clip: auto;
-}
-
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover button,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within button {
-  justify-content: flex-start;
 }
 
 .admin-main {
@@ -4025,25 +3998,6 @@ body.dashboard-drawer-open {
     pointer-events: auto;
   }
 
-  .admin-sidebar,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within {
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: 50;
-    width: min(86vw, 320px);
-    max-width: min(86vw, 320px);
-    height: 100vh;
-    border-right: 1px solid #dfe6d8;
-    border-bottom: 0;
-    padding: 14px;
-    transform: translateX(-105%);
-    transition: transform 0.22s ease, box-shadow 0.22s ease;
-    box-shadow: none;
-  }
-
   .admin-cms-shell.mobile-sidebar-open .admin-sidebar,
   .admin-cms-shell.mobile-sidebar-open.sidebar-collapsed .admin-sidebar {
     transform: translateX(0);
@@ -4118,12 +4072,6 @@ body.dashboard-drawer-open {
 }
 
 @media (max-width: 768px) {
-  .dashboard-shell .admin-sidebar,
-  .dashboard-shell .admin-cms-shell.sidebar-collapsed .admin-sidebar,
-  .dashboard-shell .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover,
-  .dashboard-shell .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within {
-    height: 100dvh;
-  }
 
   .admin-sidebar .dashboard-drawer-close {
     display: inline-grid;
@@ -4209,22 +4157,6 @@ body.dashboard-drawer-open {
 .admin-cms-shell.sidebar-collapsed .sidebar-logout-button {
   justify-content: center;
   padding-inline: 8px;
-}
-
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-account-summary,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-account-summary,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-logout-button span,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-logout-button span {
-  position: static;
-  width: auto;
-  height: auto;
-  overflow: visible;
-  clip: auto;
-}
-
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-logout-button,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-logout-button {
-  justify-content: flex-start;
 }
 
 .dashboard-topbar-label {
@@ -4448,14 +4380,6 @@ body.dashboard-drawer-open {
 }
 
 @media (max-width: 768px) {
-  .admin-sidebar,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within {
-    height: 100dvh;
-    display: flex;
-    flex-direction: column;
-  }
 
   .admin-cms-shell.sidebar-collapsed .sidebar-account-summary,
   .admin-cms-shell.sidebar-collapsed .sidebar-logout-button span {
@@ -4792,22 +4716,6 @@ body.dashboard-drawer-open {
   display: grid;
 }
 
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-brand-expanded,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-brand-expanded {
-  display: grid;
-}
-
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-brand-compact,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-brand-compact {
-  display: none;
-}
-
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .admin-sidebar-title,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .admin-sidebar-title {
-  justify-content: space-between;
-  padding-inline: 6px;
-}
-
 .admin-cms-shell.sidebar-collapsed .sidebar-control-button,
 .admin-cms-shell.sidebar-collapsed .sidebar-logout-button {
   position: relative;
@@ -4841,13 +4749,6 @@ body.dashboard-drawer-open {
   display: block;
 }
 
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-control-button::after,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-control-button::after,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-logout-button::after,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-logout-button::after {
-  display: none;
-}
-
 .sidebar-navigation {
   overflow-y: auto;
   overflow-x: visible;
@@ -4871,25 +4772,6 @@ body.dashboard-drawer-open {
     display: none;
   }
 
-  .admin-cms-shell.sidebar-collapsed .sidebar-brand-expanded,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-brand-expanded,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-brand-expanded {
-    display: grid;
-  }
-
-  .admin-cms-shell.sidebar-collapsed .sidebar-brand-compact,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-brand-compact,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-brand-compact {
-    display: none;
-  }
-
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar-title,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .admin-sidebar-title,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .admin-sidebar-title {
-    justify-content: space-between;
-    padding-inline: 6px;
-  }
-
   .admin-cms-shell.sidebar-collapsed .sidebar-control-button::after,
   .admin-cms-shell.sidebar-collapsed .sidebar-logout-button::after {
     display: none;
@@ -4902,66 +4784,6 @@ body.dashboard-drawer-open {
 
 /* Keep the desktop dashboard sidebar pinned when collapsed. */
 @media (min-width: 769px) {
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within,
-  .dashboard-shell .admin-cms-shell.sidebar-collapsed .admin-sidebar,
-  .dashboard-shell .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover,
-  .dashboard-shell .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within {
-    width: 76px !important;
-    max-width: 76px !important;
-    box-shadow: none !important;
-    overflow-x: visible;
-  }
-
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar-title,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .admin-sidebar-title,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .admin-sidebar-title {
-    justify-content: center !important;
-    padding-inline: 0 !important;
-  }
-
-  .admin-cms-shell.sidebar-collapsed .sidebar-brand-expanded,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-brand-expanded,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-brand-expanded {
-    display: none !important;
-  }
-
-  .admin-cms-shell.sidebar-collapsed .sidebar-brand-compact,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-brand-compact,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-brand-compact {
-    display: grid !important;
-  }
-
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar button,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover button,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within button,
-  .admin-cms-shell.sidebar-collapsed .sidebar-control-button,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-control-button,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-control-button {
-    justify-content: center !important;
-    padding-inline: 8px !important;
-  }
-
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar button span,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover button span,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within button span,
-  .admin-cms-shell.sidebar-collapsed .sidebar-control-button span,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-control-button span,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-control-button span,
-  .admin-cms-shell.sidebar-collapsed .sidebar-account-summary,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-account-summary,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-account-summary,
-  .admin-cms-shell.sidebar-collapsed .sidebar-badge,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-badge,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-badge {
-    position: absolute !important;
-    width: 1px !important;
-    height: 1px !important;
-    overflow: hidden !important;
-    clip: rect(0, 0, 0, 0) !important;
-    white-space: nowrap !important;
-  }
 
   .admin-cms-shell.sidebar-collapsed .sidebar-control-button::after,
   .admin-cms-shell.sidebar-collapsed .sidebar-website-button::after,
@@ -4976,20 +4798,7 @@ body.dashboard-drawer-open {
   }
 }
 
-/* Collapsed sidebar header uses only the expand/collapse button. */
-.sidebar-brand-compact,
-.admin-cms-shell.sidebar-collapsed .sidebar-brand-compact,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-brand-compact,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-brand-compact {
-  display: none !important;
-}
-
 @media (min-width: 769px) {
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar-title,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .admin-sidebar-title,
-  .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .admin-sidebar-title {
-    justify-content: center !important;
-  }
 }
 
 .calendar-public-list {
@@ -5365,26 +5174,6 @@ body.dashboard-drawer-open {
 
 .sidebar-website-button {
   margin-top: auto;
-}
-
-.admin-cms-shell.sidebar-collapsed .admin-sidebar,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within {
-  width: 76px;
-  max-width: 76px;
-  box-shadow: none;
-}
-
-.admin-cms-shell.sidebar-collapsed .sidebar-brand-expanded,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-brand-expanded,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-brand-expanded {
-  display: none;
-}
-
-.admin-cms-shell.sidebar-collapsed .sidebar-brand-compact,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-brand-compact,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-brand-compact {
-  display: grid;
 }
 
 .admin-cms-shell.sidebar-collapsed .sidebar-desktop-toggle {
@@ -9750,47 +9539,12 @@ textarea:focus-visible {
   color: #ffffff;
 }
 
-.admin-cms-shell.sidebar-collapsed .admin-sidebar,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within,
-.dashboard-shell .admin-cms-shell.sidebar-collapsed .admin-sidebar,
-.dashboard-shell .admin-cms-shell.sidebar-collapsed .admin-sidebar:hover,
-.dashboard-shell .admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within {
-  width: 82px;
-  max-width: 82px;
-}
-
 .admin-cms-shell.sidebar-collapsed .sidebar-navigation button,
 .admin-cms-shell.sidebar-collapsed .sidebar-control-button,
 .admin-cms-shell.sidebar-collapsed .sidebar-logout-button,
 .admin-cms-shell.sidebar-collapsed .sidebar-account-summary {
   justify-content: center;
   padding-inline: 10px;
-}
-
-.admin-cms-shell.sidebar-collapsed .sidebar-navigation button span,
-.admin-cms-shell.sidebar-collapsed .sidebar-control-button span,
-.admin-cms-shell.sidebar-collapsed .sidebar-logout-button span,
-.admin-cms-shell.sidebar-collapsed .sidebar-account-summary > span,
-.admin-cms-shell.sidebar-collapsed .sidebar-brand-expanded,
-.admin-cms-shell.sidebar-collapsed .sidebar-badge,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-navigation button span,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-navigation button span,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-control-button span,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-control-button span,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-logout-button span,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-logout-button span,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-account-summary > span,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-account-summary > span,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-brand-expanded,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-brand-expanded,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-badge,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-badge {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
 }
 
 .admin-cms-shell.sidebar-collapsed .sidebar-navigation button::after,
@@ -10091,10 +9845,6 @@ textarea:focus-visible {
   font-size: 0.76rem;
   letter-spacing: 0;
   text-transform: uppercase;
-}
-
-.table-panel tbody tr:hover {
-  background: rgb(64 85 166 / 0.055);
 }
 
 .approval-workspace {
@@ -10472,32 +10222,6 @@ textarea:focus-visible {
   }
 }
 
-
-/* Dashboard hotfix: stable collapse toggle, horizontal topbar, transient confirmations. */
-.admin-cms-shell.sidebar-collapsed .sidebar-desktop-toggle,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-desktop-toggle,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-desktop-toggle {
-  display: inline-grid !important;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  flex: 0 0 42px;
-  padding: 0;
-}
-
-.admin-cms-shell.sidebar-collapsed .admin-sidebar-title,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .admin-sidebar-title,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .admin-sidebar-title {
-  justify-content: center;
-  padding-inline: 8px;
-}
-
-.admin-cms-shell.sidebar-collapsed .sidebar-brand-expanded,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:hover .sidebar-brand-expanded,
-.admin-cms-shell.sidebar-collapsed .admin-sidebar:focus-within .sidebar-brand-expanded {
-  display: none !important;
-}
-
 @media (min-width: 769px) {
   .dashboard-topbar {
     display: flex !important;
@@ -10656,14 +10380,6 @@ textarea:focus-visible {
 .approval-modal-card .formatted-text {
   color: var(--dashboard-text, #172044);
   line-height: 1.75;
-}
-
-.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar,
-.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar:hover,
-.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar:focus-within {
-  width: 280px !important;
-  max-width: 280px !important;
-  box-shadow: 18px 0 45px rgb(15 23 42 / 0.14);
 }
 
 .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar-title {
@@ -10904,12 +10620,6 @@ textarea:focus-visible {
   background: #f8faff;
   text-align: left;
   cursor: pointer;
-}
-
-.dashboard-event-list button:hover,
-.dashboard-event-list button:focus-visible {
-  border-color: rgb(64 85 166 / 0.34);
-  background: #ffffff;
 }
 
 .dashboard-event-list button strong {
@@ -12148,12 +11858,6 @@ textarea:focus-visible {
   text-align: left;
 }
 
-.notification-row:hover,
-.notification-row:focus-visible,
-.notification-row.unread {
-  background: #f5f7ff;
-}
-
 .notification-type-icon {
   display: grid;
   width: 36px;
@@ -12261,11 +11965,6 @@ textarea:focus-visible {
   color: #26334f;
   background: transparent;
   text-align: left;
-}
-
-.contact-message-row:hover,
-.contact-message-row.active {
-  background: #fff;
 }
 
 .contact-message-row.unread {
@@ -13761,17 +13460,6 @@ textarea:focus-visible {
   color: var(--dashboard-text) !important;
 }
 
-.admin-cms-shell.dashboard-theme-dark .table-panel tbody tr:hover,
-.admin-cms-shell.dashboard-theme-dark .notification-row:hover,
-.admin-cms-shell.dashboard-theme-dark .notification-row.unread,
-.admin-cms-shell.dashboard-theme-dark .forms-choice-stack.premium label,
-.admin-cms-shell.dashboard-theme-dark .premium-question-card,
-.admin-cms-shell.dashboard-theme-dark .forms-review-answer-list section,
-.admin-cms-shell.dashboard-theme-dark .premium-form-meta-grid span {
-  border-color: var(--dashboard-line) !important;
-  background: var(--dashboard-surface-2) !important;
-}
-
 .admin-cms-shell.dashboard-theme-dark .forms-status-pill,
 .admin-cms-shell.dashboard-theme-dark .premium-question-number {
   border-color: rgb(142 162 255 / 0.34) !important;
@@ -14073,49 +13761,6 @@ textarea:focus-visible {
   color: var(--dashboard-text) !important;
 }
 
-.admin-cms-shell.dashboard-theme-dark article,
-.admin-cms-shell.dashboard-theme-dark form,
-.admin-cms-shell.dashboard-theme-dark table,
-.admin-cms-shell.dashboard-theme-dark thead,
-.admin-cms-shell.dashboard-theme-dark tbody,
-.admin-cms-shell.dashboard-theme-dark tr,
-.admin-cms-shell.dashboard-theme-dark th,
-.admin-cms-shell.dashboard-theme-dark td,
-.admin-cms-shell.dashboard-theme-dark label,
-.admin-cms-shell.dashboard-theme-dark [class*="panel"],
-.admin-cms-shell.dashboard-theme-dark [class*="card"],
-.admin-cms-shell.dashboard-theme-dark [class*="box"],
-.admin-cms-shell.dashboard-theme-dark [class*="row"],
-.admin-cms-shell.dashboard-theme-dark [class*="list"],
-.admin-cms-shell.dashboard-theme-dark [class*="grid"],
-.admin-cms-shell.dashboard-theme-dark [class*="table"],
-.admin-cms-shell.dashboard-theme-dark [class*="toolbar"],
-.admin-cms-shell.dashboard-theme-dark [class*="modal"],
-.admin-cms-shell.dashboard-theme-dark [class*="preview"],
-.admin-cms-shell.dashboard-theme-dark [class*="form"],
-.admin-cms-shell.dashboard-theme-dark [class*="dropdown"],
-.admin-cms-shell.dashboard-theme-dark [class*="tabs"],
-.admin-cms-shell.dashboard-theme-dark [class*="sheet"],
-.admin-cms-shell.dashboard-theme-dark [class*="state"],
-.admin-cms-shell.dashboard-theme-dark [class*="detail"],
-.admin-cms-shell.dashboard-theme-dark [class*="workspace"],
-.admin-cms-shell.dashboard-theme-dark [class*="canvas"],
-.admin-cms-shell.dashboard-theme-dark [class*="section"] {
-  border-color: var(--dashboard-line) !important;
-  background: var(--dashboard-surface) !important;
-  color: var(--dashboard-text) !important;
-}
-
-.admin-cms-shell.dashboard-theme-dark [class*="row"]:hover,
-.admin-cms-shell.dashboard-theme-dark [class*="item"]:hover,
-.admin-cms-shell.dashboard-theme-dark [class*="card"]:hover,
-.admin-cms-shell.dashboard-theme-dark tr:hover,
-.admin-cms-shell.dashboard-theme-dark .unread,
-.admin-cms-shell.dashboard-theme-dark .active,
-.admin-cms-shell.dashboard-theme-dark [aria-selected="true"] {
-  background: var(--dashboard-surface-2) !important;
-}
-
 .admin-cms-shell.dashboard-theme-dark input,
 .admin-cms-shell.dashboard-theme-dark select,
 .admin-cms-shell.dashboard-theme-dark textarea,
@@ -14332,4 +13977,1910 @@ textarea:focus-visible {
 .admin-cms-shell.dashboard-theme-dark .avatar-crop-frame {
   border-color: var(--dashboard-line) !important;
   background: #0b1224 !important;
+}
+/* Premium dashboard design system pass: light and dark mode refinement. */
+.admin-cms-shell {
+  --dashboard-bg: #f6f7fa;
+  --dashboard-surface: #ffffff;
+  --dashboard-surface-2: #eef0f5;
+  --dashboard-line: #e2e4ea;
+  --dashboard-line-strong: #d7dae0;
+  --dashboard-text: #1a1f2b;
+  --dashboard-muted: #6b7280;
+  --dashboard-disabled: #9ca3af;
+  --dashboard-accent: #4055a6;
+  --dashboard-accent-hover: #33458d;
+  --dashboard-accent-soft: #e6f1fb;
+  --dashboard-accent-text: #0c447c;
+  --dashboard-danger: #b42318;
+  --dashboard-danger-soft: #fee4e2;
+  --dashboard-success: #067647;
+  --dashboard-success-soft: #dcfae6;
+  --dashboard-warning: #b54708;
+  --dashboard-warning-soft: #fef0c7;
+  --dashboard-radius: 8px;
+  --dashboard-card-padding: 16px;
+  --dashboard-gap: 12px;
+  background: var(--dashboard-bg) !important;
+  color: var(--dashboard-text) !important;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.admin-cms-shell.dashboard-theme-dark {
+  --dashboard-bg: #161a24;
+  --dashboard-surface: #1e2330;
+  --dashboard-surface-2: #262c3b;
+  --dashboard-line: #2a3040;
+  --dashboard-line-strong: #313847;
+  --dashboard-text: #f1f2f5;
+  --dashboard-muted: #8a8f9c;
+  --dashboard-disabled: #5c616e;
+  --dashboard-accent: #5b9bd9;
+  --dashboard-accent-hover: #4a86c1;
+  --dashboard-accent-soft: #0c447c;
+  --dashboard-accent-text: #e6f1fb;
+  --dashboard-danger: #f97066;
+  --dashboard-danger-soft: rgb(185 28 28 / 0.18);
+  --dashboard-success: #86efac;
+  --dashboard-success-soft: rgb(22 101 52 / 0.24);
+  --dashboard-warning: #fdb022;
+  --dashboard-warning-soft: rgb(180 83 9 / 0.24);
+}
+
+.admin-cms-shell,
+.admin-cms-shell .admin-main,
+.admin-cms-shell main {
+  background: var(--dashboard-bg) !important;
+}
+
+.admin-cms-shell .admin-main {
+  padding: 16px !important;
+}
+
+.admin-cms-shell :where(.page-section, .cms-panel-stack, .dashboard-overview-stack, .forms-dashboard-shell, .notifications-page) {
+  display: grid;
+  gap: 24px;
+  background: transparent !important;
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell .page-section > .eyebrow,
+.admin-cms-shell .page-section > h1,
+.admin-cms-shell .page-section > h1 + .helper-text,
+.admin-cms-shell .inline-editor-toolbar small,
+.admin-cms-shell .calendar-live-status {
+  display: none !important;
+}
+
+.admin-cms-shell :where(h1, h2, h3, h4, h5, h6, strong, b, th, dt) {
+  color: var(--dashboard-text) !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+}
+
+.admin-cms-shell :where(p, span, small, td, dd, label, .helper-text, .empty-state, .formatted-text) {
+  color: var(--dashboard-muted) !important;
+  font-weight: 400 !important;
+}
+
+.admin-cms-shell .dashboard-topbar-title {
+  color: var(--dashboard-text) !important;
+  font-size: 24px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+}
+
+.admin-cms-shell .dashboard-topbar-kicker,
+.admin-cms-shell .eyebrow,
+.admin-cms-shell small {
+  color: var(--dashboard-muted) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.admin-cms-shell :where(.admin-sidebar, .dashboard-topbar, .dashboard-mobile-reveal-bar, .dashboard-bottom-tabs, .dashboard-more-sheet, .dashboard-notification-dropdown, .dashboard-profile-dropdown) {
+  border-color: var(--dashboard-line) !important;
+  background: var(--dashboard-surface) !important;
+  color: var(--dashboard-text) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell :where(.admin-panel, .table-panel, .cms-form, .calendar-create-panel, .editor-panel, .settings-card-grid button, .forms-management-card, .forms-preview-card, .forms-builder-shell, .forms-builder-topbar, .forms-wizard-panel, .forms-question-card, .forms-review-experience, .forms-submission-success-card, .forms-ai-summary-card, .approval-review-modal, .profile-modal, .contact-message-card, .website-editor-card, .inline-editor-panel, .website-change-card, .blog-preview-card, .album-preview-card, .calendar-event-card, .my-group-card, .equipe-card, .equipe-assignment-zone, .profile-settings-card, .dashboard-context-header, .mini-list, .empty-state, .notifications-full-list) {
+  border: 1px solid var(--dashboard-line) !important;
+  border-radius: var(--dashboard-radius) !important;
+  background: var(--dashboard-surface) !important;
+  color: var(--dashboard-text) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell :where(.admin-panel, .table-panel, .cms-form, .calendar-create-panel, .editor-panel, .forms-management-card, .forms-preview-card, .forms-builder-shell, .forms-wizard-panel, .forms-question-card, .forms-review-experience, .forms-submission-success-card, .approval-review-modal, .profile-modal, .contact-message-card, .website-editor-card, .inline-editor-panel, .website-change-card, .blog-preview-card, .album-preview-card, .calendar-event-card, .my-group-card, .equipe-card, .equipe-assignment-zone, .profile-settings-card, .dashboard-context-header, .empty-state) {
+  padding: var(--dashboard-card-padding) !important;
+}
+
+.admin-cms-shell :where(.content-grid, .dashboard-stat-grid, .website-content-grid, .settings-card-grid, .forms-review-stats-grid, .forms-management-grid, .forms-cards-grid, .approval-grid, .contact-message-grid, .quick-shortcuts-row) {
+  gap: var(--dashboard-gap) !important;
+}
+
+.admin-cms-shell :where(.stat-card, .cms-stat-card, .overview-card, .metric-card, .forms-review-stat) {
+  border: 0 !important;
+  border-top: 0 !important;
+  border-radius: var(--dashboard-radius) !important;
+  padding: var(--dashboard-card-padding) !important;
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell :where(.stat-card)::before,
+.admin-cms-shell :where(.cms-stat-card)::before,
+.admin-cms-shell :where(.overview-card)::before,
+.admin-cms-shell :where(.metric-card)::before {
+  display: none !important;
+}
+
+.admin-cms-shell :where(.stat-card span, .cms-stat-card span, .overview-card span, .metric-card span, .forms-review-stat span) {
+  color: var(--dashboard-muted) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+}
+
+.admin-cms-shell :where(.stat-card strong, .cms-stat-card strong, .overview-card strong, .metric-card strong, .forms-review-stat strong) {
+  color: var(--dashboard-text) !important;
+  font-size: 24px !important;
+  font-weight: 500 !important;
+  line-height: 1.1;
+}
+
+.admin-cms-shell :where(button, .primary-action, .inline-action, .icon-button, .sidebar-control-button, .dashboard-theme-toggle, .dashboard-notification-button, .dashboard-profile-button) {
+  border-radius: 6px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+  box-shadow: none !important;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.admin-cms-shell :where(.primary-action, button.primary-action) {
+  border: 1px solid var(--dashboard-accent) !important;
+  background: var(--dashboard-accent) !important;
+  color: #ffffff !important;
+}
+
+.admin-cms-shell :where(.primary-action:hover, .primary-action:focus-visible, button.primary-action:hover, button.primary-action:focus-visible) {
+  border-color: var(--dashboard-accent-hover) !important;
+  background: var(--dashboard-accent-hover) !important;
+  color: #ffffff !important;
+  transform: none !important;
+}
+
+.admin-cms-shell :where(.inline-action, .secondary-action, .icon-button, .dashboard-theme-toggle, .dashboard-notification-button, .dashboard-profile-button, .approval-type-tabs button, .forms-section-tabs button, .forms-mode-toggle button, .dashboard-bottom-tab-link, .dashboard-more-grid button) {
+  border: 1px solid var(--dashboard-line) !important;
+  background: transparent !important;
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell :where(.inline-action:hover, .inline-action:focus-visible, .secondary-action:hover, .secondary-action:focus-visible, .icon-button:hover, .icon-button:focus-visible, .dashboard-theme-toggle:hover, .dashboard-theme-toggle:focus-visible, .dashboard-notification-button:hover, .dashboard-notification-button:focus-visible, .dashboard-profile-button:hover, .dashboard-profile-button:focus-visible, .approval-type-tabs button:hover, .forms-section-tabs button:hover, .forms-mode-toggle button:hover, .dashboard-bottom-tab-link:hover, .dashboard-more-grid button:hover) {
+  border-color: var(--dashboard-line-strong) !important;
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+  transform: none !important;
+}
+
+.admin-cms-shell :where(.danger-action, .attendance-delete-session-button, .notification-delete-button) {
+  border-color: color-mix(in srgb, var(--dashboard-danger) 34%, var(--dashboard-line)) !important;
+  background: transparent !important;
+  color: var(--dashboard-danger) !important;
+}
+
+.admin-cms-shell :where(.danger-action:hover, .attendance-delete-session-button:hover, .notification-delete-button:hover) {
+  background: var(--dashboard-danger-soft) !important;
+  color: var(--dashboard-danger) !important;
+}
+
+.admin-cms-shell :where(.admin-sidebar button.active, .sidebar-group.active-group > .sidebar-group-trigger, .forms-section-tabs button.active, .forms-mode-toggle button.active, .approval-type-tabs button.active, .dashboard-bottom-tab-link.active) {
+  border-color: var(--dashboard-accent-soft) !important;
+  background: var(--dashboard-accent-soft) !important;
+  color: var(--dashboard-accent-text) !important;
+}
+
+.admin-cms-shell :where(table, .editable-table, .attendance-sheet-table) {
+  width: 100%;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  background: transparent !important;
+}
+
+.admin-cms-shell :where(.table-panel table, .editable-table) {
+  border: 0 !important;
+}
+
+.admin-cms-shell :where(th) {
+  border: 0 !important;
+  border-bottom: 1px solid var(--dashboard-line) !important;
+  padding: 12px 14px !important;
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-muted) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  text-align: left;
+}
+
+.admin-cms-shell :where(td) {
+  min-height: 44px;
+  border: 0 !important;
+  border-bottom: 1px solid var(--dashboard-line) !important;
+  padding: 10px 14px !important;
+  background: transparent !important;
+  color: var(--dashboard-text) !important;
+  font-size: 14px !important;
+}
+
+.admin-cms-shell :where(.editable-table input, .editable-table select, .editable-table textarea, .table-panel td input, .table-panel td select, .table-panel td textarea) {
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--dashboard-text) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell :where(input, select, textarea, .forms-premium-input, .rich-text-editor, .rich-text-editor-content, .ql-toolbar, .ql-container, .ql-editor) {
+  border: 1px solid var(--dashboard-line) !important;
+  border-radius: 6px !important;
+  background: var(--dashboard-surface) !important;
+  color: var(--dashboard-text) !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell :where(input::placeholder, textarea::placeholder) {
+  color: var(--dashboard-disabled) !important;
+}
+
+.admin-cms-shell :where(input:focus, select:focus, textarea:focus, .forms-premium-input:focus, .rich-text-editor:focus-within, .ql-container:focus-within) {
+  border-color: var(--dashboard-accent) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dashboard-accent) 16%, transparent) !important;
+}
+
+.admin-cms-shell :where(.forms-status-pill, .status-badge, .contact-status-pill, .attendance-status, .sidebar-badge, .forms-count-badge, .form-status) {
+  border: 0 !important;
+  border-radius: 999px !important;
+  padding: 4px 9px !important;
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-muted) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.admin-cms-shell :where(.forms-status-pill.open, .forms-status-pill.submitted, .forms-status-pill.approved, .status-badge.approved, .contact-status-pill.replied, .attendance-status-present, .attendance-status-late, .form-status.success) {
+  background: var(--dashboard-success-soft) !important;
+  color: var(--dashboard-success) !important;
+}
+
+.admin-cms-shell :where(.forms-status-pill.pending, .forms-status-pill.draft, .status-badge.pending, .status-badge.needs_changes, .contact-status-pill.new) {
+  background: var(--dashboard-warning-soft) !important;
+  color: var(--dashboard-warning) !important;
+}
+
+.admin-cms-shell :where(.forms-status-pill.closed, .forms-status-pill.rejected, .status-badge.rejected, .status-badge.archived, .contact-status-pill.archived, .attendance-status-absent, .form-status.error) {
+  background: var(--dashboard-danger-soft) !important;
+  color: var(--dashboard-danger) !important;
+}
+
+.admin-cms-shell :where(.user-avatar, .dashboard-profile-avatar, .profile-avatar, .sidebar-account-avatar, .notification-type-icon) {
+  background: var(--dashboard-accent-soft) !important;
+  color: var(--dashboard-accent-text) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell :where(svg) {
+  stroke-width: 1.8;
+}
+
+.admin-cms-shell :where(.dashboard-notification-dropdown, .dashboard-profile-dropdown, .dashboard-more-sheet, .approval-review-modal, .profile-modal, .ql-picker-options) {
+  box-shadow: 0 18px 48px rgb(17 24 39 / 0.14) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(.dashboard-notification-dropdown, .dashboard-profile-dropdown, .dashboard-more-sheet, .approval-review-modal, .profile-modal, .ql-picker-options) {
+  box-shadow: 0 18px 48px rgb(0 0 0 / 0.32) !important;
+}
+
+
+
+.admin-cms-shell.dashboard-theme-dark :where(th, .cms-form > *, .table-panel thead, .mini-list button, .forms-review-answer-list section, .premium-form-meta-grid span, .forms-review-stats-grid div, .forms-choice-stack.premium label, .forms-segmented-control, .forms-rating-control, .forms-preview-instructions, .dashboard-notification-dropdown button, .dashboard-profile-dropdown button, .notification-dropdown-header, .sidebar-account, .sidebar-group, .sidebar-subitems, .rich-text-toolbar) {
+  background-color: var(--dashboard-surface-2) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(input, select, textarea, .forms-premium-input, .rich-text-editor, .rich-text-editor-content, .ql-toolbar, .ql-container, .ql-editor) {
+  background-color: #1e2330 !important;
+  color: var(--dashboard-text) !important;
+}
+
+@media (max-width: 768px) {
+  .admin-cms-shell .admin-main {
+    padding: 12px !important;
+  }
+
+  .admin-cms-shell :where(.admin-panel, .table-panel, .cms-form, .calendar-create-panel, .editor-panel, .forms-management-card, .forms-preview-card, .forms-builder-shell, .forms-wizard-panel, .forms-question-card, .forms-review-experience, .forms-submission-success-card, .approval-review-modal, .profile-modal, .contact-message-card, .website-editor-card, .inline-editor-panel, .website-change-card, .blog-preview-card, .album-preview-card, .calendar-event-card, .my-group-card, .equipe-card, .equipe-assignment-zone, .profile-settings-card, .dashboard-context-header, .empty-state) {
+    padding: 14px !important;
+  }
+
+  .admin-cms-shell :where(td, th) {
+    padding: 10px 12px !important;
+  }
+}
+
+/* Dashboard bug sweep: sidebar/topbar boundary and dark-mode control borders. */
+@media (min-width: 901px) {
+  .admin-cms-shell {
+    --dashboard-sidebar-expanded: 282px;
+    --dashboard-sidebar-collapsed: 82px;
+    grid-template-columns: var(--dashboard-sidebar-expanded) minmax(0, 1fr) !important;
+    overflow-x: clip;
+  }
+
+  .admin-cms-shell.sidebar-collapsed {
+    grid-template-columns: var(--dashboard-sidebar-collapsed) minmax(0, 1fr) !important;
+  }
+
+  .admin-cms-shell .admin-sidebar,
+  .dashboard-shell .admin-cms-shell .admin-sidebar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 30 !important;
+    width: var(--dashboard-sidebar-expanded) !important;
+    max-width: var(--dashboard-sidebar-expanded) !important;
+    min-width: 0 !important;
+    height: 100vh !important;
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    border-right: 1px solid var(--dashboard-line) !important;
+    border-bottom: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .admin-cms-shell .admin-main {
+    grid-column: 2 !important;
+    min-width: 0 !important;
+    padding: 0 24px 32px !important;
+    overflow-x: clip;
+  }
+
+  .admin-cms-shell .dashboard-topbar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 25 !important;
+    width: auto !important;
+    max-width: 100% !important;
+    margin: 0 -24px 24px !important;
+    border-top: 0 !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--dashboard-line) !important;
+    border-left: 0 !important;
+    border-radius: 0 !important;
+    padding: 12px 24px !important;
+    box-shadow: none !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .admin-cms-shell,
+  .admin-cms-shell.sidebar-collapsed {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-cms-shell .admin-main {
+    padding: 12px !important;
+  }
+
+  .admin-cms-shell .dashboard-topbar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 30 !important;
+    width: auto !important;
+    max-width: 100% !important;
+    margin: -12px -12px 16px !important;
+    border-radius: 0 !important;
+    border-inline: 0 !important;
+    border-top: 0 !important;
+    padding: 10px 12px !important;
+  }
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  button,
+  .inline-action,
+  .secondary-action,
+  .icon-button,
+  .dashboard-theme-toggle,
+  .dashboard-notification-button,
+  .dashboard-profile-button,
+  .dashboard-menu-button,
+  .sidebar-control-button,
+  .sidebar-logout-button,
+  .admin-sidebar button,
+  .forms-section-tabs button,
+  .forms-mode-toggle button,
+  .approval-type-tabs button,
+  .dashboard-more-grid button,
+  .dashboard-bottom-tab-link,
+  input,
+  select,
+  textarea,
+  [contenteditable="true"],
+  .rich-text-editor,
+  .rich-text-editor-content,
+  .ql-toolbar,
+  .ql-container
+) {
+  border-color: var(--dashboard-line) !important;
+  background-color: var(--dashboard-surface) !important;
+  color: var(--dashboard-text) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(select, input[type="date"], input[type="number"], input[type="search"], input[type="text"], input[type="email"], input[type="password"]) {
+  color-scheme: dark;
+  accent-color: var(--dashboard-accent);
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  button:not(.primary-action):hover,
+  button:not(.primary-action):focus-visible,
+  .inline-action:hover,
+  .inline-action:focus-visible,
+  .secondary-action:hover,
+  .secondary-action:focus-visible,
+  .icon-button:hover,
+  .icon-button:focus-visible,
+  .dashboard-theme-toggle:hover,
+  .dashboard-theme-toggle:focus-visible,
+  .dashboard-notification-button:hover,
+  .dashboard-notification-button:focus-visible,
+  .dashboard-profile-button:hover,
+  .dashboard-profile-button:focus-visible,
+  .dashboard-menu-button:hover,
+  .dashboard-menu-button:focus-visible,
+  .sidebar-control-button:hover,
+  .sidebar-control-button:focus-visible,
+  .admin-sidebar button:hover,
+  .admin-sidebar button:focus-visible,
+  .forms-section-tabs button:hover,
+  .forms-section-tabs button:focus-visible,
+  .forms-mode-toggle button:hover,
+  .forms-mode-toggle button:focus-visible,
+  .approval-type-tabs button:hover,
+  .approval-type-tabs button:focus-visible,
+  .dashboard-more-grid button:hover,
+  .dashboard-more-grid button:focus-visible,
+  .dashboard-bottom-tab-link:hover,
+  .dashboard-bottom-tab-link:focus-visible
+) {
+  border-color: var(--dashboard-line-strong) !important;
+  background-color: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  input:focus,
+  select:focus,
+  textarea:focus,
+  [contenteditable="true"]:focus,
+  .rich-text-editor:focus-within,
+  .ql-container:focus-within
+) {
+  border-color: var(--dashboard-accent) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dashboard-accent) 18%, transparent) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(.primary-action, button.primary-action) {
+  border-color: #0c447c !important;
+  background-color: #0c447c !important;
+  color: #e6f1fb !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(.primary-action:hover, .primary-action:focus-visible, button.primary-action:hover, button.primary-action:focus-visible) {
+  border-color: #155a9e !important;
+  background-color: #155a9e !important;
+  color: #ffffff !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(.admin-sidebar button.active, .sidebar-group.active-group > .sidebar-group-trigger, .forms-section-tabs button.active, .forms-mode-toggle button.active, .approval-type-tabs button.active, .dashboard-bottom-tab-link.active, [aria-selected="true"]) {
+  border-color: #0c447c !important;
+  background-color: #0c447c !important;
+  color: #e6f1fb !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(.admin-panel, .table-panel, .cms-form, .calendar-create-panel, .editor-panel, .settings-card-grid button, .forms-management-card, .forms-preview-card, .forms-builder-shell, .forms-builder-topbar, .forms-wizard-panel, .forms-question-card, .forms-review-experience, .approval-review-modal, .profile-modal, .contact-message-card, .website-editor-card, .inline-editor-panel, .website-change-card, .notification-row, .notifications-full-list, .calendar-event-card, .my-group-card, .equipe-card) {
+  border-color: var(--dashboard-line) !important;
+  box-shadow: none !important;
+}
+
+/* Root-cause dark mode rebuild: semantic token layer, no filter/overlay behavior. */
+.admin-cms-shell {
+  --dashboard-bg: #f6f7fa;
+  --dashboard-surface: #ffffff;
+  --dashboard-surface-raised: #ffffff;
+  --dashboard-surface-2: #eef0f5;
+  --dashboard-hover: #e8ebf2;
+  --dashboard-line: #e2e4ea;
+  --dashboard-line-strong: #d7dae0;
+  --dashboard-text: #1a1f2b;
+  --dashboard-muted: #6b7280;
+  --dashboard-disabled: #9ca3af;
+  --dashboard-accent: #4055a6;
+  --dashboard-accent-hover: #33458d;
+  --dashboard-accent-soft: #e6f1fb;
+  --dashboard-accent-text: #0c447c;
+  --dashboard-focus: rgb(64 85 166 / 0.16);
+}
+
+.admin-cms-shell.dashboard-theme-dark {
+  --dashboard-bg: #161a24;
+  --dashboard-surface: #1e2330;
+  --dashboard-surface-raised: #202635;
+  --dashboard-surface-2: #262c3b;
+  --dashboard-hover: #2b3345;
+  --dashboard-line: #2a3040;
+  --dashboard-line-strong: #313847;
+  --dashboard-text: #f1f2f5;
+  --dashboard-muted: #8a8f9c;
+  --dashboard-disabled: #5c616e;
+  --dashboard-accent: #5b9bd9;
+  --dashboard-accent-hover: #73aae2;
+  --dashboard-accent-soft: #0c447c;
+  --dashboard-accent-text: #e6f1fb;
+  --dashboard-focus: rgb(91 155 217 / 0.18);
+  color-scheme: dark;
+  filter: none !important;
+  background: var(--dashboard-bg) !important;
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark *,
+.admin-cms-shell.dashboard-theme-dark *::before,
+.admin-cms-shell.dashboard-theme-dark *::after {
+  text-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .admin-main,
+  .page-section,
+  .cms-panel-stack,
+  .dashboard-overview-stack,
+  .forms-dashboard-shell,
+  .notifications-page
+) {
+  background: var(--dashboard-bg) !important;
+  color: var(--dashboard-text) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .admin-sidebar,
+  .dashboard-topbar,
+  .dashboard-mobile-reveal-bar,
+  .dashboard-bottom-tabs,
+  .dashboard-more-sheet,
+  .dashboard-notification-dropdown,
+  .dashboard-profile-dropdown,
+  .admin-panel,
+  .table-panel,
+  .cms-form,
+  .calendar-create-panel,
+  .editor-panel,
+  .settings-card-grid button,
+  .forms-management-card,
+  .forms-template-mini-card,
+  .forms-preview-card,
+  .forms-builder-shell,
+  .forms-builder-topbar,
+  .forms-wizard-panel,
+  .forms-question-card,
+  .forms-review-experience,
+  .forms-submission-success-card,
+  .forms-ai-summary-card,
+  .approval-review-modal,
+  .profile-modal,
+  .contact-message-card,
+  .website-editor-card,
+  .inline-editor-panel,
+  .website-change-card,
+  .blog-preview-card,
+  .album-preview-card,
+  .calendar-event-card,
+  .my-group-card,
+  .equipe-card,
+  .equipe-assignment-zone,
+  .profile-settings-card,
+  .dashboard-context-header,
+  .notifications-full-list,
+  .modal-card,
+  .modal-content
+) {
+  background: var(--dashboard-surface) !important;
+  color: var(--dashboard-text) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .stat-card,
+  .cms-stat-card,
+  .overview-card,
+  .metric-card,
+  .forms-review-stat,
+  .empty-state,
+  .mini-list,
+  .mini-list > span,
+  .dashboard-event-list > span,
+  .pending-work-row,
+  .notification-row,
+  .notification-row-main,
+  .contact-message-row,
+  .forms-choice-stack label,
+  .forms-choice-stack.premium label,
+  .premium-question-card,
+  .forms-review-answer-list section,
+  .premium-form-meta-grid span,
+  .forms-review-stats-grid div,
+  .forms-segmented-control,
+  .forms-rating-control,
+  .forms-preview-instructions,
+  .rich-text-toolbar,
+  .ql-toolbar,
+  .ql-container,
+  .sidebar-account,
+  .sidebar-group,
+  .sidebar-subitems,
+  .website-image-large-preview,
+  .avatar-crop-frame,
+  .avatar-zoom-control
+) {
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(table, thead, tbody, tr) {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(th) {
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-muted) !important;
+  border-bottom-color: var(--dashboard-line) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(td) {
+  background: transparent !important;
+  color: var(--dashboard-text) !important;
+  border-bottom-color: var(--dashboard-line) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  input,
+  select,
+  textarea,
+  option,
+  [contenteditable="true"],
+  .forms-premium-input,
+  .rich-text-editor,
+  .rich-text-editor-content,
+  .ql-editor
+) {
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+  border-color: var(--dashboard-line) !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color-scheme: dark;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(input::placeholder, textarea::placeholder) {
+  color: var(--dashboard-disabled) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  button,
+  .inline-action,
+  .secondary-action,
+  .icon-button,
+  .dashboard-theme-toggle,
+  .dashboard-notification-button,
+  .dashboard-profile-button,
+  .dashboard-menu-button,
+  .sidebar-control-button,
+  .sidebar-logout-button,
+  .admin-sidebar button,
+  .forms-section-tabs button,
+  .forms-mode-toggle button,
+  .approval-type-tabs button,
+  .dashboard-more-grid button,
+  .dashboard-bottom-tab-link,
+  .quick-shortcuts-row button
+) {
+  background: transparent !important;
+  color: var(--dashboard-text) !important;
+  border-color: var(--dashboard-line) !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  button:not(.primary-action):hover,
+  button:not(.primary-action):focus-visible,
+  .inline-action:hover,
+  .inline-action:focus-visible,
+  .secondary-action:hover,
+  .secondary-action:focus-visible,
+  .icon-button:hover,
+  .icon-button:focus-visible,
+  .dashboard-theme-toggle:hover,
+  .dashboard-theme-toggle:focus-visible,
+  .dashboard-notification-button:hover,
+  .dashboard-notification-button:focus-visible,
+  .dashboard-profile-button:hover,
+  .dashboard-profile-button:focus-visible,
+  .dashboard-menu-button:hover,
+  .dashboard-menu-button:focus-visible,
+  .sidebar-control-button:hover,
+  .sidebar-control-button:focus-visible,
+  .admin-sidebar button:hover,
+  .admin-sidebar button:focus-visible,
+  .forms-section-tabs button:hover,
+  .forms-section-tabs button:focus-visible,
+  .forms-mode-toggle button:hover,
+  .forms-mode-toggle button:focus-visible,
+  .approval-type-tabs button:hover,
+  .approval-type-tabs button:focus-visible,
+  .dashboard-more-grid button:hover,
+  .dashboard-more-grid button:focus-visible,
+  .dashboard-bottom-tab-link:hover,
+  .dashboard-bottom-tab-link:focus-visible,
+  .quick-shortcuts-row button:hover,
+  .quick-shortcuts-row button:focus-visible
+) {
+  background: var(--dashboard-hover) !important;
+  color: var(--dashboard-text) !important;
+  border-color: var(--dashboard-line-strong) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  input:focus,
+  select:focus,
+  textarea:focus,
+  [contenteditable="true"]:focus,
+  .rich-text-editor:focus-within,
+  .ql-container:focus-within,
+  button:focus-visible,
+  .inline-action:focus-visible,
+  .icon-button:focus-visible
+) {
+  border-color: var(--dashboard-accent) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px var(--dashboard-focus) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(.primary-action, button.primary-action) {
+  background: var(--dashboard-accent-soft) !important;
+  color: var(--dashboard-accent-text) !important;
+  border-color: var(--dashboard-accent-soft) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(.primary-action:hover, .primary-action:focus-visible, button.primary-action:hover, button.primary-action:focus-visible) {
+  background: #155a9e !important;
+  color: #ffffff !important;
+  border-color: #155a9e !important;
+  box-shadow: 0 0 0 3px var(--dashboard-focus) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .admin-sidebar button.active,
+  .sidebar-group.active-group > .sidebar-group-trigger,
+  .forms-section-tabs button.active,
+  .forms-mode-toggle button.active,
+  .approval-type-tabs button.active,
+  .dashboard-bottom-tab-link.active,
+  [aria-selected="true"]
+) {
+  background: var(--dashboard-accent-soft) !important;
+  color: var(--dashboard-accent-text) !important;
+  border-color: var(--dashboard-accent-soft) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(h1, h2, h3, h4, h5, h6, strong, b, label, th, td, dt, dd, .dashboard-topbar-title) {
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(p, span, small, em, .helper-text, .eyebrow, .formatted-text, .dashboard-topbar-kicker) {
+  color: var(--dashboard-muted) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(.dashboard-notification-dropdown, .dashboard-profile-dropdown, .dashboard-more-sheet, .approval-review-modal, .profile-modal, .ql-picker-options) {
+  box-shadow: 0 18px 42px rgb(0 0 0 / 0.28) !important;
+}
+
+/* Dark mode repair: remove card outlines and restore overview button hover behavior. */
+.admin-cms-shell.dashboard-theme-dark :where(
+  .stat-card,
+  .cms-stat-card,
+  .overview-card,
+  .metric-card,
+  .admin-panel,
+  .dashboard-work-panel,
+  .table-panel,
+  .cms-form,
+  .calendar-create-panel,
+  .editor-panel,
+  .forms-management-card,
+  .forms-preview-card,
+  .forms-builder-shell,
+  .forms-wizard-panel,
+  .forms-question-card,
+  .forms-review-experience,
+  .forms-submission-success-card,
+  .forms-ai-summary-card,
+  .contact-message-card,
+  .website-editor-card,
+  .inline-editor-panel,
+  .website-change-card,
+  .blog-preview-card,
+  .album-preview-card,
+  .calendar-event-card,
+  .my-group-card,
+  .equipe-card,
+  .equipe-assignment-zone,
+  .profile-settings-card,
+  .dashboard-context-header,
+  .notifications-full-list,
+  .empty-state,
+  .mini-list
+) {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(.stat-card, .cms-stat-card, .overview-card, .metric-card) {
+  background: var(--dashboard-surface-2) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(.admin-panel, .dashboard-work-panel, .table-panel, .cms-form, .forms-management-card, .contact-message-card, .website-editor-card) {
+  background: var(--dashboard-surface) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .quick-shortcuts-row {
+  gap: 12px !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .quick-shortcuts-row button,
+.admin-cms-shell.dashboard-theme-dark .quick-shortcuts-row button:not(.primary-action) {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid transparent !important;
+  border-radius: 8px !important;
+  background: #4055a6 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .quick-shortcuts-row button svg,
+.admin-cms-shell.dashboard-theme-dark .quick-shortcuts-row button span {
+  color: currentColor !important;
+  stroke: currentColor !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .quick-shortcuts-row button:hover,
+.admin-cms-shell.dashboard-theme-dark .quick-shortcuts-row button:focus-visible,
+.admin-cms-shell.dashboard-theme-dark .quick-shortcuts-row button:not(.primary-action):hover,
+.admin-cms-shell.dashboard-theme-dark .quick-shortcuts-row button:not(.primary-action):focus-visible {
+  border-color: #f5bf15 !important;
+  background: #f5bf15 !important;
+  color: #17392b !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .dashboard-event-list button {
+  border-color: transparent !important;
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .dashboard-event-list > span,
+.admin-cms-shell.dashboard-theme-dark .mini-list > span {
+  display: block;
+  border: 0 !important;
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-muted) !important;
+  box-shadow: none !important;
+}
+
+/* Sidebar collapsed dropdown repair: keep temporary expansion above all later layout locks. */
+@media (min-width: 901px) {
+}
+
+.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-brand-expanded,
+.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar button span,
+.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-control-button span,
+.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-account-summary > span,
+.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-badge {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  overflow: visible !important;
+  clip: auto !important;
+}
+
+.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-brand-expanded {
+  display: grid !important;
+}
+
+.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-brand-compact {
+  display: none !important;
+}
+
+.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar-title,
+.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar button,
+.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-control-button,
+.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-account-summary {
+  justify-content: flex-start !important;
+  padding-inline: 12px !important;
+}
+
+.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-chevron {
+  position: static !important;
+  width: 16px !important;
+  height: 16px !important;
+  margin-left: auto !important;
+  overflow: visible !important;
+  clip: auto !important;
+}
+
+.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-subitems {
+  padding-left: 12px !important;
+}
+
+.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-group.open .sidebar-subitems {
+  max-height: 560px !important;
+}
+
+/* Dashboard topbar edge repair: leave breathing room from the sidebar without a right-side gap. */
+@media (min-width: 901px) {
+  .admin-cms-shell .admin-main {
+    padding: 0 24px 32px 16px !important;
+  }
+
+  .admin-cms-shell .dashboard-topbar {
+    box-sizing: border-box !important;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 -24px 24px 0 !important;
+    padding: 12px 24px 12px 16px !important;
+    border-left: 0 !important;
+  }
+}
+
+/* Mobile dashboard topbar repair: inset rounded bar without right-edge whitespace. */
+@media (max-width: 900px) {
+  .admin-cms-shell .admin-main {
+    padding: 12px !important;
+    overflow-x: clip !important;
+  }
+
+  .admin-cms-shell .dashboard-topbar {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 0 16px !important;
+    top: 8px !important;
+    border: 1px solid var(--dashboard-line) !important;
+    border-radius: 14px !important;
+    padding: 10px 12px !important;
+    overflow: visible !important;
+  }
+}
+
+/* Desktop dashboard topbar rounded finish. */
+@media (min-width: 901px) {
+  .admin-cms-shell .dashboard-topbar {
+    margin: 12px 0 24px !important;
+    border: 1px solid var(--dashboard-line) !important;
+    border-radius: 14px !important;
+    padding: 12px 16px !important;
+  }
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(button:hover, button:focus-visible) {
+  cursor: pointer;
+}
+
+.admin-cms-shell.dashboard-theme-dark .dashboard-overview-stack,
+.admin-cms-shell.dashboard-theme-dark .cms-panel-stack,
+.admin-cms-shell.dashboard-theme-dark .forms-dashboard-shell,
+.admin-cms-shell.dashboard-theme-dark .notifications-page,
+.admin-cms-shell.dashboard-theme-dark .content-grid,
+.admin-cms-shell.dashboard-theme-dark .dashboard-stat-grid,
+.admin-cms-shell.dashboard-theme-dark .website-content-grid,
+.admin-cms-shell.dashboard-theme-dark .settings-card-grid,
+.admin-cms-shell.dashboard-theme-dark .forms-review-stats-grid,
+.admin-cms-shell.dashboard-theme-dark .forms-management-grid,
+.admin-cms-shell.dashboard-theme-dark .forms-cards-grid,
+.admin-cms-shell.dashboard-theme-dark .approval-grid,
+.admin-cms-shell.dashboard-theme-dark .contact-message-grid,
+.admin-cms-shell.dashboard-theme-dark .quick-shortcuts-row {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .admin-panel,
+.admin-cms-shell.dashboard-theme-dark .dashboard-work-panel,
+.admin-cms-shell.dashboard-theme-dark .table-panel,
+.admin-cms-shell.dashboard-theme-dark .cms-form,
+.admin-cms-shell.dashboard-theme-dark .calendar-create-panel,
+.admin-cms-shell.dashboard-theme-dark .editor-panel,
+.admin-cms-shell.dashboard-theme-dark .forms-management-card,
+.admin-cms-shell.dashboard-theme-dark .forms-template-mini-card,
+.admin-cms-shell.dashboard-theme-dark .forms-preview-card,
+.admin-cms-shell.dashboard-theme-dark .forms-builder-shell,
+.admin-cms-shell.dashboard-theme-dark .forms-builder-topbar,
+.admin-cms-shell.dashboard-theme-dark .forms-wizard-panel,
+.admin-cms-shell.dashboard-theme-dark .forms-question-card,
+.admin-cms-shell.dashboard-theme-dark .forms-review-experience,
+.admin-cms-shell.dashboard-theme-dark .forms-submission-success-card,
+.admin-cms-shell.dashboard-theme-dark .forms-ai-summary-card,
+.admin-cms-shell.dashboard-theme-dark .approval-review-modal,
+.admin-cms-shell.dashboard-theme-dark .profile-modal,
+.admin-cms-shell.dashboard-theme-dark .contact-message-card,
+.admin-cms-shell.dashboard-theme-dark .website-editor-card,
+.admin-cms-shell.dashboard-theme-dark .inline-editor-panel,
+.admin-cms-shell.dashboard-theme-dark .website-change-card,
+.admin-cms-shell.dashboard-theme-dark .blog-preview-card,
+.admin-cms-shell.dashboard-theme-dark .album-preview-card,
+.admin-cms-shell.dashboard-theme-dark .calendar-event-card,
+.admin-cms-shell.dashboard-theme-dark .my-group-card,
+.admin-cms-shell.dashboard-theme-dark .equipe-card,
+.admin-cms-shell.dashboard-theme-dark .equipe-assignment-zone,
+.admin-cms-shell.dashboard-theme-dark .profile-settings-card,
+.admin-cms-shell.dashboard-theme-dark .dashboard-context-header,
+.admin-cms-shell.dashboard-theme-dark .notifications-full-list,
+.admin-cms-shell.dashboard-theme-dark .stat-card,
+.admin-cms-shell.dashboard-theme-dark .cms-stat-card,
+.admin-cms-shell.dashboard-theme-dark .overview-card,
+.admin-cms-shell.dashboard-theme-dark .metric-card,
+.admin-cms-shell.dashboard-theme-dark .forms-review-stat,
+.admin-cms-shell.dashboard-theme-dark .empty-state,
+.admin-cms-shell.dashboard-theme-dark .mini-list {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Final non-button control cleanup: only <button> keeps hover styling. */
+.admin-cms-shell a:hover,
+.admin-cms-shell .inline-action:not(button):hover,
+.admin-cms-shell .secondary-action:not(button):hover,
+.admin-cms-shell .primary-action:not(button):hover,
+.admin-cms-shell .icon-button:not(button):hover,
+.admin-cms-shell .dashboard-bottom-tab-link:not(button):hover,
+.admin-cms-shell [role= button]:not(button):hover {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: inherit !important;
+  box-shadow: none !important;
+  transform: none !important;
+  filter: none !important;
+  text-decoration: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-review-stats-grid div,
+.admin-cms-shell.dashboard-theme-dark .premium-form-meta-grid span,
+.admin-cms-shell.dashboard-theme-dark .forms-review-answer-list section,
+.admin-cms-shell.dashboard-theme-dark .forms-choice-stack label,
+.admin-cms-shell.dashboard-theme-dark .forms-choice-stack.premium label,
+.admin-cms-shell.dashboard-theme-dark .forms-segmented-control,
+.admin-cms-shell.dashboard-theme-dark .forms-rating-control,
+.admin-cms-shell.dashboard-theme-dark .forms-preview-instructions,
+.admin-cms-shell.dashboard-theme-dark .sidebar-group,
+.admin-cms-shell.dashboard-theme-dark .sidebar-subitems,
+.admin-cms-shell.dashboard-theme-dark .sidebar-account,
+.admin-cms-shell.dashboard-theme-dark .notification-row,
+.admin-cms-shell.dashboard-theme-dark .contact-message-row,
+.admin-cms-shell.dashboard-theme-dark .pending-work-row {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Dashboard recovery: restore stable sidebar states and stop panel hover flashes. */
+@media (min-width: 901px) {
+  .admin-cms-shell {
+    --dashboard-sidebar-expanded: 282px;
+    --dashboard-sidebar-collapsed: 82px;
+    grid-template-columns: var(--dashboard-sidebar-expanded) minmax(0, 1fr) !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed {
+    grid-template-columns: var(--dashboard-sidebar-collapsed) minmax(0, 1fr) !important;
+  }
+
+  .admin-cms-shell .admin-sidebar,
+  .dashboard-shell .admin-cms-shell .admin-sidebar {
+    position: sticky !important;
+    top: 0 !important;
+    width: var(--dashboard-sidebar-expanded) !important;
+    max-width: var(--dashboard-sidebar-expanded) !important;
+    height: 100vh !important;
+    overflow-x: hidden !important;
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .admin-sidebar,
+  .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .admin-sidebar:hover,
+  .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .admin-sidebar:focus-within,
+  .dashboard-shell .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .admin-sidebar,
+  .dashboard-shell .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .admin-sidebar:hover,
+  .dashboard-shell .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .admin-sidebar:focus-within {
+    width: var(--dashboard-sidebar-collapsed) !important;
+    max-width: var(--dashboard-sidebar-collapsed) !important;
+    box-shadow: none !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar,
+  .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar:hover,
+  .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar:focus-within,
+  .dashboard-shell .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar,
+  .dashboard-shell .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar:hover,
+  .dashboard-shell .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar:focus-within {
+    width: var(--dashboard-sidebar-expanded) !important;
+    max-width: var(--dashboard-sidebar-expanded) !important;
+    overflow-x: hidden !important;
+    box-shadow: 18px 0 45px rgb(15 23 42 / 0.14) !important;
+  }
+
+  .admin-cms-shell.dashboard-theme-dark.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar,
+  .admin-cms-shell.dashboard-theme-dark.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar:hover,
+  .admin-cms-shell.dashboard-theme-dark.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar:focus-within {
+    box-shadow: 18px 0 45px rgb(0 0 0 / 0.28) !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .sidebar-brand-expanded,
+  .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .sidebar-brand-compact {
+    display: none !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .admin-sidebar-title {
+    justify-content: center !important;
+    padding-inline: 0 !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .sidebar-desktop-toggle {
+    display: inline-grid !important;
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px !important;
+    padding: 0 !important;
+    place-items: center !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .admin-sidebar button,
+  .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .admin-sidebar a,
+  .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .sidebar-control-button,
+  .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .sidebar-account-summary {
+    justify-content: center !important;
+    padding-inline: 8px !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .admin-sidebar button span,
+  .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .admin-sidebar a span,
+  .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .sidebar-control-button span,
+  .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .sidebar-account-summary > span,
+  .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .sidebar-badge,
+  .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .sidebar-chevron {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-brand-expanded,
+  .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar button span,
+  .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar a span,
+  .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-control-button span,
+  .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-account-summary > span,
+  .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-badge,
+  .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-chevron {
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    clip: auto !important;
+    white-space: normal !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-brand-expanded {
+    display: grid !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-brand-compact {
+    display: none !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar-title {
+    justify-content: space-between !important;
+    padding-inline: 12px !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar button,
+  .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar a,
+  .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-control-button,
+  .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-account-summary {
+    justify-content: flex-start !important;
+    padding-inline: 12px !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-chevron {
+    width: 16px !important;
+    height: 16px !important;
+    margin-left: auto !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-subitems {
+    display: grid !important;
+    padding-left: 12px !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-group:not(.open) .sidebar-subitems {
+    max-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-group.open .sidebar-subitems {
+    max-height: 560px !important;
+    overflow: visible !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed :where(.sidebar-desktop-toggle, .sidebar-control-button, .sidebar-website-button, .sidebar-logout-button)::after,
+  .admin-cms-shell.sidebar-collapsed :where(.sidebar-desktop-toggle, .sidebar-control-button, .sidebar-website-button, .sidebar-logout-button):hover::after,
+  .admin-cms-shell.sidebar-collapsed :where(.sidebar-desktop-toggle, .sidebar-control-button, .sidebar-website-button, .sidebar-logout-button):focus-visible::after {
+    display: none !important;
+    content: none !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .admin-cms-shell,
+  .admin-cms-shell.sidebar-collapsed {
+    display: block !important;
+  }
+
+  .admin-cms-shell .admin-sidebar,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar,
+  .dashboard-shell .admin-cms-shell .admin-sidebar,
+  .dashboard-shell .admin-cms-shell.sidebar-collapsed .admin-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    z-index: 50 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: min(86vw, 320px) !important;
+    max-width: min(86vw, 320px) !important;
+    height: 100dvh !important;
+    padding: 14px !important;
+    transform: translateX(-105%) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    transition: transform 0.22s ease, box-shadow 0.22s ease !important;
+    box-shadow: none !important;
+  }
+
+  .admin-cms-shell.mobile-sidebar-open .admin-sidebar,
+  .admin-cms-shell.mobile-sidebar-open.sidebar-collapsed .admin-sidebar,
+  .dashboard-shell .admin-cms-shell.mobile-sidebar-open .admin-sidebar,
+  .dashboard-shell .admin-cms-shell.mobile-sidebar-open.sidebar-collapsed .admin-sidebar {
+    transform: translateX(0) !important;
+    box-shadow: 18px 0 50px rgb(15 23 42 / 0.22) !important;
+  }
+
+  .admin-cms-shell.mobile-sidebar-open .dashboard-sidebar-overlay {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed .sidebar-brand-expanded {
+    display: grid !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed .sidebar-brand-compact {
+    display: none !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar-title,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar button,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar a,
+  .admin-cms-shell.sidebar-collapsed .sidebar-control-button {
+    justify-content: flex-start !important;
+  }
+
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar button span,
+  .admin-cms-shell.sidebar-collapsed .admin-sidebar a span,
+  .admin-cms-shell.sidebar-collapsed .sidebar-control-button span,
+  .admin-cms-shell.sidebar-collapsed .sidebar-badge,
+  .admin-cms-shell.sidebar-collapsed .sidebar-chevron {
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    clip: auto !important;
+    white-space: normal !important;
+  }
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .stat-card,
+  .cms-stat-card,
+  .overview-card,
+  .metric-card,
+  .admin-panel,
+  .dashboard-work-panel,
+  .pending-work-row,
+  .dashboard-event-list button,
+  .dashboard-event-list > span,
+  .mini-list,
+  .mini-list > span,
+  .table-panel tbody tr,
+  .attendance-sheet-table tbody tr,
+  .notification-row,
+  .contact-message-row,
+  .forms-management-card,
+  .forms-preview-card,
+  .forms-template-mini-card,
+  .forms-question-card,
+  .forms-review-stat,
+  .my-group-card,
+  .equipe-card,
+  .calendar-event-card
+),
+.admin-cms-shell.dashboard-theme-dark :where(
+  .stat-card,
+  .cms-stat-card,
+  .overview-card,
+  .metric-card,
+  .admin-panel,
+  .dashboard-work-panel,
+  .pending-work-row,
+  .dashboard-event-list button,
+  .dashboard-event-list > span,
+  .mini-list,
+  .mini-list > span,
+  .table-panel tbody tr,
+  .attendance-sheet-table tbody tr,
+  .notification-row,
+  .contact-message-row,
+  .forms-management-card,
+  .forms-preview-card,
+  .forms-template-mini-card,
+  .forms-question-card,
+  .forms-review-stat,
+  .my-group-card,
+  .equipe-card,
+  .calendar-event-card
+):hover,
+.admin-cms-shell.dashboard-theme-dark :where(
+  .stat-card,
+  .cms-stat-card,
+  .overview-card,
+  .metric-card,
+  .admin-panel,
+  .dashboard-work-panel,
+  .pending-work-row,
+  .dashboard-event-list button,
+  .dashboard-event-list > span,
+  .mini-list,
+  .mini-list > span,
+  .table-panel tbody tr,
+  .attendance-sheet-table tbody tr,
+  .notification-row,
+  .contact-message-row,
+  .forms-management-card,
+  .forms-preview-card,
+  .forms-template-mini-card,
+  .forms-question-card,
+  .forms-review-stat,
+  .my-group-card,
+  .equipe-card,
+  .calendar-event-card
+):focus-visible {
+  border-color: transparent !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+  filter: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .stat-card,
+  .cms-stat-card,
+  .overview-card,
+  .metric-card,
+  .pending-work-row,
+  .dashboard-event-list button,
+  .dashboard-event-list > span,
+  .mini-list,
+  .mini-list > span,
+  .notification-row,
+  .contact-message-row,
+  .forms-review-stat
+),
+.admin-cms-shell.dashboard-theme-dark :where(
+  .stat-card,
+  .cms-stat-card,
+  .overview-card,
+  .metric-card,
+  .pending-work-row,
+  .dashboard-event-list button,
+  .dashboard-event-list > span,
+  .mini-list,
+  .mini-list > span,
+  .notification-row,
+  .contact-message-row,
+  .forms-review-stat
+):hover {
+  background: var(--dashboard-surface-2) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(.table-panel tbody tr, .attendance-sheet-table tbody tr),
+.admin-cms-shell.dashboard-theme-dark :where(.table-panel tbody tr, .attendance-sheet-table tbody tr):hover {
+  background: transparent !important;
+}
+
+/* Dashboard recovery follow-up: force collapsed dropdown expansion after legacy collapsed rules. */
+@media (min-width: 901px) {
+  body .dashboard-shell .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar,
+  body .dashboard-shell .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar:hover,
+  body .dashboard-shell .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar:focus-within,
+  body .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar,
+  body .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar:hover,
+  body .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar:focus-within {
+    width: 282px !important;
+    min-width: 282px !important;
+    max-width: 282px !important;
+    flex-basis: 282px !important;
+    overflow-x: hidden !important;
+  }
+
+  body .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .admin-sidebar,
+  body .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .admin-sidebar:hover,
+  body .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .admin-sidebar:focus-within {
+    width: 82px !important;
+    min-width: 82px !important;
+    max-width: 82px !important;
+    flex-basis: 82px !important;
+  }
+}
+
+/* Dashboard recovery follow-up: keep non-clickable dark panels identical before and after hover. */
+.admin-cms-shell.dashboard-theme-dark :where(
+  .stat-card,
+  .cms-stat-card,
+  .overview-card,
+  .metric-card,
+  .pending-work-row,
+  .dashboard-event-list > span,
+  .mini-list,
+  .mini-list > span,
+  .notification-row,
+  .contact-message-row,
+  .forms-review-stat
+),
+.admin-cms-shell.dashboard-theme-dark :where(
+  .stat-card,
+  .cms-stat-card,
+  .overview-card,
+  .metric-card,
+  .pending-work-row,
+  .dashboard-event-list > span,
+  .mini-list,
+  .mini-list > span,
+  .notification-row,
+  .contact-message-row,
+  .forms-review-stat
+):hover,
+.admin-cms-shell.dashboard-theme-dark :where(
+  .stat-card,
+  .cms-stat-card,
+  .overview-card,
+  .metric-card,
+  .pending-work-row,
+  .dashboard-event-list > span,
+  .mini-list,
+  .mini-list > span,
+  .notification-row,
+  .contact-message-row,
+  .forms-review-stat
+):focus-visible {
+  border-color: transparent !important;
+  background: var(--dashboard-surface-2) !important;
+  box-shadow: none !important;
+  transform: none !important;
+  filter: none !important;
+}
+
+/* Dashboard recovery final: exact dark non-button hover locks. */
+.admin-cms-shell.dashboard-theme-dark .stat-card,
+.admin-cms-shell.dashboard-theme-dark .stat-card:hover,
+.admin-cms-shell.dashboard-theme-dark .stat-card:focus-visible,
+.admin-cms-shell.dashboard-theme-dark .cms-stat-card,
+.admin-cms-shell.dashboard-theme-dark .cms-stat-card:hover,
+.admin-cms-shell.dashboard-theme-dark .cms-stat-card:focus-visible,
+.admin-cms-shell.dashboard-theme-dark .overview-card,
+.admin-cms-shell.dashboard-theme-dark .overview-card:hover,
+.admin-cms-shell.dashboard-theme-dark .overview-card:focus-visible,
+.admin-cms-shell.dashboard-theme-dark .metric-card,
+.admin-cms-shell.dashboard-theme-dark .metric-card:hover,
+.admin-cms-shell.dashboard-theme-dark .metric-card:focus-visible,
+.admin-cms-shell.dashboard-theme-dark .pending-work-row,
+.admin-cms-shell.dashboard-theme-dark .pending-work-row:hover,
+.admin-cms-shell.dashboard-theme-dark .pending-work-row:focus-visible,
+.admin-cms-shell.dashboard-theme-dark .notification-row,
+.admin-cms-shell.dashboard-theme-dark .notification-row:hover,
+.admin-cms-shell.dashboard-theme-dark .contact-message-row,
+.admin-cms-shell.dashboard-theme-dark .contact-message-row:hover,
+.admin-cms-shell.dashboard-theme-dark .forms-review-stat,
+.admin-cms-shell.dashboard-theme-dark .forms-review-stat:hover {
+  border-color: transparent !important;
+  background-color: var(--dashboard-surface-2) !important;
+  box-shadow: none !important;
+  transform: none !important;
+  filter: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .table-panel tbody tr,
+.admin-cms-shell.dashboard-theme-dark .table-panel tbody tr:hover,
+.admin-cms-shell.dashboard-theme-dark .attendance-sheet-table tbody tr,
+.admin-cms-shell.dashboard-theme-dark .attendance-sheet-table tbody tr:hover {
+  border-color: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+  filter: none !important;
+}
+
+/* Forms dark-mode repair: explicit styling for every forms surface and control. */
+.admin-cms-shell.dashboard-theme-dark .forms-dashboard-shell,
+.admin-cms-shell.dashboard-theme-dark .forms-builder-shell,
+.admin-cms-shell.dashboard-theme-dark .premium-form-experience,
+.admin-cms-shell.dashboard-theme-dark .premium-review-shell,
+.admin-cms-shell.dashboard-theme-dark .premium-completion-shell {
+  background: var(--dashboard-bg) !important;
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-builder-topbar,
+.admin-cms-shell.dashboard-theme-dark .forms-wizard-panel,
+.admin-cms-shell.dashboard-theme-dark .forms-management-card,
+.admin-cms-shell.dashboard-theme-dark .forms-template-mini-card,
+.admin-cms-shell.dashboard-theme-dark .forms-preview-card,
+.admin-cms-shell.dashboard-theme-dark .premium-form-card,
+.admin-cms-shell.dashboard-theme-dark .premium-form-header,
+.admin-cms-shell.dashboard-theme-dark .premium-question-card,
+.admin-cms-shell.dashboard-theme-dark .forms-question-card,
+.admin-cms-shell.dashboard-theme-dark .forms-review-experience,
+.admin-cms-shell.dashboard-theme-dark .forms-submission-success-card,
+.admin-cms-shell.dashboard-theme-dark .forms-ai-summary-card,
+.admin-cms-shell.dashboard-theme-dark .forms-posting-settings,
+.admin-cms-shell.dashboard-theme-dark .forms-template-picker,
+.admin-cms-shell.dashboard-theme-dark .forms-empty-state,
+.admin-cms-shell.dashboard-theme-dark .forms-section-heading,
+.admin-cms-shell.dashboard-theme-dark .forms-add-question-row,
+.admin-cms-shell.dashboard-theme-dark .forms-fill-actions.premium-sticky-actions {
+  border-color: transparent !important;
+  background: var(--dashboard-surface) !important;
+  color: var(--dashboard-text) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .premium-form-header {
+  background:
+    radial-gradient(circle at top right, rgb(96 165 250 / 0.14), transparent 34%),
+    linear-gradient(180deg, var(--dashboard-surface), var(--dashboard-surface-2)) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-builder-canvas,
+.admin-cms-shell.dashboard-theme-dark .forms-question-list,
+.admin-cms-shell.dashboard-theme-dark .forms-preview-questions,
+.admin-cms-shell.dashboard-theme-dark .premium-question-stack,
+.admin-cms-shell.dashboard-theme-dark .forms-review-answer-list,
+.admin-cms-shell.dashboard-theme-dark .forms-options-editor,
+.admin-cms-shell.dashboard-theme-dark .inline-editor-grid,
+.admin-cms-shell.dashboard-theme-dark .forms-review-stats-grid,
+.admin-cms-shell.dashboard-theme-dark .forms-cards-grid,
+.admin-cms-shell.dashboard-theme-dark .forms-management-grid {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-preview-instructions.premium,
+.admin-cms-shell.dashboard-theme-dark .premium-form-meta-grid span,
+.admin-cms-shell.dashboard-theme-dark .forms-review-stats-grid div,
+.admin-cms-shell.dashboard-theme-dark .forms-review-answer-list section,
+.admin-cms-shell.dashboard-theme-dark .forms-choice-stack.premium label,
+.admin-cms-shell.dashboard-theme-dark .forms-segmented-control.premium,
+.admin-cms-shell.dashboard-theme-dark .forms-rating-control.premium,
+.admin-cms-shell.dashboard-theme-dark .forms-options-editor > div,
+.admin-cms-shell.dashboard-theme-dark .forms-question-card-topline,
+.admin-cms-shell.dashboard-theme-dark .forms-question-header,
+.admin-cms-shell.dashboard-theme-dark .forms-field-label,
+.admin-cms-shell.dashboard-theme-dark .forms-submit-progress.premium {
+  border-color: var(--dashboard-line) !important;
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .premium-form-header h2,
+.admin-cms-shell.dashboard-theme-dark .forms-review-experience h2,
+.admin-cms-shell.dashboard-theme-dark .forms-submission-success-card h2,
+.admin-cms-shell.dashboard-theme-dark .forms-builder-topbar strong,
+.admin-cms-shell.dashboard-theme-dark .forms-section-heading h2,
+.admin-cms-shell.dashboard-theme-dark .premium-question-title,
+.admin-cms-shell.dashboard-theme-dark .forms-question-card label,
+.admin-cms-shell.dashboard-theme-dark .forms-question-number,
+.admin-cms-shell.dashboard-theme-dark .forms-review-answer-list strong,
+.admin-cms-shell.dashboard-theme-dark .premium-form-meta-grid strong,
+.admin-cms-shell.dashboard-theme-dark .forms-fill-actions.premium-sticky-actions > div:first-child strong,
+.admin-cms-shell.dashboard-theme-dark .forms-template-mini-card strong,
+.admin-cms-shell.dashboard-theme-dark .forms-management-card strong,
+.admin-cms-shell.dashboard-theme-dark .forms-preview-card strong,
+.admin-cms-shell.dashboard-theme-dark .premium-form-progress strong {
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .premium-form-header .formatted-text,
+.admin-cms-shell.dashboard-theme-dark .premium-question-helper,
+.admin-cms-shell.dashboard-theme-dark .premium-question-topline small,
+.admin-cms-shell.dashboard-theme-dark .forms-review-answer-list small,
+.admin-cms-shell.dashboard-theme-dark .forms-review-answer-list p,
+.admin-cms-shell.dashboard-theme-dark .forms-template-mini-card small,
+.admin-cms-shell.dashboard-theme-dark .forms-management-card small,
+.admin-cms-shell.dashboard-theme-dark .forms-preview-card small,
+.admin-cms-shell.dashboard-theme-dark .premium-form-meta-grid span,
+.admin-cms-shell.dashboard-theme-dark .forms-fill-actions.premium-sticky-actions > div:first-child,
+.admin-cms-shell.dashboard-theme-dark .forms-rich-answer-placeholder,
+.admin-cms-shell.dashboard-theme-dark .forms-section-heading .eyebrow {
+  color: var(--dashboard-muted) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-title-input,
+.admin-cms-shell.dashboard-theme-dark .forms-premium-input,
+.admin-cms-shell.dashboard-theme-dark .forms-question-card input:not([type="radio"]):not([type="checkbox"]),
+.admin-cms-shell.dashboard-theme-dark .forms-question-card select,
+.admin-cms-shell.dashboard-theme-dark .forms-question-card textarea,
+.admin-cms-shell.dashboard-theme-dark .premium-question-card input:not([type="radio"]):not([type="checkbox"]),
+.admin-cms-shell.dashboard-theme-dark .premium-question-card select,
+.admin-cms-shell.dashboard-theme-dark .premium-question-card textarea,
+.admin-cms-shell.dashboard-theme-dark .forms-options-editor input,
+.admin-cms-shell.dashboard-theme-dark .forms-add-question-row select,
+.admin-cms-shell.dashboard-theme-dark .forms-posting-settings input,
+.admin-cms-shell.dashboard-theme-dark .forms-posting-settings select,
+.admin-cms-shell.dashboard-theme-dark .forms-posting-settings textarea,
+.admin-cms-shell.dashboard-theme-dark .forms-dashboard-shell input,
+.admin-cms-shell.dashboard-theme-dark .forms-dashboard-shell select,
+.admin-cms-shell.dashboard-theme-dark .forms-dashboard-shell textarea {
+  border-color: var(--dashboard-line) !important;
+  background: #111827 !important;
+  color: var(--dashboard-text) !important;
+  box-shadow: none !important;
+  color-scheme: dark !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-title-input::placeholder,
+.admin-cms-shell.dashboard-theme-dark .forms-premium-input::placeholder,
+.admin-cms-shell.dashboard-theme-dark .forms-question-card input::placeholder,
+.admin-cms-shell.dashboard-theme-dark .forms-question-card textarea::placeholder,
+.admin-cms-shell.dashboard-theme-dark .premium-question-card input::placeholder,
+.admin-cms-shell.dashboard-theme-dark .premium-question-card textarea::placeholder,
+.admin-cms-shell.dashboard-theme-dark .forms-dashboard-shell input::placeholder,
+.admin-cms-shell.dashboard-theme-dark .forms-dashboard-shell textarea::placeholder {
+  color: var(--dashboard-disabled) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-title-input:focus,
+.admin-cms-shell.dashboard-theme-dark .forms-premium-input:focus,
+.admin-cms-shell.dashboard-theme-dark .forms-question-card input:focus,
+.admin-cms-shell.dashboard-theme-dark .forms-question-card select:focus,
+.admin-cms-shell.dashboard-theme-dark .forms-question-card textarea:focus,
+.admin-cms-shell.dashboard-theme-dark .premium-question-card input:focus,
+.admin-cms-shell.dashboard-theme-dark .premium-question-card select:focus,
+.admin-cms-shell.dashboard-theme-dark .premium-question-card textarea:focus,
+.admin-cms-shell.dashboard-theme-dark .forms-dashboard-shell input:focus,
+.admin-cms-shell.dashboard-theme-dark .forms-dashboard-shell select:focus,
+.admin-cms-shell.dashboard-theme-dark .forms-dashboard-shell textarea:focus {
+  border-color: var(--dashboard-accent) !important;
+  background: #111827 !important;
+  box-shadow: 0 0 0 3px var(--dashboard-focus) !important;
+  outline: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .premium-question-number,
+.admin-cms-shell.dashboard-theme-dark .forms-question-number {
+  border-color: rgb(142 162 255 / 0.38) !important;
+  background: transparent !important;
+  color: #a8b7ff !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-status-pill,
+.admin-cms-shell.dashboard-theme-dark .forms-status-pill.neutral,
+.admin-cms-shell.dashboard-theme-dark .form-status,
+.admin-cms-shell.dashboard-theme-dark .forms-count-badge {
+  border-color: rgb(142 162 255 / 0.34) !important;
+  background: rgb(64 85 166 / 0.2) !important;
+  color: #dbe4ff !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .premium-question-topline em {
+  background: rgb(248 113 113 / 0.14) !important;
+  color: #fecaca !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .premium-question-topline small {
+  background: rgb(148 163 184 / 0.12) !important;
+  color: var(--dashboard-muted) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-choice-stack.premium label:hover,
+.admin-cms-shell.dashboard-theme-dark .forms-choice-stack.premium label:focus-within {
+  border-color: var(--dashboard-line-strong) !important;
+  background: #111827 !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-choice-stack.premium label > span {
+  border-color: #72809d !important;
+  background: #0f172a !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-choice-stack.premium input:checked + span {
+  border-color: #a8b7ff !important;
+  background: #a8b7ff !important;
+  box-shadow: inset 0 0 0 4px #111827 !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-choice-stack.premium.checkboxes input:checked + span {
+  box-shadow: inset 0 0 0 3px #111827 !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-segmented-control.premium button,
+.admin-cms-shell.dashboard-theme-dark .forms-rating-control.premium button,
+.admin-cms-shell.dashboard-theme-dark .forms-mode-toggle button,
+.admin-cms-shell.dashboard-theme-dark .forms-section-tabs button {
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--dashboard-muted) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-segmented-control.premium button:hover,
+.admin-cms-shell.dashboard-theme-dark .forms-rating-control.premium button:hover,
+.admin-cms-shell.dashboard-theme-dark .forms-mode-toggle button:hover,
+.admin-cms-shell.dashboard-theme-dark .forms-section-tabs button:hover {
+  background: var(--dashboard-hover) !important;
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-segmented-control.premium button.selected,
+.admin-cms-shell.dashboard-theme-dark .forms-rating-control.premium button.selected,
+.admin-cms-shell.dashboard-theme-dark .forms-mode-toggle button.active,
+.admin-cms-shell.dashboard-theme-dark .forms-section-tabs button.active {
+  background: var(--dashboard-accent-soft) !important;
+  color: var(--dashboard-accent-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .premium-form-progress > div,
+.admin-cms-shell.dashboard-theme-dark .forms-submit-progress-track {
+  background: #111827 !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .premium-form-progress span,
+.admin-cms-shell.dashboard-theme-dark .forms-submit-progress-bar {
+  background: linear-gradient(90deg, #a8b7ff, #5eead4) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-preview-instructions.premium {
+  border-color: rgb(245 191 21 / 0.32) !important;
+  background: rgb(245 191 21 / 0.1) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-review-warning {
+  border-color: rgb(248 113 113 / 0.28) !important;
+  background: rgb(248 113 113 / 0.1) !important;
+  color: #fecaca !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-review-warning button {
+  color: #fecaca !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-review-ready,
+.admin-cms-shell.dashboard-theme-dark .forms-success-icon {
+  border-color: rgb(94 234 212 / 0.28) !important;
+  background: rgb(94 234 212 / 0.1) !important;
+  color: #99f6e4 !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-rich-answer,
+.admin-cms-shell.dashboard-theme-dark .forms-rich-answer * {
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-premium-rich-input,
+.admin-cms-shell.dashboard-theme-dark .forms-premium-rich-input .rich-text-editor,
+.admin-cms-shell.dashboard-theme-dark .forms-premium-rich-input .rich-text-editor-content,
+.admin-cms-shell.dashboard-theme-dark .forms-premium-rich-input .ql-toolbar,
+.admin-cms-shell.dashboard-theme-dark .forms-premium-rich-input .ql-container,
+.admin-cms-shell.dashboard-theme-dark .forms-premium-rich-input .ql-editor {
+  border-color: var(--dashboard-line) !important;
+  background: #111827 !important;
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-premium-rich-input .ql-toolbar button,
+.admin-cms-shell.dashboard-theme-dark .forms-premium-rich-input .ql-picker,
+.admin-cms-shell.dashboard-theme-dark .forms-premium-rich-input .ql-picker-label {
+  color: var(--dashboard-muted) !important;
+  stroke: var(--dashboard-muted) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-premium-rich-input .ql-toolbar button:hover,
+.admin-cms-shell.dashboard-theme-dark .forms-premium-rich-input .ql-toolbar button.ql-active,
+.admin-cms-shell.dashboard-theme-dark .forms-premium-rich-input .ql-picker-label:hover,
+.admin-cms-shell.dashboard-theme-dark .forms-premium-rich-input .ql-picker.ql-expanded .ql-picker-label {
+  color: var(--dashboard-text) !important;
+  stroke: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-field-error,
+.admin-cms-shell.dashboard-theme-dark .premium-question-card.has-error .premium-question-helper {
+  color: #fecaca !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .premium-question-card.has-error,
+.admin-cms-shell.dashboard-theme-dark .forms-question-card.has-error {
+  border-color: rgb(248 113 113 / 0.36) !important;
+  background: rgb(248 113 113 / 0.06) !important;
+}
+
+@media (max-width: 780px) {
+  .admin-cms-shell.dashboard-theme-dark .premium-form-header,
+  .admin-cms-shell.dashboard-theme-dark .premium-question-card,
+  .admin-cms-shell.dashboard-theme-dark .forms-review-experience,
+  .admin-cms-shell.dashboard-theme-dark .forms-submission-success-card,
+  .admin-cms-shell.dashboard-theme-dark .forms-wizard-panel,
+  .admin-cms-shell.dashboard-theme-dark .forms-question-card {
+    border-radius: 12px !important;
+  }
 }
