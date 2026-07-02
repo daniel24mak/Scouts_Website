@@ -1545,3 +1545,141 @@ END $$;
 
 REVOKE ALL ON FUNCTION public.submit_contact_message(text, text, text, text, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.submit_contact_message(text, text, text, text, text) TO anon, authenticated;
+-- Settings: documents, reports, and archived years.
+CREATE TABLE IF NOT EXISTS document_categories (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL UNIQUE,
+  created_by uuid REFERENCES user_profiles(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE documents
+ADD COLUMN IF NOT EXISTS file_url text,
+ADD COLUMN IF NOT EXISTS file_name text,
+ADD COLUMN IF NOT EXISTS file_type text,
+ADD COLUMN IF NOT EXISTS mime_type text,
+ADD COLUMN IF NOT EXISTS file_size bigint,
+ADD COLUMN IF NOT EXISTS category_id uuid REFERENCES document_categories(id) ON DELETE SET NULL,
+ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
+CREATE TABLE IF NOT EXISTS archived_years (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  scout_year_id uuid REFERENCES scout_years(id) ON DELETE SET NULL,
+  year_label text NOT NULL,
+  snapshot jsonb NOT NULL DEFAULT '{}',
+  archived_by uuid REFERENCES user_profiles(id),
+  archived_at timestamptz NOT NULL DEFAULT now(),
+  deleted_by uuid REFERENCES user_profiles(id),
+  deleted_at timestamptz
+);
+
+ALTER TABLE document_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE archived_years ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "authenticated read document categories" ON document_categories;
+CREATE POLICY "authenticated read document categories" ON document_categories
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "admins manage document categories" ON document_categories;
+CREATE POLICY "admins manage document categories" ON document_categories
+  FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+
+DROP POLICY IF EXISTS "approved documents public" ON documents;
+DROP POLICY IF EXISTS "authenticated read documents" ON documents;
+CREATE POLICY "authenticated read documents" ON documents
+  FOR SELECT USING (auth.uid() IS NOT NULL AND status::text = 'approved');
+
+DROP POLICY IF EXISTS "authenticated read archived years" ON archived_years;
+CREATE POLICY "authenticated read archived years" ON archived_years
+  FOR SELECT USING (auth.uid() IS NOT NULL AND deleted_at IS NULL);
+
+DROP POLICY IF EXISTS "admins manage archived years" ON archived_years;
+CREATE POLICY "admins manage archived years" ON archived_years
+  FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+
+CREATE INDEX IF NOT EXISTS documents_category_id_idx ON documents (category_id);
+CREATE INDEX IF NOT EXISTS documents_created_at_idx ON documents (created_at DESC);
+CREATE INDEX IF NOT EXISTS audit_logs_created_at_idx ON audit_logs (created_at DESC);
+CREATE INDEX IF NOT EXISTS archived_years_archived_at_idx ON archived_years (archived_at DESC);
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('dashboard-documents', 'dashboard-documents', true)
+ON CONFLICT (id) DO NOTHING;
+
+UPDATE storage.buckets
+SET public = true
+WHERE id = 'dashboard-documents';
+
+DROP POLICY IF EXISTS "admins upload dashboard documents" ON storage.objects;
+CREATE POLICY "admins upload dashboard documents" ON storage.objects
+  FOR INSERT WITH CHECK (bucket_id = 'dashboard-documents' AND public.is_admin());
+
+DROP POLICY IF EXISTS "admins delete dashboard documents" ON storage.objects;
+CREATE POLICY "admins delete dashboard documents" ON storage.objects
+  FOR DELETE USING (bucket_id = 'dashboard-documents' AND public.is_admin());
+
+DROP POLICY IF EXISTS "authenticated read dashboard documents" ON storage.objects;
+CREATE POLICY "authenticated read dashboard documents" ON storage.objects
+  FOR SELECT USING (bucket_id = 'dashboard-documents' AND auth.uid() IS NOT NULL);
+-- Automatic admin activity report logging for critical dashboard tables.
+CREATE OR REPLACE FUNCTION public.log_dashboard_table_activity()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  target_id text;
+  action_name text;
+BEGIN
+  target_id := COALESCE(NEW.id::text, OLD.id::text);
+  action_name := lower(TG_OP) || '_' || TG_TABLE_NAME;
+
+  INSERT INTO public.audit_logs (actor_id, action, entity_type, entity_id, metadata)
+  VALUES (
+    auth.uid(),
+    action_name,
+    TG_TABLE_NAME,
+    target_id,
+    jsonb_build_object(
+      'operation', TG_OP,
+      'table', TG_TABLE_NAME,
+      'old_status', CASE WHEN TG_OP IN ('UPDATE', 'DELETE') THEN to_jsonb(OLD)->>'status' ELSE NULL END,
+      'new_status', CASE WHEN TG_OP IN ('INSERT', 'UPDATE') THEN to_jsonb(NEW)->>'status' ELSE NULL END
+    )
+  );
+
+  RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+DO $$
+DECLARE
+  table_name text;
+BEGIN
+  FOREACH table_name IN ARRAY ARRAY[
+    'user_profiles',
+    'posts',
+    'post_revisions',
+    'gallery_albums',
+    'album_revisions',
+    'gallery_images',
+    'photo_upload_batches',
+    'calendar_events',
+    'documents',
+    'document_categories',
+    'archived_years',
+    'form_templates',
+    'posted_forms',
+    'form_submissions'
+  ] LOOP
+    IF to_regclass('public.' || table_name) IS NOT NULL THEN
+      EXECUTE format('DROP TRIGGER IF EXISTS dashboard_activity_audit ON public.%I', table_name);
+      EXECUTE format(
+        'CREATE TRIGGER dashboard_activity_audit AFTER INSERT OR UPDATE OR DELETE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.log_dashboard_table_activity()',
+        table_name
+      );
+    END IF;
+  END LOOP;
+END $$;

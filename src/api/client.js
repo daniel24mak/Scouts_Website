@@ -63,6 +63,17 @@ import { adminResetUserPassword, createDashboardUser, createProfile, deleteDashb
 import { closePostedForm, deleteFormTemplateCascade, deletePostedFormCascade, getFormsData, reopenPostedForm, saveFormSubmission, saveFormTemplate, savePostedForm, updatePostedFormReview } from "../services/formService.js";
 import { deleteNotification, getNotifications, markAllNotificationsRead, markNotificationRead, markNotificationsDoneForEntity } from "../services/notificationService.js";
 import { getWebsiteContentRevisions, reviewWebsiteContentRevision, submitWebsiteContentRevision } from "../services/websiteContentRevisionService.js";
+import {
+  createArchivedYearSnapshot,
+  deleteArchivedYearSnapshot,
+  deleteDashboardDocument,
+  deleteDocumentCategory,
+  getDocumentsWorkspaceData,
+  getReportsWorkspaceData,
+  saveDocumentCategory,
+  updateDashboardDocument,
+  uploadDashboardDocuments
+} from "../services/settingsWorkspaceService.js";
 
 export const fallbackData = {
   users: demoUsers,
@@ -85,7 +96,11 @@ export const fallbackData = {
   contactMessages: [],
   equipes: [],
   notifications: [],
-  siteContentRevisions: []
+  siteContentRevisions: [],
+  documentCategories: [],
+  documents: [],
+  archivedYears: [],
+  auditLogs: []
 };
 
 export const loadingData = {
@@ -104,7 +119,11 @@ export const loadingData = {
   faqs: [],
   contactMessages: [],
   equipes: [],
-  contentSubmissions: []
+  contentSubmissions: [],
+  documentCategories: [],
+  documents: [],
+  archivedYears: [],
+  auditLogs: []
 };
 
 async function request(path, options = {}) {
@@ -135,7 +154,8 @@ export async function getBootstrap() {
       getEquipeData(),
       getFormsData(),
       getNotifications(),
-      getWebsiteContentRevisions()
+      getWebsiteContentRevisions(),
+      getDocumentsWorkspaceData()
     ]);
     const valueAt = (index, fallback) =>
       results[index]?.status === "fulfilled" ? results[index].value : fallback;
@@ -163,6 +183,7 @@ export async function getBootstrap() {
     const formsData = valueAt(9, { formTemplates: [], formTemplateVersions: [], postedForms: [], formSubmissions: [], formAiSummaries: [] });
     const notifications = valueAt(10, []);
     const siteContentRevisions = valueAt(11, []);
+    const settingsWorkspaceData = valueAt(12, { documentCategories: [], documents: [], archivedYears: [] });
 
     return {
       users,
@@ -175,6 +196,8 @@ export async function getBootstrap() {
       ...engagementData,
       ...equipeData,
       ...formsData,
+      ...settingsWorkspaceData,
+      auditLogs: [],
       notifications,
       siteContentRevisions,
       contentSubmissions: [
@@ -703,4 +726,35 @@ export function submitDashboardWebsiteContentRevision(payload) {
 
 export function reviewDashboardWebsiteContentRevision(revision, status, comment) {
   return isSupabaseConfigured ? reviewWebsiteContentRevision(revision, status, comment) : Promise.resolve({ ...revision, approvalStatus: status });
+}
+export function saveDashboardDocumentCategory(category) {
+  return isSupabaseConfigured ? saveDocumentCategory(category) : Promise.resolve(category);
+}
+
+export function removeDashboardDocumentCategory(categoryId) {
+  return isSupabaseConfigured ? deleteDocumentCategory(categoryId) : Promise.resolve(categoryId);
+}
+
+export function uploadDashboardDocumentFiles(files, categoryId, scoutYearId) {
+  return isSupabaseConfigured ? uploadDashboardDocuments(files, categoryId, scoutYearId) : Promise.resolve([]);
+}
+
+export function saveDashboardDocument(documentId, payload) {
+  return isSupabaseConfigured ? updateDashboardDocument(documentId, payload) : Promise.resolve(payload);
+}
+
+export function removeDashboardDocument(document) {
+  return isSupabaseConfigured ? deleteDashboardDocument(document) : Promise.resolve(document?.id);
+}
+
+export function loadDashboardReports() {
+  return isSupabaseConfigured ? getReportsWorkspaceData() : Promise.resolve({ auditLogs: [] });
+}
+
+export function saveArchivedYearSnapshot(payload) {
+  return isSupabaseConfigured ? createArchivedYearSnapshot(payload) : Promise.resolve(payload);
+}
+
+export function removeArchivedYearSnapshot(archiveId) {
+  return isSupabaseConfigured ? deleteArchivedYearSnapshot(archiveId) : Promise.resolve(archiveId);
 }

@@ -25,6 +25,9 @@ import {
   Sun,
   Upload,
   Trash2,
+  Download,
+  Eye,
+  Plus,
   Users
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -73,7 +76,15 @@ import {
   updatePhoto,
   updatePhotoBatch,
   updateRegisteredScout,
-  uploadRegistrationSheet
+  uploadRegistrationSheet,
+  loadDashboardReports,
+  removeArchivedYearSnapshot,
+  removeDashboardDocument,
+  removeDashboardDocumentCategory,
+  saveArchivedYearSnapshot,
+  saveDashboardDocument,
+  saveDashboardDocumentCategory,
+  uploadDashboardDocumentFiles
 } from "../api/client.js";
 import { useBootstrap } from "../api/useBootstrap.js";
 import ScoutAttendanceManager from "../features/attendance/ScoutAttendanceManager.jsx";
@@ -436,6 +447,9 @@ function isSectionAllowed(section, user) {
     if (canManageSystem(user)) {
     return access !== "settings";
   }
+    if (["documents", "archives"].includes(id)) {
+    return hasChiefAccess(user);
+  }
     if (id === "equipes") {
     return ["head", "vice"].includes(user?.chiefLevel) && getProfileAssignedGroupIds(user).length > 0;
   }
@@ -481,6 +495,9 @@ function canOpenSection(sectionId, user) {
     if (!section) {
     return false;
   }
+    if (["documents", "archives"].includes(sectionId)) {
+    return canManageSystem(user) || hasChiefAccess(user);
+  }
     if (section[3] === "settings") {
     return canManageSystem(user);
   }
@@ -521,6 +538,39 @@ function formatDubaiDateTime(value) {
   return `${parts.day}-${parts.month}-${parts.year} ${parts.hour}:${parts.minute}:${parts.second} ${parts.dayPeriod?.toLowerCase() ?? ""}`.trim();
 }
 
+
+function formatFileSize(bytes) {
+  const size = Number(bytes ?? 0);
+  if (!size) return "Unknown size";
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function downloadCsvFile(fileName, rows) {
+  const columns = Array.from(rows.reduce((keys, row) => {
+    Object.keys(row).forEach((key) => keys.add(key));
+    return keys;
+  }, new Set()));
+  const escapeCell = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+  const csv = [columns.join(","), ...rows.map((row) => columns.map((column) => escapeCell(row[column])).join(","))].join("\n");
+  const blob = new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function summarizeArchiveSnapshot(snapshot = {}) {
+  return [
+    ["Events", snapshot.events?.length ?? 0],
+    ["Scout attendance", snapshot.attendanceMeetings?.length ?? 0],
+    ["Chief attendance", snapshot.chiefAttendanceMeetings?.length ?? 0],
+    ["Posts", snapshot.posts?.length ?? 0],
+    ["Albums", snapshot.albums?.length ?? 0]
+  ];
+}
 function getReviewTimestamp(item) {
   return item.updatedAt || item.createdAt || item.profileChangeSubmittedAt || item.dateFrom || item.date || item.eventDate || "";
 }
@@ -689,6 +739,17 @@ export default function AdminDashboardPage() {
   const [selectedGroupId, setSelectedGroupId] = useState(user?.groupId ?? data.groups[0]?.id ?? "");
   const [saveMessage, setSaveMessage] = useState("");
   const [uploadStatus, setUploadStatus] = useState(null);
+  const [documentCategoryName, setDocumentCategoryName] = useState("");
+  const [selectedDocumentCategory, setSelectedDocumentCategory] = useState("all");
+  const [documentUploadCategoryId, setDocumentUploadCategoryId] = useState("");
+  const [documentPreview, setDocumentPreview] = useState(null);
+  const [documentEdits, setDocumentEdits] = useState({});
+  const [reportsData, setReportsData] = useState({ auditLogs: [] });
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [reportsError, setReportsError] = useState("");
+  const [reportTab, setReportTab] = useState("approvals");
+  const [selectedArchiveId, setSelectedArchiveId] = useState("");
+  const [archiveYearId, setArchiveYearId] = useState("");
   const [registrationTargetMode, setRegistrationTargetMode] = useState("existing");
   const [registrationYearId, setRegistrationYearId] = useState(data.activeScoutYearId ?? data.scoutYears?.[0]?.id ?? "");
   const [newScoutYearName, setNewScoutYearName] = useState("");
@@ -854,7 +915,7 @@ export default function AdminDashboardPage() {
 
     if (canOpenSection("approvals", user)) groups.push({ id: "approvals", type: "item", item: item("approvals") });
     if (canOpenSection("contactMessages", user)) groups.push({ id: "contactMessages", type: "item", item: item("contactMessages") });
-    if (isAdmin) {
+    if (isAdmin || canOpenSection("documents", user) || canOpenSection("archives", user)) {
       groups.push({
         id: "settingsGroup",
         type: "group",
@@ -1065,6 +1126,30 @@ export default function AdminDashboardPage() {
       statusFilter === "all" ? messages : messages.filter((message) => message.status === statusFilter);
     return filterBySearch(byStatus, search, ["name", "email", "subject", "message", "status"]);
   }, [data.contactMessages, search, statusFilter]);
+
+  useEffect(() => {
+    if (activeSection !== "reports" || !isAdmin) {
+      return;
+    }
+
+    let ignore = false;
+    setReportsLoading(true);
+    setReportsError("");
+    loadDashboardReports()
+      .then((result) => {
+        if (!ignore) setReportsData(result);
+      })
+      .catch((error) => {
+        if (!ignore) setReportsError(error.message || "Reports could not be loaded.");
+      })
+      .finally(() => {
+        if (!ignore) setReportsLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [activeSection, isAdmin]);
   const visibleApprovalItems = useMemo(() => {
     const allReviewItems = [...reviewItems, ...profileReviewItems];
     const byType = approvalTypeFilter === "all" ? allReviewItems : allReviewItems.filter((item) => item.contentType === approvalTypeFilter);
@@ -1075,6 +1160,139 @@ export default function AdminDashboardPage() {
     return filterBySearch(byStatus, search, ["title", "contentType", "approvalStatus", "submittedBy", "name", "pendingName"]).sort((a, b) => new Date(getReviewTimestamp(b)).getTime() - new Date(getReviewTimestamp(a)).getTime());
   }, [reviewItems, profileReviewItems, approvalTypeFilter, search, statusFilter]);
 
+
+  const visibleDocuments = useMemo(() => {
+    const categoryFiltered = selectedDocumentCategory === "all"
+      ? data.documents ?? []
+      : (data.documents ?? []).filter((document) => (document.categoryId || "uncategorized") === selectedDocumentCategory);
+    return filterBySearch(categoryFiltered, search, ["title", "fileName", "categoryName", "fileType"]);
+  }, [data.documents, search, selectedDocumentCategory]);
+
+  const reportApprovalRows = useMemo(() => {
+    return [...reviewItems, ...profileReviewItems]
+      .map((item) => ({
+        type: item.contentType,
+        title: item.title,
+        status: item.approvalStatus,
+        submittedBy: getSubmitterName(item),
+        createdAt: formatDubaiDateTime(item.createdAt),
+        updatedAt: formatDubaiDateTime(getReviewTimestamp(item))
+      }))
+      .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+  }, [reviewItems, profileReviewItems, usersById]);
+
+  const reportActivityRows = useMemo(() => {
+    return (reportsData.auditLogs ?? []).map((log) => {
+      const actor = usersById.get(log.actorId);
+      return {
+        action: log.action,
+        entityType: log.entityType,
+        entityId: log.entityId,
+        actor: actor?.name ?? "System",
+        createdAt: formatDubaiDateTime(log.createdAt),
+        details: JSON.stringify(log.metadata ?? {})
+      };
+    });
+  }, [reportsData.auditLogs, usersById]);
+
+  const selectedArchive = (data.archivedYears ?? []).find((archive) => archive.id === selectedArchiveId) ?? (data.archivedYears ?? [])[0] ?? null;
+
+  const createArchiveSnapshot = async () => {
+    const year = data.scoutYears.find((item) => item.id === archiveYearId) ?? data.scoutYears.find((item) => item.isActive) ?? data.scoutYears[0];
+    if (!year) {
+      setSaveMessage("Create a scouting year before archiving.");
+      return;
+    }
+
+    if (!window.confirm(`Create a read-only archive snapshot for ${year.label}? Live dashboard data will not be changed.`)) {
+      return;
+    }
+
+    setUploadStatus("Creating archive snapshot...");
+    const snapshot = {
+      createdAt: new Date().toISOString(),
+      scoutYear: year,
+      groups: data.groups,
+      scouts: data.registeredScouts,
+      events: data.plannedEvents,
+      attendanceMeetings: data.attendanceMeetings,
+      attendanceSheets: data.attendanceSheets,
+      chiefAttendanceMeetings: data.chiefAttendanceMeetings,
+      chiefAttendanceSheet: data.chiefAttendanceSheet,
+      posts: allPosts.filter((post) => post.approvalStatus === "approved"),
+      albums: allAlbums.filter((album) => album.approvalStatus === "approved")
+    };
+
+    await saveArchivedYearSnapshot({ scoutYearId: year.id, label: year.label, snapshot });
+    await logAuditEvent("archive_created", "Archived year", year.id, { label: year.label });
+    setSaveMessage("Archived year snapshot created.");
+    setUploadStatus(null);
+    await refresh();
+  };
+
+  const deleteArchiveSnapshot = async (archive) => {
+    const typed = window.prompt(`Type DELETE ${archive.label} to permanently hide this archive snapshot.`);
+    if (typed !== `DELETE ${archive.label}`) {
+      return;
+    }
+
+    await removeArchivedYearSnapshot(archive.id);
+    await logAuditEvent("archive_deleted", "Archived year", archive.id, { label: archive.label });
+    setSaveMessage("Archived year removed.");
+    await refresh();
+  };
+
+  const createOrUpdateDocumentCategory = async (category = null) => {
+    const name = category ? window.prompt("Rename document category", category.name) : documentCategoryName;
+    if (!name?.trim()) return;
+    await saveDashboardDocumentCategory({ id: category?.id, name });
+    await logAuditEvent(category ? "document_category_updated" : "document_category_created", "Document category", category?.id ?? name, { name });
+    setDocumentCategoryName("");
+    setSaveMessage(category ? "Document category renamed." : "Document category created.");
+    await refresh();
+  };
+
+  const removeDocumentCategory = async (category) => {
+    if (!window.confirm(`Delete the ${category.name} category? Documents stay available and move to Uncategorized.`)) return;
+    await removeDashboardDocumentCategory(category.id);
+    await logAuditEvent("document_category_deleted", "Document category", category.id, { name: category.name });
+    setSaveMessage("Document category deleted. Documents were kept.");
+    await refresh();
+  };
+
+  const uploadDocuments = async (event) => {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (!files.length) return;
+
+    try {
+      setUploadStatus(`Uploading ${files.length} document${files.length === 1 ? "" : "s"}...`);
+      await uploadDashboardDocumentFiles(files, documentUploadCategoryId || null, data.activeScoutYearId);
+      await logAuditEvent("documents_uploaded", "Documents", "batch", { count: files.length });
+      setSaveMessage("Documents uploaded.");
+      await refresh();
+    } catch (error) {
+      setSaveMessage(error.message || "Documents could not be uploaded.");
+    } finally {
+      setUploadStatus(null);
+    }
+  };
+
+  const updateDocument = async (document) => {
+    const edit = documentEdits[document.id] ?? document;
+    await saveDashboardDocument(document.id, edit);
+    await logAuditEvent("document_updated", "Document", document.id, { title: edit.title });
+    setSaveMessage("Document updated.");
+    await refresh();
+  };
+
+  const deleteDocument = async (document) => {
+    if (!window.confirm(`Delete ${document.title}? This removes the file from storage too.`)) return;
+    await removeDashboardDocument(document);
+    await logAuditEvent("document_deleted", "Document", document.id, { title: document.title });
+    setSaveMessage("Document deleted from the dashboard and storage.");
+    await refresh();
+  };
   const updateRule = (groupId, field, value) => {
     setRules((current) =>
       current.map((rule) =>
@@ -3251,6 +3469,164 @@ export default function AdminDashboardPage() {
     </form>
   );
 
+
+  const renderDocuments = () => (
+    <section className="settings-workspace documents-workspace">
+      <div className="cms-panel-stack">
+        <article className="admin-panel dashboard-upload-panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Documents</p>
+              <h2>Shared Dashboard Documents</h2>
+              <p>Admins manage files and categories. Chiefs can view, preview, and download approved documents.</p>
+            </div>
+            {isAdmin && <label className="primary-action document-upload-button"><Upload size={17} />Upload files<input type="file" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" onChange={uploadDocuments} /></label>}
+          </div>
+          {uploadStatus && <UploadLoadingState message={uploadStatus} />}
+          {isAdmin && (
+            <div className="documents-admin-grid">
+              <div className="cms-toolbar">
+                <label>
+                  Upload category
+                  <select value={documentUploadCategoryId} onChange={(event) => setDocumentUploadCategoryId(event.target.value)}>
+                    <option value="">Uncategorized</option>
+                    {(data.documentCategories ?? []).map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}
+                  </select>
+                </label>
+              </div>
+              <form className="cms-toolbar" onSubmit={(event) => { event.preventDefault(); createOrUpdateDocumentCategory(); }}>
+                <label>
+                  New category
+                  <input value={documentCategoryName} onChange={(event) => setDocumentCategoryName(event.target.value)} placeholder="Meeting forms, camp files..." />
+                </label>
+                <button type="submit" className="inline-action"><Plus size={16} />Add</button>
+              </form>
+            </div>
+          )}
+          <div className="documents-category-row">
+            <button type="button" className={selectedDocumentCategory === "all" ? "active" : ""} onClick={() => setSelectedDocumentCategory("all")}>All</button>
+            <button type="button" className={selectedDocumentCategory === "uncategorized" ? "active" : ""} onClick={() => setSelectedDocumentCategory("uncategorized")}>Uncategorized</button>
+            {(data.documentCategories ?? []).map((category) => (
+              <span className="document-category-chip" key={category.id}>
+                <button type="button" className={selectedDocumentCategory === category.id ? "active" : ""} onClick={() => setSelectedDocumentCategory(category.id)}>{category.name}</button>
+                {isAdmin && <button type="button" className="icon-button" title="Rename category" onClick={() => createOrUpdateDocumentCategory(category)}>Edit</button>}
+                {isAdmin && <button type="button" className="icon-button danger-action" title="Delete category" onClick={() => removeDocumentCategory(category)}><Trash2 size={15} /></button>}
+              </span>
+            ))}
+          </div>
+        </article>
+        <div className="documents-grid">
+          {visibleDocuments.length ? visibleDocuments.map((document) => {
+            const edit = documentEdits[document.id] ?? document;
+            const isPdf = document.fileType === "pdf" || document.mimeType === "application/pdf";
+            const setEdit = (field, value) => setDocumentEdits((current) => ({ ...current, [document.id]: { ...edit, [field]: value } }));
+            return (
+              <article className="document-card" key={document.id}>
+                <div className="document-card-icon"><FileText size={26} /></div>
+                {isAdmin ? (
+                  <>
+                    <input value={edit.title ?? ""} onChange={(event) => setEdit("title", event.target.value)} />
+                    <select value={edit.categoryId ?? ""} onChange={(event) => setEdit("categoryId", event.target.value)}>
+                      <option value="">Uncategorized</option>
+                      {(data.documentCategories ?? []).map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}
+                    </select>
+                  </>
+                ) : <h3>{document.title}</h3>}
+                <p>{document.fileName}</p>
+                <div className="document-meta-row"><span>{document.categoryName}</span><span>{document.fileType?.toUpperCase()}</span><span>{formatFileSize(document.fileSize)}</span></div>
+                <small>Uploaded {formatDubaiDateTime(document.createdAt)}</small>
+                <div className="action-row">
+                  {isPdf && <button type="button" className="inline-action" onClick={() => setDocumentPreview(document)}><Eye size={16} />Preview</button>}
+                  <a className="inline-action" href={document.fileUrl} target="_blank" rel="noreferrer"><Download size={16} />Download</a>
+                  {isAdmin && <button type="button" className="inline-action" onClick={() => updateDocument(document)}>Save</button>}
+                  {isAdmin && <button type="button" className="inline-action danger-action" onClick={() => deleteDocument(document)}><Trash2 size={16} />Delete</button>}
+                </div>
+              </article>
+            );
+          }) : <article className="admin-panel dashboard-upload-panel empty-state"><h3>No documents found</h3><p>Uploaded documents will appear here after they are approved and categorized.</p></article>}
+        </div>
+      </div>
+      {documentPreview && (
+        <div className="approval-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDocumentPreview(null); }}>
+          <article className="approval-review-modal document-preview-modal" role="dialog" aria-modal="true">
+            <div className="approval-modal-header"><div><p className="eyebrow">PDF preview</p><h2>{documentPreview.title}</h2></div><button type="button" className="modal-close-button" onClick={() => setDocumentPreview(null)}><X size={18} /></button></div>
+            <iframe title={documentPreview.title} src={documentPreview.fileUrl} />
+          </article>
+        </div>
+      )}
+    </section>
+  );
+
+  const renderReports = () => {
+    if (!isAdmin) return <AccessDenied message="Reports are admin-only because they include approval and system activity history." />;
+    const rows = reportTab === "approvals" ? reportApprovalRows : reportActivityRows;
+    return (
+      <section className="settings-workspace reports-workspace">
+        <article className="admin-panel dashboard-upload-panel">
+          <div className="panel-heading">
+            <div><p className="eyebrow">Reports</p><h2>Approval and Activity History</h2><p>Read-only reporting for review decisions and important dashboard actions.</p></div>
+            <button type="button" className="inline-action" onClick={() => downloadCsvFile(`${reportTab}-report.csv`, rows)}>Export CSV</button>
+          </div>
+          <div className="approval-type-tabs" role="tablist" aria-label="Report tabs">
+            <button type="button" className={reportTab === "approvals" ? "active" : ""} onClick={() => setReportTab("approvals")}>Approval History</button>
+            <button type="button" className={reportTab === "activity" ? "active" : ""} onClick={() => setReportTab("activity")}>Activity Log</button>
+          </div>
+          {reportsLoading && <UploadLoadingState message="Loading reports..." />}
+          {reportsError && <p className="form-error">{reportsError}</p>}
+          <div className="table-panel reports-table-panel">
+            <table>
+              <thead>{reportTab === "approvals" ? <tr><th>Type</th><th>Title</th><th>Status</th><th>Submitted by</th><th>Created</th><th>Updated</th></tr> : <tr><th>Action</th><th>Entity</th><th>Actor</th><th>Created</th><th>Details</th></tr>}</thead>
+              <tbody>
+                {rows.length ? rows.map((row, index) => reportTab === "approvals" ? (
+                  <tr key={`${row.type}-${row.title}-${index}`}><td>{row.type}</td><td>{row.title}</td><td><StatusBadge status={row.status} /></td><td>{row.submittedBy}</td><td>{row.createdAt}</td><td>{row.updatedAt}</td></tr>
+                ) : (
+                  <tr key={`${row.action}-${row.entityId}-${index}`}><td>{row.action}</td><td>{row.entityType}<small>{row.entityId}</small></td><td>{row.actor}</td><td>{row.createdAt}</td><td><code>{row.details}</code></td></tr>
+                )) : <tr><td colSpan="6">No report rows match this view.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+    );
+  };
+
+  const renderArchives = () => (
+    <section className="settings-workspace archives-workspace">
+      <div className="cms-panel-stack">
+        <article className="admin-panel dashboard-upload-panel archive-banner">
+          <div className="panel-heading">
+            <div><p className="eyebrow">Archived Years</p><h2>Read-only scouting year snapshots</h2><p>Archives preserve the state of events, attendance, posts, and albums without changing live dashboard data.</p></div>
+            {isAdmin && <button type="button" className="primary-action" disabled={Boolean(uploadStatus)} onClick={createArchiveSnapshot}>Create snapshot</button>}
+          </div>
+          {isAdmin && <label>Scouting year<select value={archiveYearId || data.activeScoutYearId || ""} onChange={(event) => setArchiveYearId(event.target.value)}>{(data.scoutYears ?? []).map((year) => <option value={year.id} key={year.id}>{year.label}{year.isActive ? " (active)" : ""}</option>)}</select></label>}
+        </article>
+        <div className="archive-layout">
+          <aside className="archive-list">
+            {(data.archivedYears ?? []).length ? (data.archivedYears ?? []).map((archive) => (
+              <button type="button" key={archive.id} className={selectedArchive?.id === archive.id ? "active" : ""} onClick={() => setSelectedArchiveId(archive.id)}>
+                <strong>{archive.label}</strong>
+                <span>{formatDubaiDateTime(archive.archivedAt)}</span>
+              </button>
+            )) : <p className="empty-state">No archived years yet.</p>}
+          </aside>
+          {selectedArchive ? (
+            <article className="admin-panel archive-detail-panel">
+              <div className="read-only-banner">Read-only archive. Live data is untouched.</div>
+              <div className="panel-heading"><div><h2>{selectedArchive.label}</h2><p>Archived {formatDubaiDateTime(selectedArchive.archivedAt)}</p></div>{isAdmin && <button type="button" className="inline-action danger-action" onClick={() => deleteArchiveSnapshot(selectedArchive)}>Delete archive</button>}</div>
+              <div className="summary-card-grid archive-summary-grid">
+                {summarizeArchiveSnapshot(selectedArchive.snapshot).map(([label, count]) => <article key={label}><span>{label}</span><strong>{count}</strong></article>)}
+              </div>
+              <div className="archive-content-grid">
+                <section><h3>Events</h3>{(selectedArchive.snapshot.events ?? []).slice(0, 8).map((event) => <p key={event.id}>{event.title} <small>{event.dateFrom ?? event.date}</small></p>)}</section>
+                <section><h3>Posts</h3>{(selectedArchive.snapshot.posts ?? []).slice(0, 8).map((post) => <p key={post.id}>{post.title} <small>{post.date}</small></p>)}</section>
+                <section><h3>Albums</h3>{(selectedArchive.snapshot.albums ?? []).slice(0, 8).map((album) => <p key={album.id}>{album.title} <small>{album.photoCount ?? 0} photos</small></p>)}</section>
+              </div>
+            </article>
+          ) : <article className="admin-panel dashboard-upload-panel"><h3>Select an archive</h3><p>Archived snapshots will appear here after an admin creates one.</p></article>}
+        </div>
+      </div>
+    </section>
+  );
   const renderSettings = () => (
     <section className="settings-detail">
       <div className="panel-heading">
@@ -3274,9 +3650,9 @@ export default function AdminDashboardPage() {
       {activeSetting === "rules" && renderRules()}
       {activeSetting === "websiteContent" && renderWebsiteContent()}
       {activeSetting === "faqs" && renderFaqs()}
-      {activeSetting === "documents" && <EmptyAdminSection title="Documents" />}
-      {activeSetting === "reports" && <EmptyAdminSection title="Reports" />}
-      {activeSetting === "archives" && <EmptyAdminSection title="Archived Years" />}
+      {activeSetting === "documents" && renderDocuments()}
+      {activeSetting === "reports" && renderReports()}
+      {activeSetting === "archives" && renderArchives()}
     </section>
   );
 
@@ -3511,9 +3887,9 @@ export default function AdminDashboardPage() {
       return <FormsDashboard data={data} user={scopedUser} isAdmin={isAdmin} mode={activeSection} initialFormId={requestedFormId} onRefresh={refresh} setSaveMessage={setSaveMessage} />;
     }
     if (activeSection === "calendar") return <CalendarManagement dataOverride={data} userOverride={scopedUser} />;
-    if (activeSection === "reports") return <EmptyAdminSection title="Reports" />;
-    if (activeSection === "documents") return <EmptyAdminSection title="Documents" />;
-    if (activeSection === "archives") return <EmptyAdminSection title="Archived Years" />;
+    if (activeSection === "reports") return renderReports();
+    if (activeSection === "documents") return renderDocuments();
+    if (activeSection === "archives") return renderArchives();
     return <EmptyAdminSection title={selectedSection?.[1] ?? "Section"} />;
   };
 

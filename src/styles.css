@@ -16994,3 +16994,518 @@ textarea:focus-visible {
     stroke: var(--dashboard-accent-text, #e6f1fb) !important;
   }
 }
+
+/* Users & Permissions avatar: match dashboard profile avatar shape. */
+.admin-cms-shell .users-permissions-layout .user-permissions-avatar,
+.admin-cms-shell .users-permissions-layout .user-permissions-avatar.has-image {
+  width: var(--avatar-size, 44px) !important;
+  height: var(--avatar-size, 44px) !important;
+  min-width: var(--avatar-size, 44px) !important;
+  min-height: var(--avatar-size, 44px) !important;
+  max-width: var(--avatar-size, 44px) !important;
+  max-height: var(--avatar-size, 44px) !important;
+  aspect-ratio: 1 / 1 !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: var(--dashboard-accent-soft, #e6f1fb) !important;
+  color: var(--dashboard-accent-text, #0c447c) !important;
+  clip-path: circle(50% at 50% 50%) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .users-permissions-layout .user-permissions-avatar,
+.admin-cms-shell.dashboard-theme-dark .users-permissions-layout .user-permissions-avatar.has-image {
+  background: var(--dashboard-accent-soft, #0c447c) !important;
+  color: var(--dashboard-accent-text, #e6f1fb) !important;
+}
+
+.admin-cms-shell .users-permissions-layout .user-permissions-avatar.has-image img {
+  width: 100% !important;
+  height: 100% !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  clip-path: circle(50% at 50% 50%) !important;
+  transform: scale(1.08);
+  transform-origin: center;
+}
+
+/* Users & Permissions avatar image canvas cleanup. Does not affect cropper output. */
+.admin-cms-shell .users-permissions-layout .user-permissions-avatar.has-image {
+  isolation: isolate !important;
+  background: var(--dashboard-surface, #ffffff) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .users-permissions-layout .user-permissions-avatar.has-image {
+  background: var(--dashboard-surface, #1e2330) !important;
+}
+
+.admin-cms-shell .users-permissions-layout .user-permissions-avatar.has-image img {
+  transform: scale(1.72) !important;
+  transform-origin: center !important;
+  mix-blend-mode: multiply;
+}
+
+.admin-cms-shell.dashboard-theme-dark .users-permissions-layout .user-permissions-avatar.has-image img {
+  mix-blend-mode: screen;
+  filter: contrast(1.08) saturate(1.05);
+}
+
+/* Final Users & Permissions avatar reset: same size/behavior as profile button avatar. */
+.admin-cms-shell .users-permissions-layout .user-permissions-avatar,
+.admin-cms-shell .users-permissions-layout .user-permissions-avatar.has-image {
+  --avatar-size: 36px !important;
+  inline-size: 36px !important;
+  block-size: 36px !important;
+  min-inline-size: 36px !important;
+  min-block-size: 36px !important;
+  max-inline-size: 36px !important;
+  max-block-size: 36px !important;
+  flex-basis: 36px !important;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+  clip-path: none !important;
+  background: var(--dashboard-accent-soft, #e6f1fb) !important;
+  color: var(--dashboard-accent-text, #0c447c) !important;
+}
+
+.admin-cms-shell .users-permissions-layout .user-permissions-avatar.has-image img,
+.admin-cms-shell.dashboard-theme-dark .users-permissions-layout .user-permissions-avatar.has-image img {
+  inline-size: 100% !important;
+  block-size: 100% !important;
+  min-inline-size: 100% !important;
+  min-block-size: 100% !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  clip-path: none !important;
+  transform: none !important;
+  mix-blend-mode: normal !important;
+  filter: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .users-permissions-layout .user-permissions-avatar,
+.admin-cms-shell.dashboard-theme-dark .users-permissions-layout .user-permissions-avatar.has-image {
+  background: var(--dashboard-accent-soft, #0c447c) !important;
+  color: var(--dashboard-accent-text, #e6f1fb) !important;
+}
+
+/* Users & Permissions avatar final size/crop balance. */
+.admin-cms-shell .users-permissions-layout .user-permissions-avatar,
+.admin-cms-shell .users-permissions-layout .user-permissions-avatar.has-image {
+  --avatar-size: 56px !important;
+  inline-size: 56px !important;
+  block-size: 56px !important;
+  min-inline-size: 56px !important;
+  min-block-size: 56px !important;
+  max-inline-size: 56px !important;
+  max-block-size: 56px !important;
+  flex: 0 0 56px !important;
+  aspect-ratio: 1 / 1 !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+  background: var(--dashboard-surface, #ffffff) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell .users-permissions-layout .user-permissions-avatar.has-image img,
+.admin-cms-shell.dashboard-theme-dark .users-permissions-layout .user-permissions-avatar.has-image img {
+  inline-size: 100% !important;
+  block-size: 100% !important;
+  min-inline-size: 100% !important;
+  min-block-size: 100% !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  transform: scale(1.24) !important;
+  transform-origin: center !important;
+  mix-blend-mode: normal !important;
+  filter: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .users-permissions-layout .user-permissions-avatar,
+.admin-cms-shell.dashboard-theme-dark .users-permissions-layout .user-permissions-avatar.has-image {
+  background: var(--dashboard-surface, #1e2330) !important;
+}
+
+/* Users & Permissions avatar final correction: no oval distortion. */
+.admin-cms-shell .users-permissions-layout .user-permissions-avatar,
+.admin-cms-shell .users-permissions-layout .user-permissions-avatar.has-image {
+  --avatar-size: 64px !important;
+  width: 64px !important;
+  height: 64px !important;
+  min-width: 64px !important;
+  min-height: 64px !important;
+  max-width: 64px !important;
+  max-height: 64px !important;
+  inline-size: 64px !important;
+  block-size: 64px !important;
+  flex: 0 0 64px !important;
+  aspect-ratio: 1 / 1 !important;
+  display: grid !important;
+  place-items: center !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  clip-path: none !important;
+}
+
+.admin-cms-shell .users-permissions-layout .user-permissions-avatar.has-image img,
+.admin-cms-shell.dashboard-theme-dark .users-permissions-layout .user-permissions-avatar.has-image img {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  aspect-ratio: 1 / 1 !important;
+  display: block !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  transform: none !important;
+  clip-path: none !important;
+  mix-blend-mode: normal !important;
+  filter: none !important;
+  box-shadow: none !important;
+}
+
+/* Users & Permissions avatars now use the normal shared UserAvatar rendering. */
+.admin-cms-shell .users-permissions-layout .user-profile-cell > .user-avatar {
+  width: var(--avatar-size, 48px) !important;
+  height: var(--avatar-size, 48px) !important;
+  min-width: var(--avatar-size, 48px) !important;
+  min-height: var(--avatar-size, 48px) !important;
+  max-width: var(--avatar-size, 48px) !important;
+  max-height: var(--avatar-size, 48px) !important;
+  flex: 0 0 var(--avatar-size, 48px) !important;
+  border-radius: 999px !important;
+  overflow: hidden !important;
+  background: var(--dashboard-accent-soft, #e6f1fb) !important;
+  color: var(--dashboard-accent-text, #0c447c) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell .users-permissions-layout .user-profile-cell > .user-avatar.has-image img {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 999px !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  transform: none !important;
+  clip-path: none !important;
+  mix-blend-mode: normal !important;
+  filter: none !important;
+}
+
+/* Actual current Users & Permissions avatar selector: true circle, no oval. */
+.admin-cms-shell .users-permissions-layout .user-profile-cell > span.user-avatar,
+.admin-cms-shell .users-permissions-layout .user-profile-cell > span.user-avatar.has-image,
+.admin-cms-shell .users-permissions-layout .user-profile-cell > span.user-avatar.has-initials {
+  --avatar-size: 52px !important;
+  display: block !important;
+  width: 52px !important;
+  height: 52px !important;
+  min-width: 52px !important;
+  min-height: 52px !important;
+  max-width: 52px !important;
+  max-height: 52px !important;
+  inline-size: 52px !important;
+  block-size: 52px !important;
+  flex: 0 0 52px !important;
+  aspect-ratio: 1 / 1 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  background: var(--dashboard-accent-soft, #e6f1fb) !important;
+  color: var(--dashboard-accent-text, #0c447c) !important;
+}
+
+.admin-cms-shell .users-permissions-layout .user-profile-cell > span.user-avatar.has-image > img {
+  display: block !important;
+  width: 52px !important;
+  height: 52px !important;
+  min-width: 52px !important;
+  min-height: 52px !important;
+  max-width: 52px !important;
+  max-height: 52px !important;
+  inline-size: 52px !important;
+  block-size: 52px !important;
+  aspect-ratio: 1 / 1 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  transform: none !important;
+  clip-path: none !important;
+  mix-blend-mode: normal !important;
+  filter: none !important;
+  box-sizing: border-box !important;
+}
+/* Settings workspace: Documents, Reports, Archived Years */
+.settings-workspace {
+  display: block;
+}
+
+.documents-admin-grid,
+.archive-layout,
+.archive-content-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.documents-admin-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 1rem;
+}
+
+.document-upload-button {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.document-upload-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.documents-category-row {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  margin-top: 1.1rem;
+}
+
+.documents-category-row button,
+.document-category-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.documents-category-row button {
+  border: 1px solid var(--dashboard-border, #d9e1ef);
+  border-radius: 999px;
+  background: var(--dashboard-surface, #fff);
+  color: var(--dashboard-text, #1f2937);
+  padding: 0.55rem 0.85rem;
+  cursor: pointer;
+}
+
+.documents-category-row button.active {
+  background: var(--dashboard-accent, #4055a6);
+  border-color: var(--dashboard-accent, #4055a6);
+  color: #fff;
+}
+
+.documents-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.document-card,
+.archive-detail-panel,
+.archive-list,
+.reports-table-panel {
+  background: var(--dashboard-surface, #fff);
+  color: var(--dashboard-text, #172033);
+  border: 1px solid var(--dashboard-border, #d9e1ef);
+  border-radius: 18px;
+  box-shadow: var(--dashboard-shadow-sm, 0 10px 25px rgba(15, 23, 42, 0.08));
+}
+
+.document-card {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.document-card h3,
+.document-card p {
+  margin: 0;
+}
+
+.document-card > input,
+.document-card > select {
+  width: 100%;
+}
+
+.document-card-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--dashboard-accent-soft, #edf2ff);
+  color: var(--dashboard-accent, #4055a6);
+}
+
+.document-meta-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.document-meta-row span,
+.read-only-banner {
+  border-radius: 999px;
+  background: var(--dashboard-muted, #f3f5fb);
+  color: var(--dashboard-muted-text, #677187);
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.document-preview-modal iframe {
+  width: min(100%, 980px);
+  height: min(72vh, 760px);
+  border: 0;
+  border-radius: 14px;
+  background: var(--dashboard-muted, #f4f6fb);
+}
+
+.reports-table-panel {
+  overflow: auto;
+  margin-top: 1rem;
+}
+
+.reports-table-panel code {
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: inherit;
+}
+
+.archive-layout {
+  grid-template-columns: 280px minmax(0, 1fr);
+  align-items: start;
+}
+
+.archive-list {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.75rem;
+}
+
+.archive-list button {
+  display: grid;
+  gap: 0.25rem;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--dashboard-text, #172033);
+  padding: 0.8rem;
+  cursor: pointer;
+}
+
+.archive-list button.active {
+  background: var(--dashboard-accent-soft, #edf2ff);
+  border-color: var(--dashboard-accent, #4055a6);
+}
+
+.archive-list span,
+.archive-content-grid small {
+  color: var(--dashboard-muted-text, #677187);
+}
+
+.archive-detail-panel {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.archive-summary-grid article,
+.archive-content-grid section {
+  background: var(--dashboard-muted, #f7f8fc);
+  border: 0;
+  border-radius: 16px;
+  padding: 1rem;
+}
+
+.archive-summary-grid article strong {
+  display: block;
+  font-size: 1.8rem;
+}
+
+.archive-content-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.archive-content-grid h3,
+.archive-content-grid p {
+  margin-top: 0;
+}
+
+.dashboard-theme-dark .document-card,
+.dashboard-theme-dark .archive-detail-panel,
+.dashboard-theme-dark .archive-list,
+.dashboard-theme-dark .reports-table-panel,
+.dashboard-theme-dark .documents-category-row button {
+  background: var(--dashboard-surface, #1f2430);
+  color: var(--dashboard-text, #f6f7fb);
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.dashboard-theme-dark .document-meta-row span,
+.dashboard-theme-dark .read-only-banner,
+.dashboard-theme-dark .archive-summary-grid article,
+.dashboard-theme-dark .archive-content-grid section {
+  background: var(--dashboard-surface-muted, #252b39);
+  color: var(--dashboard-muted-text, #b6bdcc);
+}
+
+.dashboard-theme-dark .document-card-icon,
+.dashboard-theme-dark .archive-list button.active {
+  background: rgba(64, 85, 166, 0.22);
+  color: #dfe6ff;
+}
+
+@media (max-width: 980px) {
+  .documents-grid,
+  .archive-content-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .archive-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .documents-admin-grid,
+  .documents-grid,
+  .archive-content-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .documents-category-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.3rem;
+  }
+
+  .document-category-chip,
+  .documents-category-row > button {
+    flex: 0 0 auto;
+  }
+
+  .document-card .action-row,
+  .archive-detail-panel .action-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
