@@ -6,6 +6,9 @@ import { useAuth } from "../../auth/AuthProvider.jsx";
 const attendanceStatuses = ["Present", "Absent", "Late", "Excused"];
 const attendedStatuses = ["Present", "Late"];
 
+function hasRole(user, role) { return user?.role === role || user?.roles?.includes?.(role); }
+
+
 
 function getTodayDateInputValue() {
   const today = new Date();
@@ -38,9 +41,11 @@ function getAttendancePercentage(scoutId, groupMeetings) {
   return `${Math.round((attended / groupMeetings.length) * 100)}%`;
 }
 
-export default function ScoutAttendanceManager() {
-  const { user } = useAuth();
-  const { data, refresh } = useBootstrap();
+export default function ScoutAttendanceManager({ dataOverride = null, userOverride = null } = {}) {
+  const { user: authUser } = useAuth();
+  const { data: bootstrapData, refresh } = useBootstrap();
+  const user = userOverride ?? authUser;
+  const data = dataOverride ?? bootstrapData;
   const [selectedDate, setSelectedDate] = useState(getTodayDateInputValue);
   const [attendanceScope, setAttendanceScope] = useState("group");
   const [selectedEquipeId, setSelectedEquipeId] = useState("");
@@ -51,7 +56,7 @@ export default function ScoutAttendanceManager() {
   const selectedGroup = visibleGroups[0];
   const groupEquipes = (data.equipes ?? []).filter((equipe) => equipe.groupId === selectedGroup?.id && equipe.isActive);
   const myEquipe = groupEquipes.find((equipe) => equipe.leaderId === user.id || equipe.coLeaderId === user.id);
-  const canTakeWholeGroup = user.role === "admin" || ["head", "vice"].includes(user.chiefLevel);
+  const canTakeWholeGroup = hasRole(user, "admin") || ["head", "vice"].includes(user.chiefLevel);
   const effectiveScope = canTakeWholeGroup ? attendanceScope : "equipe";
   const effectiveEquipeId = effectiveScope === "equipe"
     ? selectedEquipeId || myEquipe?.id || (canTakeWholeGroup ? groupEquipes[0]?.id : "") || ""

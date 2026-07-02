@@ -36,6 +36,8 @@ CREATE TABLE user_profiles (
   role text NOT NULL REFERENCES roles(id),
   group_id text,
   chief_level text CHECK (chief_level IN ('head', 'vice', 'chief')),
+  is_coordinator boolean NOT NULL DEFAULT false,
+  coordinator_group_ids text[] NOT NULL DEFAULT '{}',
   account_status text NOT NULL DEFAULT 'active',
   profile_picture_url text,
   pending_name text,
@@ -532,6 +534,21 @@ AS $$
   OR COALESCE(auth.jwt() -> 'user_metadata' ->> 'role', '') = 'admin';
 $$;
 
+CREATE OR REPLACE FUNCTION is_coordinator_for_group(target_group_id text)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM user_profiles
+    WHERE id = auth.uid()
+      AND is_coordinator = true
+      AND target_group_id = ANY(coordinator_group_ids)
+      AND account_status = 'active'
+  );
+$$;
 CREATE OR REPLACE FUNCTION can_manage_group(target_group_id text)
 RETURNS boolean
 LANGUAGE sql
@@ -547,7 +564,8 @@ AS $$
       AND role IN ('admin', 'chief')
       AND chief_level IN ('head', 'vice')
       AND account_status = 'active'
-  );
+  )
+  OR is_coordinator_for_group(target_group_id);
 $$;
 
 CREATE OR REPLACE FUNCTION can_take_equipe_attendance(target_equipe_id uuid)
@@ -565,6 +583,12 @@ AS $$
       AND p.id = auth.uid()
       AND p.chief_level IN ('head', 'vice')
       AND p.account_status = 'active'
+  )
+  OR EXISTS (
+    SELECT 1
+    FROM equipes e
+    WHERE e.id = target_equipe_id
+      AND is_coordinator_for_group(e.group_id)
   )
   OR EXISTS (
     SELECT 1
@@ -640,16 +664,19 @@ CREATE POLICY "chiefs read assigned scouts" ON scouts
   FOR SELECT USING (
     is_admin()
     OR group_id = (SELECT group_id FROM user_profiles WHERE id = auth.uid())
+    OR is_coordinator_for_group(group_id)
   );
 
 CREATE POLICY "attendance by assigned chiefs" ON attendance_sessions
   FOR ALL USING (
     is_admin()
     OR group_id = (SELECT group_id FROM user_profiles WHERE id = auth.uid())
+    OR is_coordinator_for_group(group_id)
     OR (equipe_id IS NOT NULL AND can_take_equipe_attendance(equipe_id))
   ) WITH CHECK (
     is_admin()
     OR group_id = (SELECT group_id FROM user_profiles WHERE id = auth.uid())
+    OR is_coordinator_for_group(group_id)
     OR (equipe_id IS NOT NULL AND can_take_equipe_attendance(equipe_id))
   );
 
@@ -659,12 +686,14 @@ CREATE POLICY "attendance records follow session" ON attendance_records
     OR session_id IN (
       SELECT id FROM attendance_sessions
       WHERE group_id = (SELECT group_id FROM user_profiles WHERE id = auth.uid())
+        OR is_coordinator_for_group(group_id)
     )
   ) WITH CHECK (
     is_admin()
     OR session_id IN (
       SELECT id FROM attendance_sessions
       WHERE group_id = (SELECT group_id FROM user_profiles WHERE id = auth.uid())
+        OR is_coordinator_for_group(group_id)
     )
   );
 

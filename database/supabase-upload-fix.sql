@@ -55,6 +55,9 @@ BEGIN
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
+ALTER TABLE user_profiles
+ADD COLUMN IF NOT EXISTS is_coordinator boolean NOT NULL DEFAULT false,
+ADD COLUMN IF NOT EXISTS coordinator_group_ids text[] NOT NULL DEFAULT '{}';
 ALTER TABLE scout_years ENABLE ROW LEVEL SECURITY;
 
 -- Scouting years are created with only a label/name. These date columns are optional
@@ -345,6 +348,21 @@ ALTER TABLE contact_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE site_error_messages ENABLE ROW LEVEL SECURITY;
 
+CREATE OR REPLACE FUNCTION public.is_coordinator_for_group(target_group_id text)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.user_profiles
+    WHERE id = auth.uid()
+      AND is_coordinator = true
+      AND target_group_id = ANY(coordinator_group_ids)
+      AND account_status = 'active'
+  );
+$$;
 CREATE OR REPLACE FUNCTION public.can_manage_group(target_group_id text)
 RETURNS boolean
 LANGUAGE sql
@@ -360,7 +378,8 @@ AS $$
       AND role IN ('admin', 'chief')
       AND chief_level IN ('head', 'vice')
       AND account_status = 'active'
-  );
+  )
+  OR public.is_coordinator_for_group(target_group_id);
 $$;
 
 CREATE OR REPLACE FUNCTION public.can_take_equipe_attendance(target_equipe_id uuid)
@@ -378,6 +397,12 @@ AS $$
       AND p.id = auth.uid()
       AND p.chief_level IN ('head', 'vice')
       AND p.account_status = 'active'
+  )
+  OR EXISTS (
+    SELECT 1
+    FROM public.equipes e
+    WHERE e.id = target_equipe_id
+      AND public.is_coordinator_for_group(e.group_id)
   )
   OR EXISTS (
     SELECT 1
@@ -445,6 +470,7 @@ CREATE POLICY "chiefs read assigned scouts" ON scouts
   FOR SELECT USING (
     public.is_admin()
     OR group_id = (SELECT group_id FROM user_profiles WHERE id = auth.uid())
+    OR public.is_coordinator_for_group(group_id)
   );
 
 DROP POLICY IF EXISTS "attendance by assigned chiefs" ON attendance_sessions;
@@ -452,10 +478,12 @@ CREATE POLICY "attendance by assigned chiefs" ON attendance_sessions
   FOR ALL USING (
     public.is_admin()
     OR group_id = (SELECT group_id FROM user_profiles WHERE id = auth.uid())
+    OR public.is_coordinator_for_group(group_id)
     OR (equipe_id IS NOT NULL AND public.can_take_equipe_attendance(equipe_id))
   ) WITH CHECK (
     public.is_admin()
     OR group_id = (SELECT group_id FROM user_profiles WHERE id = auth.uid())
+    OR public.is_coordinator_for_group(group_id)
     OR (equipe_id IS NOT NULL AND public.can_take_equipe_attendance(equipe_id))
   );
 
@@ -466,12 +494,14 @@ CREATE POLICY "attendance records follow session" ON attendance_records
     OR session_id IN (
       SELECT id FROM attendance_sessions
       WHERE group_id = (SELECT group_id FROM user_profiles WHERE id = auth.uid())
+        OR public.is_coordinator_for_group(group_id)
     )
   ) WITH CHECK (
     public.is_admin()
     OR session_id IN (
       SELECT id FROM attendance_sessions
       WHERE group_id = (SELECT group_id FROM user_profiles WHERE id = auth.uid())
+        OR public.is_coordinator_for_group(group_id)
     )
   );
 

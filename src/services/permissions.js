@@ -1,9 +1,13 @@
+export function hasRole(user, role) {
+  return user?.role === role || user?.roles?.includes?.(role);
+}
+
 export function isAdmin(user) {
-  return user?.role === "admin";
+  return hasRole(user, "admin");
 }
 
 export function isChief(user) {
-  return user?.role === "chief";
+  return hasRole(user, "chief") || Boolean(user?.groupId || user?.assignedGroupIds?.length || user?.coordinatorGroupIds?.length);
 }
 
 export function canTakeAttendance(user) {

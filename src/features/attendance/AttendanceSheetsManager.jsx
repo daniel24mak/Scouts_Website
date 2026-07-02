@@ -10,6 +10,9 @@ import { useAuth } from "../../auth/AuthProvider.jsx";
 
 const attendedStatuses = ["Present", "Late"];
 
+function hasRole(user, role) { return user?.role === role || user?.roles?.includes?.(role); }
+
+
 function sortScouts(scouts, sortBy) {
   return [...scouts].sort((a, b) => String(a[sortBy] ?? a.name).localeCompare(String(b[sortBy] ?? b.name)));
 }
@@ -65,15 +68,20 @@ function downloadCsv({ group, scouts, sessions }) {
   URL.revokeObjectURL(url);
 }
 
-export default function AttendanceSheetsManager() {
-  const { user } = useAuth();
-  const { data, isLoading, error, refresh } = useBootstrap();
-  const canViewAllGroups = user?.role === "admin";
-  const accessibleGroups = useMemo(
-    () => (canViewAllGroups ? data.groups : data.groups.filter((group) => group.id === user?.groupId)),
-    [canViewAllGroups, data.groups, user?.groupId]
-  );
-  const [selectedGroupId, setSelectedGroupId] = useState("");
+export default function AttendanceSheetsManager({ dataOverride = null, userOverride = null } = {}) {
+  const { user: authUser } = useAuth();
+  const { data: bootstrapData, isLoading, error, refresh } = useBootstrap();
+  const user = userOverride ?? authUser;
+  const data = dataOverride ?? bootstrapData;
+  const canViewAllGroups = hasRole(user, "admin");
+  const accessibleGroups = useMemo(() => {
+    const assignedGroupIds = Array.from(new Set([
+      user?.groupId,
+      ...(user?.assignedGroupIds ?? []),
+      ...(user?.coordinatorGroupIds ?? [])
+    ].filter(Boolean)));
+    return canViewAllGroups ? data.groups : data.groups.filter((group) => assignedGroupIds.includes(group.id));
+  }, [canViewAllGroups, data.groups, user?.assignedGroupIds, user?.coordinatorGroupIds, user?.groupId]);  const [selectedGroupId, setSelectedGroupId] = useState("");
   const [labelEdits, setLabelEdits] = useState({});
   const [dateEdits, setDateEdits] = useState({});
   const [saveMessage, setSaveMessage] = useState("");
@@ -86,7 +94,7 @@ export default function AttendanceSheetsManager() {
   }, [accessibleGroups, selectedGroupId]);
 
   const selectedGroup = accessibleGroups.find((group) => group.id === selectedGroupId) ?? accessibleGroups[0];
-  const canManageColumns = user?.role === "admin" || ["head", "vice"].includes(user?.chiefLevel);
+  const canManageColumns = hasRole(user, "admin") || ["head", "vice"].includes(user?.chiefLevel);
   const groupSessions = useMemo(
     () =>
       data.attendanceMeetings

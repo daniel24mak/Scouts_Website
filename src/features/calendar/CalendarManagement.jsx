@@ -72,12 +72,19 @@ function getMonthCells(displayDate) {
   });
 }
 
+function hasRole(user, role) {
+  return user?.role === role || user?.roles?.includes?.(role);
+}
+
+function getUserGroupIds(user) {
+  return Array.from(new Set([user?.groupId, ...(user?.coordinatorGroupIds ?? [])].filter(Boolean)));
+}
 function canSeeEvent(event, user) {
   if ((event.approvalStatus ?? "approved") === "draft" && event.submittedBy !== user?.id) {
     return false;
   }
 
-  if (user?.role !== "admin" && (event.approvalStatus ?? "approved") !== "approved" && event.submittedBy !== user?.id) {
+  if (!hasRole(user, "admin") && (event.approvalStatus ?? "approved") !== "approved" && event.submittedBy !== user?.id) {
     return false;
   }
 
@@ -89,7 +96,7 @@ function canSeeEvent(event, user) {
     return false;
   }
 
-  if (user.role === "admin") {
+  if (hasRole(user, "admin")) {
     return true;
   }
 
@@ -98,7 +105,7 @@ function canSeeEvent(event, user) {
   }
 
   if (event.visibility === "group") {
-    return event.visibleGroupIds?.includes(user.groupId) || event.groupId === user.groupId;
+    return getUserGroupIds(user).some((groupId) => event.visibleGroupIds?.includes(groupId) || event.groupId === groupId);
   }
 
   return event.type !== "meeting";
@@ -126,7 +133,7 @@ function getVisibilityLabel(event) {
 }
 
 function hasChiefAccess(user) {
-  return user?.role === "chief" || Boolean(user?.groupId && user?.chiefLevel);
+  return hasRole(user, "chief") || Boolean((user?.groupId || user?.coordinatorGroupIds?.length || user?.assignedGroupIds?.length) && user?.chiefLevel);
 }
 
 function formatEventDateRange(event) {
@@ -207,9 +214,11 @@ function ReviewGrid({ items }) {
   );
 }
 
-export default function CalendarManagement() {
-  const { user } = useAuth();
-  const { data, refresh } = useBootstrap();
+export default function CalendarManagement({ dataOverride = null, userOverride = null } = {}) {
+  const { user: authUser } = useAuth();
+  const { data: bootstrapData, refresh } = useBootstrap();
+  const user = userOverride ?? authUser;
+  const data = dataOverride ?? bootstrapData;
   const todayKey = formatDateKey(new Date());
   const [displayDate, setDisplayDate] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(todayKey);
@@ -283,16 +292,15 @@ export default function CalendarManagement() {
     () => (data.galleryAlbums ?? []).filter((album) => (album.approvalStatus ?? album.status) === "approved"),
     [data.galleryAlbums]
   );
-  const canCreateAdminEvent = user?.role === "admin";
+  const canCreateAdminEvent = hasRole(user, "admin");
   const canCreateGroupMeeting =
     !canCreateAdminEvent &&
-    hasChiefAccess(user) &&
-    ["head", "vice"].includes(user.chiefLevel) &&
-    user.permissions.canCreateGroupMeetings;
+    (hasRole(user, "coordinator") ||
+      (hasChiefAccess(user) && ["head", "vice"].includes(user.chiefLevel) && user.permissions.canCreateGroupMeetings));
   const canEditSelectedEvent =
     selectedEvent &&
     user &&
-    (user.role === "admin" || selectedEvent.submittedBy === user.id);
+    (hasRole(user, "admin") || selectedEvent.submittedBy === user.id);
   const selectedEventGroup = selectedEvent
     ? scoutGroups.find((item) => item.id === selectedEvent.groupId)
     : null;
@@ -405,7 +413,7 @@ export default function CalendarManagement() {
       return;
     }
 
-    const approvalStatus = requestedStatus === "draft" ? "draft" : user.role === "admin" ? "approved" : "pending";
+    const approvalStatus = requestedStatus === "draft" ? "draft" : hasRole(user, "admin") ? "approved" : "pending";
     const groupMeetingPayload = {
       ...groupMeeting,
       date: groupMeeting.dateFrom,
@@ -423,7 +431,7 @@ export default function CalendarManagement() {
     } else {
       await createCalendarEvent(groupMeetingPayload);
     }
-    setSaveMessage(approvalStatus === "draft" ? "Group meeting draft saved." : user.role === "admin" ? "Group meeting saved." : "Group meeting submitted for admin approval.");
+    setSaveMessage(approvalStatus === "draft" ? "Group meeting draft saved." : hasRole(user, "admin") ? "Group meeting saved." : "Group meeting submitted for admin approval.");
     resetGroupMeetingWizard();
     await refresh();
     setLastCalendarUpdate(new Date());
@@ -546,9 +554,9 @@ export default function CalendarManagement() {
       ...editingEvent,
       date: editingEvent.dateFrom,
       type: editingEvent.visibility === "group" ? "meeting" : "event",
-      approvalStatus: user.role === "admin" ? editingEvent.approvalStatus : "pending"
+      approvalStatus: hasRole(user, "admin") ? editingEvent.approvalStatus : "pending"
     });
-    setSaveMessage(user.role === "admin" ? "Calendar event updated." : "Calendar event changes submitted for admin approval.");
+    setSaveMessage(hasRole(user, "admin") ? "Calendar event updated." : "Calendar event changes submitted for admin approval.");
     setEditingEvent(null);
     setSelectedEvent(null);
     await refresh();
@@ -670,7 +678,7 @@ export default function CalendarManagement() {
                 <div className="wizard-actions">
                   <button type="button" className="secondary-action" onClick={() => setGroupMeetingStep(1)}>Back</button>
                   <button type="submit" className="secondary-action" value="draft">Save draft</button>
-                  <button type="submit" className="primary-action" value={user.role === "admin" ? "approved" : "pending"}><Plus size={18} aria-hidden="true" />Submit meeting</button>
+                  <button type="submit" className="primary-action" value={hasRole(user, "admin") ? "approved" : "pending"}><Plus size={18} aria-hidden="true" />Submit meeting</button>
                   <button type="button" className="danger-action" onClick={resetGroupMeetingWizard}>Discard</button>
                 </div>
               )}
@@ -855,7 +863,7 @@ export default function CalendarManagement() {
                   <RichTextEditor label="Description" required value={editingEvent.description} onChange={(value) => setEditingEvent((current) => ({ ...current, description: value }))} minHeight={180} placeholder="Edit event details, links, formatting, and emojis..." />
                   <label>Linked blog<select value={editingEvent.linkedBlogId ?? ""} onChange={(event) => setEditingEvent((current) => ({ ...current, linkedBlogId: event.target.value }))}><option value="">No linked blog</option>{linkablePosts.map((post) => <option key={post.id} value={post.id}>{post.title}</option>)}</select></label>
                   <label>Linked gallery<select value={editingEvent.linkedAlbumId ?? ""} onChange={(event) => setEditingEvent((current) => ({ ...current, linkedAlbumId: event.target.value }))}><option value="">No linked gallery</option>{linkableAlbums.map((album) => <option key={album.id} value={album.id}>{album.title}</option>)}</select></label>
-                  {user?.role === "admin" && (
+                  {hasRole(user, "admin") && (
                     <>
                       <label>Visibility<select value={editingEvent.visibility} onChange={(event) => setEditingEvent((current) => ({ ...current, visibility: event.target.value }))}><option value="public">Public</option><option value="logged-in">All Chiefs</option><option value="group">Specific Group/s</option></select></label>
                       {editingEvent.visibility === "group" && (
@@ -883,8 +891,8 @@ export default function CalendarManagement() {
                     <span><Eye size={16} aria-hidden="true" />{getVisibilityLabel(selectedEvent)}</span>
                     {selectedEvent.location && <span><MapPin size={16} aria-hidden="true" />{selectedEvent.location}</span>}
                     {selectedEventGroup && <span>{selectedEventGroup.name}</span>}
-                    {user?.role === "admin" && <span>Status: {selectedEvent.approvalStatus ?? "approved"}</span>}
-                    {user?.role === "admin" && selectedEvent.submittedBy && <span>Created by: {selectedEvent.submittedBy}</span>}
+                    {hasRole(user, "admin") && <span>Status: {selectedEvent.approvalStatus ?? "approved"}</span>}
+                    {hasRole(user, "admin") && selectedEvent.submittedBy && <span>Created by: {selectedEvent.submittedBy}</span>}
                   </div>
                   <FormattedText text={selectedEvent.description} fallback="No description added yet." className="detail-copy formatted-text" />
                   {(selectedEventBlog || selectedEventAlbum) && (

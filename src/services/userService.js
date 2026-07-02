@@ -9,13 +9,24 @@ import {
 } from "./supabaseClient.js";
 import { IMAGE_CACHE_CONTROL, optimizedImagePath, optimizeImageForUpload } from "./imageOptimizationService.js";
 
-const profileSelect = "select=id,full_name,email,role,chief_level,group_id,account_status,profile_picture_url,pending_name,pending_profile_picture_url,profile_change_status,profile_change_comment,profile_change_submitted_at,must_change_password,created_at,updated_at,last_login,can_publish,can_create_group_meetings,can_edit_scouts";
+const profileSelect = "select=id,full_name,email,role,chief_level,group_id,is_coordinator,coordinator_group_ids,account_status,profile_picture_url,pending_name,pending_profile_picture_url,profile_change_status,profile_change_comment,profile_change_submitted_at,must_change_password,created_at,updated_at,last_login,can_publish,can_create_group_meetings,can_edit_scouts,manage_form_templates,view_all_forms,post_forms";
 const legacyProfileSelect = "select=id,display_name,username,role_id,group_id,account_status,created_at,updated_at,last_login";
 const maxProfilePictureSize = 8 * 1024 * 1024;
 
+function getAssignedGroupIds(profile) {
+  return Array.from(new Set([
+    ...(Array.isArray(profile.assignedGroupIds) ? profile.assignedGroupIds : []),
+    profile.groupId,
+    ...(Array.isArray(profile.coordinatorGroupIds) ? profile.coordinatorGroupIds : [])
+  ].filter(Boolean)));
+}
+
+function getPrimaryGroupId(profile) {
+  return getAssignedGroupIds(profile)[0] ?? null;
+}
 function isMissingProfileColumns(error) {
   const message = String(error?.message ?? error ?? "").toLowerCase();
-  return message.includes("profile_picture_url") || message.includes("pending_name") || message.includes("profile_change") || message.includes("must_change_password") || message.includes("pgrst204") || message.includes("42703");
+  return message.includes("profile_picture_url") || message.includes("pending_name") || message.includes("profile_change") || message.includes("must_change_password") || message.includes("is_coordinator") || message.includes("coordinator_group_ids") || message.includes("manage_form_templates") || message.includes("view_all_forms") || message.includes("post_forms") || message.includes("pgrst204") || message.includes("42703");
 }
 
 function stripProfilePictureFields(row) {
@@ -26,6 +37,11 @@ function stripProfilePictureFields(row) {
     profile_change_status,
     profile_change_comment,
     profile_change_submitted_at,
+    is_coordinator,
+    coordinator_group_ids,
+    manage_form_templates,
+    view_all_forms,
+    post_forms,
     ...rest
   } = row;
   return rest;
@@ -90,8 +106,10 @@ export async function createProfile(profile) {
     full_name: profile.name,
     email: profile.email,
     role: profile.role ?? "chief",
-    chief_level: profile.chiefLevel ?? "chief",
-    group_id: profile.groupId || null,
+    chief_level: profile.role === "admin" && !getAssignedGroupIds(profile).length ? null : profile.chiefLevel ?? "chief",
+    group_id: getPrimaryGroupId(profile),
+    is_coordinator: getAssignedGroupIds(profile).length > 1,
+    coordinator_group_ids: getAssignedGroupIds(profile),
     account_status: profile.accountStatus ?? "active",
     profile_picture_url: profilePictureUrl,
     can_publish: Boolean(profile.canPublish),
@@ -117,8 +135,10 @@ export async function updateProfile(userId, profile) {
     full_name: profile.name,
     email: profile.email,
     role: profile.role ?? "chief",
-    chief_level: profile.chiefLevel ?? "chief",
-    group_id: profile.groupId || null,
+    chief_level: profile.role === "admin" && !getAssignedGroupIds(profile).length ? null : profile.chiefLevel ?? "chief",
+    group_id: getPrimaryGroupId(profile),
+    is_coordinator: getAssignedGroupIds(profile).length > 1,
+    coordinator_group_ids: getAssignedGroupIds(profile),
     account_status: profile.accountStatus ?? "active",
     profile_picture_url: profilePictureUrl,
     can_publish: Boolean(profile.canPublish),
@@ -150,8 +170,10 @@ export async function createDashboardUser(profile) {
     email: profile.email,
     temporary_password: profile.temporaryPassword,
     role: profile.role ?? "chief",
-    group_id: profile.groupId || null,
-    chief_level: profile.chiefLevel ?? "chief",
+    group_id: getPrimaryGroupId(profile),
+    is_coordinator: getAssignedGroupIds(profile).length > 1,
+    coordinator_group_ids: getAssignedGroupIds(profile),
+    chief_level: profile.role === "admin" && !getAssignedGroupIds(profile).length ? null : profile.chiefLevel ?? "chief",
     account_status: profile.accountStatus ?? "active",
     profile_picture_url: profilePictureUrl,
     permissions: {
@@ -162,6 +184,12 @@ export async function createDashboardUser(profile) {
       view_all_forms: Boolean(profile.viewAllForms),
       post_forms: Boolean(profile.postForms)
     }
+  });
+}
+
+export function deleteDashboardUser(userId) {
+  return invokeSupabaseFunction("delete-dashboard-user", {
+    user_id: userId
   });
 }
 

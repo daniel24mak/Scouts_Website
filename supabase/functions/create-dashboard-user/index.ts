@@ -58,8 +58,12 @@ serve(async (req) => {
   const email = String(body.email ?? "").trim().toLowerCase();
   const temporaryPassword = String(body.temporary_password ?? "");
   const role = String(body.role ?? "chief");
-  const chiefLevel = String(body.chief_level ?? "chief");
+  const chiefLevel = body.chief_level ? String(body.chief_level) : null;
   const groupId = body.group_id ? String(body.group_id) : null;
+  const isCoordinator = Boolean(body.is_coordinator);
+  const coordinatorGroupIds = Array.isArray(body.coordinator_group_ids)
+    ? body.coordinator_group_ids.map((groupId: unknown) => String(groupId)).filter(Boolean)
+    : [];
   const accountStatus = String(body.account_status ?? "active");
   const permissions = body.permissions ?? {};
 
@@ -68,8 +72,8 @@ serve(async (req) => {
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: "Enter a valid email address" }, 400);
   if (temporaryPassword.length < 6) return json({ error: "Temporary password is too weak" }, 400);
-  if (role !== "admin" && !groupId) return json({ error: "Group is required for chief users" }, 400);
-
+  if (role === "chief" && !isCoordinator && !groupId) return json({ error: "Group is required for chief users" }, 400);
+  if (isCoordinator && !coordinatorGroupIds.length) return json({ error: "Select at least one assigned group" }, 400);
   const { data: createdAuth, error: createAuthError } = await adminClient.auth.admin.createUser({
     email,
     password: temporaryPassword,
@@ -79,6 +83,8 @@ serve(async (req) => {
       role,
       group_id: groupId,
       chief_level: chiefLevel,
+      is_coordinator: isCoordinator,
+      coordinator_group_ids: coordinatorGroupIds,
     },
   });
 
@@ -94,18 +100,42 @@ serve(async (req) => {
     role,
     chief_level: chiefLevel,
     group_id: groupId,
+    is_coordinator: isCoordinator,
+    coordinator_group_ids: coordinatorGroupIds,
     account_status: accountStatus,
     profile_picture_url: body.profile_picture_url || null,
     can_publish: Boolean(permissions.can_publish),
     can_create_group_meetings: Boolean(permissions.can_create_group_meetings),
     can_edit_scouts: Boolean(permissions.can_edit_scouts),
+    manage_form_templates: Boolean(permissions.manage_form_templates),
+    view_all_forms: Boolean(permissions.view_all_forms),
+    post_forms: Boolean(permissions.post_forms),
     must_change_password: true,
   };
-
   let insertResult = await adminClient.from("user_profiles").insert(profileRow).select().single();
-  if (insertResult.error && String(insertResult.error.message).includes("must_change_password")) {
-    const { must_change_password: _removed, ...fallbackRow } = profileRow;
-    insertResult = await adminClient.from("user_profiles").insert(fallbackRow).select().single();
+  if (insertResult.error) {
+    const message = String(insertResult.error.message ?? "").toLowerCase();
+    const shouldUseFallback = [
+      "must_change_password",
+      "is_coordinator",
+      "coordinator_group_ids",
+      "manage_form_templates",
+      "view_all_forms",
+      "post_forms",
+    ].some((column) => message.includes(column));
+
+    if (shouldUseFallback) {
+      const {
+        must_change_password: _mustChangePassword,
+        is_coordinator: _isCoordinator,
+        coordinator_group_ids: _coordinatorGroupIds,
+        manage_form_templates: _manageFormTemplates,
+        view_all_forms: _viewAllForms,
+        post_forms: _postForms,
+        ...fallbackRow
+      } = profileRow;
+      insertResult = await adminClient.from("user_profiles").insert(fallbackRow).select().single();
+    }
   }
 
   if (insertResult.error) {

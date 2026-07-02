@@ -15,12 +15,14 @@ function getTodayDateInputValue() {
 }
 
 function hasChiefAccess(user) {
-  return user.role === "chief" || Boolean(user.groupId && user.chiefLevel);
+  return user?.role === "chief" || user?.roles?.includes?.("chief") || Boolean(user?.groupId && user?.chiefLevel);
 }
 
-export default function ChiefAttendanceManager() {
-  const { data, refresh } = useBootstrap();
-  const chiefs = data.users.filter(hasChiefAccess);
+export default function ChiefAttendanceManager({ dataOverride = null, userOverride = null } = {}) {
+  const { data: bootstrapData, refresh } = useBootstrap();
+  const data = dataOverride ?? bootstrapData;
+  const groupId = userOverride?.groupId;
+  const chiefs = data.users.filter((chief) => hasChiefAccess(chief) && (!groupId || chief.groupId === groupId));
   const [selectedDate, setSelectedDate] = useState(getTodayDateInputValue);
   const [records, setRecords] = useState({});
   const [saveMessage, setSaveMessage] = useState("");

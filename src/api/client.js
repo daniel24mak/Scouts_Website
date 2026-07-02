@@ -59,7 +59,7 @@ import {
   saveSiteContentItem,
   updateLeader
 } from "../services/siteContentService.js";
-import { adminResetUserPassword, createDashboardUser, createProfile, getProfiles, reviewProfileChangeRequest, submitProfileChangeRequest, updateProfile } from "../services/userService.js";
+import { adminResetUserPassword, createDashboardUser, createProfile, deleteDashboardUser, getProfiles, reviewProfileChangeRequest, submitProfileChangeRequest, updateProfile } from "../services/userService.js";
 import { closePostedForm, deleteFormTemplateCascade, deletePostedFormCascade, getFormsData, reopenPostedForm, saveFormSubmission, saveFormTemplate, savePostedForm, updatePostedFormReview } from "../services/formService.js";
 import { deleteNotification, getNotifications, markAllNotificationsRead, markNotificationRead, markNotificationsDoneForEntity } from "../services/notificationService.js";
 import { getWebsiteContentRevisions, reviewWebsiteContentRevision, submitWebsiteContentRevision } from "../services/websiteContentRevisionService.js";
@@ -470,6 +470,13 @@ export function resetUserPassword(userId, temporaryPassword) {
 }
 
 
+export function removeDashboardUser(userId) {
+  if (isSupabaseConfigured) {
+    return deleteDashboardUser(userId);
+  }
+
+  return Promise.resolve();
+}
 export function updateChief(chiefId, payload) {
   if (isSupabaseConfigured) {
     return updateProfile(chiefId, payload);

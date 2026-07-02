@@ -7397,7 +7397,7 @@ textarea:focus-visible {
     grid-template-rows: 1fr auto;
     place-items: center;
     padding: 86px 24px 38px !important;
-    background: #4055a6 !important;
+    background: var(--dashboard-accent-soft) !important;
     opacity: 0;
     pointer-events: none;
     transform: translateY(-100%);
@@ -11577,7 +11577,7 @@ textarea:focus-visible {
 }
 
 .forms-post-outline {
-  border-color: #4055a6 !important;
+  border-color: var(--dashboard-accent-soft) !important;
   color: #4055a6 !important;
 }
 
@@ -13412,13 +13412,13 @@ textarea:focus-visible {
 .admin-cms-shell.dashboard-theme-dark .rich-text-editor,
 .admin-cms-shell.dashboard-theme-dark .rich-text-editor-content {
   border-color: var(--dashboard-line) !important;
-  background: #0f172a !important;
+  background: var(--dashboard-surface-2) !important;
   color: var(--dashboard-text) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark input::placeholder,
 .admin-cms-shell.dashboard-theme-dark textarea::placeholder {
-  color: #748198 !important;
+  color: var(--dashboard-disabled) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark .dashboard-theme-toggle,
@@ -13446,9 +13446,9 @@ textarea:focus-visible {
 
 .admin-cms-shell.dashboard-theme-dark .primary-action,
 .admin-cms-shell.dashboard-theme-dark button.primary-action {
-  border-color: #4055a6 !important;
-  background: #4055a6 !important;
-  color: #ffffff !important;
+  border-color: var(--dashboard-accent-soft) !important;
+  background: var(--dashboard-accent-soft) !important;
+  color: var(--dashboard-accent-text) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark .table-panel th,
@@ -13619,7 +13619,7 @@ textarea:focus-visible {
   .ql-editor
 ) {
   border-color: var(--dashboard-line) !important;
-  background: #0b1224 !important;
+  background: var(--dashboard-bg) !important;
   color: var(--dashboard-text) !important;
   box-shadow: none !important;
 }
@@ -13688,9 +13688,9 @@ textarea:focus-visible {
   .forms-mode-toggle button.active,
   .sidebar-group.active-group > .sidebar-group-trigger
 ) {
-  border-color: #4055a6 !important;
-  background: #4055a6 !important;
-  color: #ffffff !important;
+  border-color: var(--dashboard-accent-soft) !important;
+  background: var(--dashboard-accent-soft) !important;
+  color: var(--dashboard-accent-text) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark :where(
@@ -13734,9 +13734,9 @@ textarea:focus-visible {
   .forms-review-ready,
   .forms-success-icon
 ) {
-  border-color: rgb(52 211 153 / 0.35) !important;
-  background: rgb(52 211 153 / 0.12) !important;
-  color: #86efac !important;
+  border-color: var(--dashboard-line-strong) !important;
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark :where(
@@ -13744,9 +13744,9 @@ textarea:focus-visible {
   .warning-banner,
   .upload-progress
 ) {
-  border-color: rgb(245 191 21 / 0.34) !important;
-  background: rgb(245 191 21 / 0.12) !important;
-  color: #fde68a !important;
+  border-color: var(--dashboard-line-strong) !important;
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-accent-strong) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark :where(img, video, canvas) {
@@ -13769,7 +13769,7 @@ textarea:focus-visible {
 .admin-cms-shell.dashboard-theme-dark .ql-toolbar,
 .admin-cms-shell.dashboard-theme-dark .ql-container {
   border-color: var(--dashboard-line) !important;
-  background: #0b1224 !important;
+  background: var(--dashboard-bg) !important;
   color: var(--dashboard-text) !important;
 }
 
@@ -13788,9 +13788,9 @@ textarea:focus-visible {
 .admin-cms-shell.dashboard-theme-dark .active > button,
 .admin-cms-shell.dashboard-theme-dark .forms-section-tabs button.active,
 .admin-cms-shell.dashboard-theme-dark .approval-type-tabs button.active {
-  border-color: #4055a6 !important;
-  background: #4055a6 !important;
-  color: #ffffff !important;
+  border-color: var(--dashboard-accent-soft) !important;
+  background: var(--dashboard-accent-soft) !important;
+  color: var(--dashboard-accent-text) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark h1,
@@ -13976,7 +13976,7 @@ textarea:focus-visible {
 .admin-cms-shell.dashboard-theme-dark .website-image-large-preview,
 .admin-cms-shell.dashboard-theme-dark .avatar-crop-frame {
   border-color: var(--dashboard-line) !important;
-  background: #0b1224 !important;
+  background: var(--dashboard-bg) !important;
 }
 /* Premium dashboard design system pass: light and dark mode refinement. */
 .admin-cms-shell {
@@ -14146,13 +14146,13 @@ textarea:focus-visible {
 .admin-cms-shell :where(.primary-action, button.primary-action) {
   border: 1px solid var(--dashboard-accent) !important;
   background: var(--dashboard-accent) !important;
-  color: #ffffff !important;
+  color: var(--dashboard-accent-text) !important;
 }
 
 .admin-cms-shell :where(.primary-action:hover, .primary-action:focus-visible, button.primary-action:hover, button.primary-action:focus-visible) {
   border-color: var(--dashboard-accent-hover) !important;
   background: var(--dashboard-accent-hover) !important;
-  color: #ffffff !important;
+  color: var(--dashboard-accent-text) !important;
   transform: none !important;
 }
 
@@ -14487,9 +14487,9 @@ textarea:focus-visible {
 }
 
 .admin-cms-shell.dashboard-theme-dark :where(.primary-action:hover, .primary-action:focus-visible, button.primary-action:hover, button.primary-action:focus-visible) {
-  border-color: #155a9e !important;
-  background-color: #155a9e !important;
-  color: #ffffff !important;
+  border-color: var(--dashboard-accent-soft) !important;
+  background-color: var(--dashboard-accent-soft) !important;
+  color: var(--dashboard-accent-text) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark :where(.admin-sidebar button.active, .sidebar-group.active-group > .sidebar-group-trigger, .forms-section-tabs button.active, .forms-mode-toggle button.active, .approval-type-tabs button.active, .dashboard-bottom-tab-link.active, [aria-selected="true"]) {
@@ -14779,9 +14779,9 @@ textarea:focus-visible {
 }
 
 .admin-cms-shell.dashboard-theme-dark :where(.primary-action:hover, .primary-action:focus-visible, button.primary-action:hover, button.primary-action:focus-visible) {
-  background: #155a9e !important;
-  color: #ffffff !important;
-  border-color: #155a9e !important;
+  background: var(--dashboard-accent-soft) !important;
+  color: var(--dashboard-accent-text) !important;
+  border-color: var(--dashboard-accent-soft) !important;
   box-shadow: 0 0 0 3px var(--dashboard-focus) !important;
 }
 
@@ -14873,8 +14873,8 @@ textarea:focus-visible {
   isolation: isolate;
   border: 1px solid transparent !important;
   border-radius: 8px !important;
-  background: #4055a6 !important;
-  color: #ffffff !important;
+  background: var(--dashboard-accent-soft) !important;
+  color: var(--dashboard-accent-text) !important;
   box-shadow: none !important;
   transform: none !important;
 }
@@ -15693,7 +15693,7 @@ textarea:focus-visible {
 .admin-cms-shell.dashboard-theme-dark .forms-dashboard-shell select,
 .admin-cms-shell.dashboard-theme-dark .forms-dashboard-shell textarea {
   border-color: var(--dashboard-line) !important;
-  background: #111827 !important;
+  background: var(--dashboard-surface) !important;
   color: var(--dashboard-text) !important;
   box-shadow: none !important;
   color-scheme: dark !important;
@@ -15722,7 +15722,7 @@ textarea:focus-visible {
 .admin-cms-shell.dashboard-theme-dark .forms-dashboard-shell select:focus,
 .admin-cms-shell.dashboard-theme-dark .forms-dashboard-shell textarea:focus {
   border-color: var(--dashboard-accent) !important;
-  background: #111827 !important;
+  background: var(--dashboard-surface) !important;
   box-shadow: 0 0 0 3px var(--dashboard-focus) !important;
   outline: none !important;
 }
@@ -15731,7 +15731,7 @@ textarea:focus-visible {
 .admin-cms-shell.dashboard-theme-dark .forms-question-number {
   border-color: rgb(142 162 255 / 0.38) !important;
   background: transparent !important;
-  color: #a8b7ff !important;
+  color: var(--dashboard-accent) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark .forms-status-pill,
@@ -15740,12 +15740,12 @@ textarea:focus-visible {
 .admin-cms-shell.dashboard-theme-dark .forms-count-badge {
   border-color: rgb(142 162 255 / 0.34) !important;
   background: rgb(64 85 166 / 0.2) !important;
-  color: #dbe4ff !important;
+  color: var(--dashboard-accent-text) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark .premium-question-topline em {
-  background: rgb(248 113 113 / 0.14) !important;
-  color: #fecaca !important;
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark .premium-question-topline small {
@@ -15756,22 +15756,22 @@ textarea:focus-visible {
 .admin-cms-shell.dashboard-theme-dark .forms-choice-stack.premium label:hover,
 .admin-cms-shell.dashboard-theme-dark .forms-choice-stack.premium label:focus-within {
   border-color: var(--dashboard-line-strong) !important;
-  background: #111827 !important;
+  background: var(--dashboard-surface) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark .forms-choice-stack.premium label > span {
-  border-color: #72809d !important;
-  background: #0f172a !important;
+  border-color: var(--dashboard-line-strong) !important;
+  background: var(--dashboard-surface-2) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark .forms-choice-stack.premium input:checked + span {
-  border-color: #a8b7ff !important;
-  background: #a8b7ff !important;
-  box-shadow: inset 0 0 0 4px #111827 !important;
+  border-color: var(--dashboard-accent) !important;
+  background: var(--dashboard-accent) !important;
+  box-shadow: inset 0 0 0 4px var(--dashboard-surface) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark .forms-choice-stack.premium.checkboxes input:checked + span {
-  box-shadow: inset 0 0 0 3px #111827 !important;
+  box-shadow: inset 0 0 0 3px var(--dashboard-surface) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark .forms-segmented-control.premium button,
@@ -15802,34 +15802,34 @@ textarea:focus-visible {
 
 .admin-cms-shell.dashboard-theme-dark .premium-form-progress > div,
 .admin-cms-shell.dashboard-theme-dark .forms-submit-progress-track {
-  background: #111827 !important;
+  background: var(--dashboard-surface) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark .premium-form-progress span,
 .admin-cms-shell.dashboard-theme-dark .forms-submit-progress-bar {
-  background: linear-gradient(90deg, #a8b7ff, #5eead4) !important;
+  background: linear-gradient(90deg, var(--dashboard-accent), var(--dashboard-accent-strong)) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark .forms-preview-instructions.premium {
-  border-color: rgb(245 191 21 / 0.32) !important;
-  background: rgb(245 191 21 / 0.1) !important;
+  border-color: var(--dashboard-line-strong) !important;
+  background: var(--dashboard-surface-2) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark .forms-review-warning {
-  border-color: rgb(248 113 113 / 0.28) !important;
-  background: rgb(248 113 113 / 0.1) !important;
-  color: #fecaca !important;
+  border-color: var(--dashboard-line-strong) !important;
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark .forms-review-warning button {
-  color: #fecaca !important;
+  color: var(--dashboard-text) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark .forms-review-ready,
 .admin-cms-shell.dashboard-theme-dark .forms-success-icon {
-  border-color: rgb(94 234 212 / 0.28) !important;
-  background: rgb(94 234 212 / 0.1) !important;
-  color: #99f6e4 !important;
+  border-color: var(--dashboard-line-strong) !important;
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark .forms-rich-answer,
@@ -15844,7 +15844,7 @@ textarea:focus-visible {
 .admin-cms-shell.dashboard-theme-dark .forms-premium-rich-input .ql-container,
 .admin-cms-shell.dashboard-theme-dark .forms-premium-rich-input .ql-editor {
   border-color: var(--dashboard-line) !important;
-  background: #111827 !important;
+  background: var(--dashboard-surface) !important;
   color: var(--dashboard-text) !important;
 }
 
@@ -15865,13 +15865,13 @@ textarea:focus-visible {
 
 .admin-cms-shell.dashboard-theme-dark .forms-field-error,
 .admin-cms-shell.dashboard-theme-dark .premium-question-card.has-error .premium-question-helper {
-  color: #fecaca !important;
+  color: var(--dashboard-text) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark .premium-question-card.has-error,
 .admin-cms-shell.dashboard-theme-dark .forms-question-card.has-error {
-  border-color: rgb(248 113 113 / 0.36) !important;
-  background: rgb(248 113 113 / 0.06) !important;
+  border-color: var(--dashboard-line-strong) !important;
+  background: var(--dashboard-surface-2) !important;
 }
 
 @media (max-width: 780px) {
@@ -15882,5 +15882,1115 @@ textarea:focus-visible {
   .admin-cms-shell.dashboard-theme-dark .forms-wizard-panel,
   .admin-cms-shell.dashboard-theme-dark .forms-question-card {
     border-radius: 12px !important;
+  }
+}
+
+/* Targeted dark-mode hardcoded-light cleanup for dashboard content sections. */
+.admin-cms-shell.dashboard-theme-dark :where(
+  .calendar-page,
+  .calendar-title-row,
+  .calendar-tools,
+  .calendar-responsive-shell,
+  .month-calendar,
+  .selected-day-panel,
+  .calendar-agenda-panel,
+  .agenda-date-group,
+  .calendar-detail-modal,
+  .calendar-detail-modal .modal-body,
+  .calendar-add-menu,
+  .calendar-draft-panel,
+  .blog-inline-editor,
+  .blog-detail-editor,
+  .blog-thumb,
+  .blog-hero-thumb,
+  .blog-preview-card,
+  .album-preview-card,
+  .gallery-bundle-form,
+  .gallery-photo,
+  .gallery-photo-button,
+  .contact-inbox-shell,
+  .contact-inbox-list,
+  .contact-inbox-filters,
+  .contact-message-list,
+  .contact-message-detail,
+  .contact-detail-header,
+  .contact-message-body,
+  .website-content-builder,
+  .website-content-section-stack,
+  .website-content-builder-section,
+  .website-content-form-column,
+  .website-content-preview-column,
+  .website-live-snippet,
+  .website-list-card,
+  .website-list-card-fields,
+  .website-revision-preview,
+  .website-revision-preview > article,
+  .website-change-comparison,
+  .website-change-comparison > div,
+  .website-change-comparison.collection section,
+  .website-change-operation-list section,
+  .website-image-preview-button,
+  .website-image-empty-picker,
+  .website-content-image-control > div,
+  .my-group-reference,
+  .my-group-attendance-link,
+  .equipe-zone,
+  .equipe-card,
+  .equipe-assignment-zone,
+  .equipe-scout-list label,
+  .rule-card,
+  .group-stack,
+  .group-checkbox-list,
+  .group-checkbox-list label,
+  .wizard-form,
+  .wizard-panel,
+  .wizard-preview-card,
+  .approval-preview-card,
+  .preview-event-meta,
+  .empty-approval-preview,
+  .empty-state
+) {
+  background: var(--dashboard-surface) !important;
+  color: var(--dashboard-text) !important;
+  border-color: var(--dashboard-line) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .calendar-day,
+  .calendar-day.outside,
+  .calendar-agenda-card,
+  .calendar-legend span,
+  .calendar-detail-grid span,
+  .event-linked-content a,
+  .calendar-add-menu button,
+  .weekday-heading,
+  .calendar-more-count,
+  .calendar-pill,
+  .calendar-view-toolbar,
+  .calendar-view-toolbar button,
+  .calendar-nav-controls button,
+  .contact-message-row,
+  .contact-sender-details div,
+  .website-list-card-tools,
+  .website-content-section-heading,
+  .website-content-preview-column > span,
+  .website-live-snippet article,
+  .website-live-snippet .faq-item,
+  .website-live-snippet .goal-card,
+  .website-live-snippet .about-group-card,
+  .website-live-snippet .leader-card,
+  .inline-editor-toolbar,
+  .inline-editor-toolbar > div,
+  .website-editing-canvas,
+  .forms-posting-settings,
+  .forms-template-picker,
+  .forms-add-question-row,
+  .forms-question-card-topline,
+  .forms-question-header,
+  .forms-options-editor > div,
+  .premium-form-meta-grid span,
+  .forms-review-answer-list section,
+  .forms-review-stats-grid div,
+  .forms-preview-instructions,
+  .forms-choice-stack label,
+  .forms-segmented-control,
+  .forms-rating-control,
+  .rule-fields label,
+  .inline-editor-grid,
+  .inline-editor-grid.compact,
+  .table-actions,
+  .cms-form > *,
+  .table-panel thead,
+  .table-panel tbody,
+  .table-panel tr,
+  .table-panel td,
+  .table-panel th
+) {
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+  border-color: var(--dashboard-line) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .calendar-day:hover,
+  .calendar-day:focus-visible,
+  .calendar-agenda-card:hover,
+  .calendar-agenda-card:focus-visible,
+  .contact-message-row:hover,
+  .contact-message-row.active,
+  .contact-message-row.unread,
+  .website-list-card:hover,
+  .rule-card:hover,
+  .equipe-card:hover,
+  .my-group-attendance-link:hover,
+  .wizard-preview-card:hover,
+  .approval-preview-card:hover,
+  .empty-state:hover,
+  .table-panel tr:hover
+) {
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+  border-color: var(--dashboard-line) !important;
+  box-shadow: none !important;
+  transform: none !important;
+  filter: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .calendar-page h1,
+  .calendar-page h2,
+  .calendar-page h3,
+  .calendar-day strong,
+  .calendar-agenda-card strong,
+  .calendar-detail-modal h2,
+  .blog-inline-editor h2,
+  .blog-detail-editor h2,
+  .contact-detail-header h2,
+  .contact-message-row strong,
+  .contact-message-row b,
+  .contact-sender-details dd,
+  .website-content-section-heading h3,
+  .website-live-snippet h3,
+  .website-change-comparison strong,
+  .website-change-operation-list strong,
+  .rule-card h3,
+  .equipe-card h3,
+  .my-group-reference h2,
+  .wizard-panel h3,
+  .approval-preview-card h3,
+  .table-panel th,
+  .table-panel td
+) {
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .helper-text,
+  .calendar-selected-date,
+  .calendar-agenda-card small,
+  .calendar-pill small,
+  .calendar-legend span,
+  .contact-message-row p,
+  .contact-message-row small,
+  .contact-sender-details dt,
+  .website-content-preview-column > span,
+  .website-live-snippet p,
+  .website-change-comparison small,
+  .website-list-card-fields label,
+  .rule-card label,
+  .rule-fields label,
+  .equipe-card label,
+  .wizard-panel label,
+  .approval-preview-card p
+) {
+  color: var(--dashboard-muted) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  input,
+  select,
+  textarea,
+  .cms-form input,
+  .cms-form select,
+  .cms-form textarea,
+  .calendar-create-panel input,
+  .calendar-create-panel select,
+  .calendar-create-panel textarea,
+  .blog-inline-editor input,
+  .blog-inline-editor select,
+  .blog-inline-editor textarea,
+  .blog-detail-editor input,
+  .blog-detail-editor select,
+  .blog-detail-editor textarea,
+  .gallery-bundle-form input,
+  .gallery-bundle-form select,
+  .gallery-bundle-form textarea,
+  .contact-message-detail input,
+  .contact-message-detail select,
+  .contact-message-detail textarea,
+  .website-content-builder input,
+  .website-content-builder select,
+  .website-content-builder textarea,
+  .rule-card input,
+  .rule-card select,
+  .inline-editor-grid input,
+  .inline-editor-grid select,
+  .inline-editor-grid textarea,
+  .equipe-card input,
+  .equipe-card select,
+  .equipe-card textarea,
+  .wizard-form input,
+  .wizard-form select,
+  .wizard-form textarea,
+  .table-panel input,
+  .table-panel select,
+  .table-panel textarea
+) {
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+  border-color: var(--dashboard-line) !important;
+  box-shadow: none !important;
+  color-scheme: dark !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  input:focus,
+  select:focus,
+  textarea:focus,
+  .calendar-create-panel input:focus,
+  .calendar-create-panel select:focus,
+  .calendar-create-panel textarea:focus,
+  .contact-message-detail select:focus,
+  .website-content-builder input:focus,
+  .website-content-builder textarea:focus,
+  .rule-card input:focus,
+  .rule-card select:focus,
+  .equipe-card input:focus,
+  .equipe-card select:focus,
+  .wizard-form input:focus,
+  .wizard-form select:focus,
+  .wizard-form textarea:focus
+) {
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+  border-color: var(--dashboard-accent) !important;
+  box-shadow: 0 0 0 3px var(--dashboard-focus) !important;
+  outline: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  input::placeholder,
+  textarea::placeholder,
+  .calendar-create-panel input::placeholder,
+  .calendar-create-panel textarea::placeholder,
+  .website-content-builder input::placeholder,
+  .website-content-builder textarea::placeholder,
+  .wizard-form input::placeholder,
+  .wizard-form textarea::placeholder
+) {
+  color: var(--dashboard-disabled) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .rich-text-editor,
+  .rich-text-toolbar,
+  .rich-text-toolbar button,
+  .rich-text-toolbar select,
+  .rich-text-input,
+  .rich-text-editor-content,
+  .ql-toolbar,
+  .ql-container,
+  .ql-editor
+) {
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+  border-color: var(--dashboard-line) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .rich-text-toolbar button:hover,
+  .rich-text-toolbar button:focus-visible,
+  .rich-text-toolbar .is-active,
+  .rich-text-toolbar select:focus-visible
+) {
+  background: var(--dashboard-hover) !important;
+  color: var(--dashboard-text) !important;
+  border-color: var(--dashboard-line-strong) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .calendar-view-toolbar button.active,
+  .calendar-day.selected,
+  .calendar-day.today .day-number,
+  .forms-section-tabs button.active,
+  .forms-mode-toggle button.active,
+  .forms-segmented-control button.selected,
+  .forms-rating-control button.selected,
+  .status-badge.approved,
+  .forms-status-pill.approved,
+  .forms-status-pill.open,
+  .contact-status-pill.replied
+) {
+  background: var(--dashboard-accent-soft) !important;
+  color: var(--dashboard-accent-text) !important;
+  border-color: var(--dashboard-accent-soft) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .status-badge.pending,
+  .status-badge.needs_changes,
+  .forms-status-pill.pending,
+  .forms-status-pill.draft,
+  .contact-status-pill.new
+) {
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-accent-strong) !important;
+  border-color: var(--dashboard-line-strong) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .status-badge.rejected,
+  .status-badge.archived,
+  .forms-status-pill.rejected,
+  .forms-status-pill.closed,
+  .contact-status-pill.archived,
+  .danger-action
+) {
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+  border-color: var(--dashboard-line-strong) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .website-image-preview-button small,
+  .website-image-empty-picker small
+) {
+  background: var(--dashboard-bg) !important;
+  color: var(--dashboard-text) !important;
+}
+
+/* Dashboard dark-mode shared toolbar and legacy panel cleanup. */
+.admin-cms-shell.dashboard-theme-dark :where(
+  .cms-toolbar,
+  .cms-toolbar label,
+  .toolbar-panel,
+  .filter-panel,
+  .filter-bar,
+  .section-toolbar,
+  .management-toolbar,
+  .dashboard-filter-panel,
+  .dashboard-filter-bar,
+  .panel-toolbar,
+  .form-toolbar,
+  .table-toolbar
+) {
+  border-color: var(--dashboard-line) !important;
+  background: var(--dashboard-surface) !important;
+  color: var(--dashboard-text) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .cms-toolbar select,
+  .cms-toolbar input,
+  .cms-toolbar textarea,
+  .toolbar-panel select,
+  .toolbar-panel input,
+  .filter-panel select,
+  .filter-panel input,
+  .filter-bar select,
+  .filter-bar input,
+  .section-toolbar select,
+  .section-toolbar input,
+  .management-toolbar select,
+  .management-toolbar input,
+  .dashboard-filter-panel select,
+  .dashboard-filter-panel input,
+  .dashboard-filter-bar select,
+  .dashboard-filter-bar input,
+  .panel-toolbar select,
+  .panel-toolbar input,
+  .form-toolbar select,
+  .form-toolbar input,
+  .table-toolbar select,
+  .table-toolbar input
+) {
+  border-color: var(--dashboard-line) !important;
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+  box-shadow: none !important;
+  color-scheme: dark !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .cms-toolbar select:focus,
+  .cms-toolbar input:focus,
+  .toolbar-panel select:focus,
+  .toolbar-panel input:focus,
+  .filter-panel select:focus,
+  .filter-panel input:focus,
+  .filter-bar select:focus,
+  .filter-bar input:focus,
+  .section-toolbar select:focus,
+  .section-toolbar input:focus,
+  .management-toolbar select:focus,
+  .management-toolbar input:focus,
+  .dashboard-filter-panel select:focus,
+  .dashboard-filter-panel input:focus,
+  .dashboard-filter-bar select:focus,
+  .dashboard-filter-bar input:focus,
+  .panel-toolbar select:focus,
+  .panel-toolbar input:focus,
+  .form-toolbar select:focus,
+  .form-toolbar input:focus,
+  .table-toolbar select:focus,
+  .table-toolbar input:focus
+) {
+  border-color: var(--dashboard-accent) !important;
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+  box-shadow: 0 0 0 3px var(--dashboard-focus) !important;
+  outline: none !important;
+}
+
+/* Final dashboard dark-mode escape hatch for late legacy white panels. */
+.admin-cms-shell.dashboard-theme-dark :where(
+  .cms-panel-stack > .cms-toolbar,
+  .cms-panel-stack > .table-panel,
+  .cms-panel-stack > .cms-form,
+  .cms-panel-stack > .admin-panel,
+  .cms-panel-stack > .editor-panel,
+  .cms-panel-stack > .calendar-create-panel,
+  .cms-panel-stack > .gallery-bundle-form,
+  .cms-panel-stack > .website-content-builder,
+  .cms-panel-stack > .website-content-builder-section,
+  .cms-panel-stack > .contact-inbox-shell,
+  .cms-panel-stack > .forms-dashboard-shell,
+  .cms-panel-stack > .forms-builder-shell,
+  .cms-panel-stack > .forms-wizard-panel,
+  .cms-panel-stack > .equipe-zone,
+  .cms-panel-stack > .equipe-assignment-zone,
+  .cms-panel-stack > .group-stack,
+  .cms-panel-stack > .rule-card,
+  .cms-panel-stack > .empty-state,
+  .dashboard-overview-stack > .admin-panel,
+  .dashboard-overview-stack > .dashboard-work-panel,
+  .dashboard-overview-stack > .dashboard-upcoming-events-panel,
+  .forms-dashboard-shell > section,
+  .forms-dashboard-shell > article,
+  .forms-dashboard-shell > div,
+  .profile-modal.website-image-action-modal,
+  .profile-modal.avatar-crop-modal,
+  .avatar-zoom-control
+) {
+  border-color: var(--dashboard-line) !important;
+  background: var(--dashboard-surface) !important;
+  color: var(--dashboard-text) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .profile-modal.website-image-action-modal *,
+  .profile-modal.avatar-crop-modal *,
+  .avatar-zoom-control *
+) {
+  color: inherit;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .profile-modal.website-image-action-modal input,
+  .profile-modal.website-image-action-modal select,
+  .profile-modal.website-image-action-modal textarea,
+  .profile-modal.avatar-crop-modal input,
+  .profile-modal.avatar-crop-modal select,
+  .profile-modal.avatar-crop-modal textarea,
+  .avatar-zoom-control input
+) {
+  border-color: var(--dashboard-line) !important;
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+  color-scheme: dark !important;
+}
+
+/* My Group and Equipe Management visual cleanup. */
+.admin-cms-shell:not(.dashboard-theme-dark) :where(.primary-action, button.primary-action) {
+  border-color: var(--dashboard-accent, #4055a6) !important;
+  background: var(--dashboard-accent, #4055a6) !important;
+  color: var(--dashboard-accent-text, #ffffff) !important;
+}
+
+.admin-cms-shell:not(.dashboard-theme-dark) :where(.primary-action:hover, .primary-action:focus-visible, button.primary-action:hover, button.primary-action:focus-visible) {
+  border-color: var(--dashboard-accent-hover, #32458f) !important;
+  background: var(--dashboard-accent-hover, #32458f) !important;
+  color: var(--dashboard-accent-text, #ffffff) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .my-group-reference .table-panel,
+  .equipe-management-redesign .admin-panel,
+  .equipe-management-redesign .table-panel,
+  .equipe-management-redesign .automatic-assignment-zone,
+  .equipe-management-redesign .assignment-preview .admin-panel
+) {
+  border-color: transparent !important;
+  background: var(--dashboard-surface) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .my-group-reference .table-panel table,
+  .equipe-assignment-zone table
+) {
+  border-collapse: separate !important;
+  border-spacing: 0 8px !important;
+  background: transparent !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .my-group-reference .table-panel thead,
+  .my-group-reference .table-panel tbody,
+  .my-group-reference .table-panel tr,
+  .my-group-reference .table-panel th,
+  .my-group-reference .table-panel td,
+  .equipe-assignment-zone thead,
+  .equipe-assignment-zone tbody,
+  .equipe-assignment-zone tr,
+  .equipe-assignment-zone th,
+  .equipe-assignment-zone td
+) {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .my-group-reference .table-panel th,
+  .equipe-assignment-zone th
+) {
+  background: transparent !important;
+  color: var(--dashboard-muted) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .my-group-reference .table-panel td,
+  .equipe-assignment-zone td
+) {
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .my-group-reference .table-panel tbody tr:hover td,
+  .equipe-assignment-zone tbody tr:hover td
+) {
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .my-group-reference .table-panel tbody tr td:first-child,
+  .equipe-assignment-zone tbody tr td:first-child
+) {
+  border-top-left-radius: 8px !important;
+  border-bottom-left-radius: 8px !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .my-group-reference .table-panel tbody tr td:last-child,
+  .equipe-assignment-zone tbody tr td:last-child
+) {
+  border-top-right-radius: 8px !important;
+  border-bottom-right-radius: 8px !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .equipe-management-redesign .equipe-grid,
+  .equipe-management-redesign .inline-editor-grid,
+  .equipe-management-redesign .assignment-preview,
+  .equipe-management-redesign .equipe-zone
+) {
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .equipe-management-redesign .equipe-card,
+  .equipe-management-redesign .assignment-preview .admin-panel,
+  .equipe-management-redesign .equipe-create-zone,
+  .equipe-management-redesign .automatic-assignment-zone
+) {
+  border: 0 !important;
+  background: var(--dashboard-surface) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(
+  .equipe-management-redesign .inline-editor-grid,
+  .equipe-management-redesign .inline-editor-grid.compact,
+  .equipe-management-redesign .table-actions,
+  .equipe-management-redesign .panel-heading,
+  .equipe-management-redesign .forms-options-editor > div,
+  .equipe-management-redesign .mini-list,
+  .equipe-management-redesign .mini-list span
+) {
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .equipe-management-redesign .mini-list span {
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+}
+
+/* Keep dashboard light-mode primary actions readable. */
+.admin-cms-shell:not(.dashboard-theme-dark) :where(.primary-action, button.primary-action),
+.admin-cms-shell:not(.dashboard-theme-dark) :where(.primary-action:hover, .primary-action:focus-visible, button.primary-action:hover, button.primary-action:focus-visible) {
+  color: var(--color-white, #ffffff) !important;
+}
+
+/* Final clickable cursor and My Group attendance button cleanup. */
+.admin-cms-shell :where(
+  button:not(:disabled),
+  a[href],
+  [role="button"],
+  summary,
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  .primary-action:not(:disabled),
+  .inline-action:not(:disabled),
+  .icon-button:not(:disabled),
+  .dashboard-bottom-tab-link,
+  .dashboard-more-grid button:not(:disabled),
+  .website-image-preview-button,
+  .gallery-photo-button,
+  .calendar-day,
+  .contact-message-row,
+  .notification-row-main
+) {
+  cursor: pointer !important;
+}
+
+.admin-cms-shell :where(
+  button:disabled,
+  select:disabled,
+  input:disabled,
+  textarea:disabled,
+  .primary-action:disabled,
+  .inline-action:disabled,
+  .icon-button:disabled
+) {
+  cursor: not-allowed !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .my-group-reference .my-group-attendance-link,
+.admin-cms-shell.dashboard-theme-dark .my-group-reference .my-group-attendance-link:hover,
+.admin-cms-shell.dashboard-theme-dark .my-group-reference .my-group-attendance-link:focus-within {
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  filter: none !important;
+  transform: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .my-group-reference .my-group-attendance-link > .inline-action,
+.admin-cms-shell.dashboard-theme-dark .my-group-reference .my-group-attendance-link > .inline-action:hover,
+.admin-cms-shell.dashboard-theme-dark .my-group-reference .my-group-attendance-link > .inline-action:focus-visible {
+  border: 0 !important;
+  outline: 0 !important;
+  background: var(--dashboard-surface-2) !important;
+  color: var(--dashboard-text) !important;
+  box-shadow: none !important;
+  filter: none !important;
+  transform: none !important;
+}
+
+.users-permissions-layout {
+  gap: 1rem;
+}
+
+.user-permissions-form,
+.user-permission-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.user-permissions-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.role-checkbox-row,
+.group-checkbox-grid,
+.permission-toggle-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.group-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.checkbox-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.45rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--dashboard-border, rgba(64, 85, 166, 0.18));
+  border-radius: 999px;
+  background: var(--dashboard-surface, #fff);
+  color: var(--dashboard-text, #172033);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.checkbox-chip input {
+  accent-color: #4055a6;
+}
+
+.permission-toggle-grid {
+  padding-top: 0.2rem;
+}
+
+.user-permission-card .panel-heading {
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.user-profile-cell p {
+  margin: 0.15rem 0 0;
+  color: var(--dashboard-muted, #667085);
+}
+
+.compact-heading {
+  gap: 0.45rem;
+}
+
+.wide-field {
+  grid-column: 1 / -1;
+}
+
+[data-theme="dark"] .checkbox-chip {
+  background: var(--dashboard-panel, #1f2430);
+  border-color: transparent;
+  color: var(--dashboard-text, #f7f8fb);
+}
+
+@media (max-width: 700px) {
+  .user-permission-card .panel-heading,
+  .user-permission-card .compact-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .role-checkbox-row,
+  .permission-toggle-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Users & profile dark-mode cleanup. */
+.admin-cms-shell.dashboard-theme-dark .users-permissions-layout :where(
+  .user-permissions-form,
+  .user-permissions-list,
+  .user-permission-card,
+  .user-permission-edit-panel,
+  .user-permission-row-heading,
+  .inline-editor-grid,
+  .inline-editor-grid.compact,
+  .form-section-heading,
+  .group-checkbox-grid,
+  .permission-toggle-grid,
+  .profile-picture-picker,
+  .profile-picture-preview
+) {
+  border-color: transparent !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .users-permissions-layout :where(
+  .group-checkbox-grid,
+  .permission-toggle-grid,
+  .user-permissions-list,
+  .user-permission-edit-panel,
+  .user-permission-row-heading,
+  .form-section-heading
+) {
+  background: transparent !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .users-permissions-layout :where(
+  .user-permissions-form,
+  .user-permission-card
+) {
+  background: var(--dashboard-surface, #1f2430) !important;
+  color: var(--dashboard-text, #f7f8fb) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(.profile-picture-preview, .avatar-replace-control) {
+  background: var(--dashboard-surface-2, #252b38) !important;
+  border-color: transparent !important;
+  color: var(--dashboard-text, #f7f8fb) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(.profile-picture-preview small, .profile-modal-current span, .profile-modal-current small, .user-profile-cell p, .user-profile-cell small) {
+  color: var(--dashboard-muted, #b8bfcc) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(.profile-modal, .profile-modal-current, .profile-settings-form, .password-reset-modal) {
+  background: var(--dashboard-surface, #1f2430) !important;
+  border-color: transparent !important;
+  color: var(--dashboard-text, #f7f8fb) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .profile-settings-form {
+  border-top-color: transparent !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .profile-modal h2,
+.admin-cms-shell.dashboard-theme-dark .profile-settings-form h3,
+.admin-cms-shell.dashboard-theme-dark .profile-settings-form label,
+.admin-cms-shell.dashboard-theme-dark .profile-picture-picker > span {
+  color: var(--dashboard-text, #f7f8fb) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .profile-modal :where(input, select, textarea) {
+  background: var(--dashboard-input-bg, #141923) !important;
+  border-color: var(--dashboard-line, rgba(255, 255, 255, 0.1)) !important;
+  color: var(--dashboard-text, #f7f8fb) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .profile-modal :where(input::placeholder, textarea::placeholder) {
+  color: var(--dashboard-muted, #b8bfcc) !important;
+}
+
+.admin-cms-shell .users-permissions-layout :where(.user-avatar, .user-avatar img),
+.admin-cms-shell .profile-modal :where(.user-avatar, .user-avatar img) {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell .users-permissions-layout .profile-picture-preview,
+.admin-cms-shell .profile-modal .profile-picture-preview {
+  min-height: 72px;
+}
+
+.admin-cms-shell.dashboard-theme-dark .users-permissions-layout .checkbox-chip {
+  background: var(--dashboard-surface-2, #252b38) !important;
+  border-color: transparent !important;
+  color: var(--dashboard-text, #f7f8fb) !important;
+  box-shadow: none !important;
+}
+
+/* Shared avatar image treatment and mobile dashboard nav border cleanup. */
+.admin-cms-shell .user-avatar.has-image {
+  background: transparent !important;
+  color: transparent !important;
+}
+
+.admin-cms-shell .user-avatar.has-image img {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  border: 0 !important;
+  border-radius: inherit !important;
+  outline: 0 !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell .users-permissions-layout .user-profile-cell .user-avatar.has-image,
+.admin-cms-shell .profile-modal-current .user-avatar.has-image,
+.admin-cms-shell .dashboard-profile-button .user-avatar.has-image {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .users-permissions-layout :where(.user-profile-cell, .user-permission-row-heading) {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 768px) {
+  .admin-cms-shell .dashboard-bottom-tabs,
+  .admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs {
+    border: 0 !important;
+    outline: 0 !important;
+    box-shadow: 0 16px 44px rgb(15 23 42 / 0.16) !important;
+  }
+
+  .admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs {
+    background: color-mix(in srgb, var(--dashboard-surface, #1f2430) 92%, transparent) !important;
+  }
+
+  .admin-cms-shell .dashboard-bottom-tabs :where(a.dashboard-bottom-tab-link, button),
+  .admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs :where(a.dashboard-bottom-tab-link, button) {
+    border: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+  }
+}
+
+/* Final verified avatar and mobile bottom-nav overrides. Keep these after dashboard dark-mode sweeps. */
+.admin-cms-shell :where(.user-avatar) {
+  display: inline-grid !important;
+  width: var(--avatar-size, 40px) !important;
+  height: var(--avatar-size, 40px) !important;
+  min-width: var(--avatar-size, 40px) !important;
+  min-height: var(--avatar-size, 40px) !important;
+  max-width: var(--avatar-size, 40px) !important;
+  max-height: var(--avatar-size, 40px) !important;
+  aspect-ratio: 1 / 1 !important;
+  flex: 0 0 var(--avatar-size, 40px) !important;
+  place-items: center !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell :where(.user-avatar.has-image) {
+  background: transparent !important;
+  color: transparent !important;
+  clip-path: circle(50% at 50% 50%) !important;
+}
+
+.admin-cms-shell :where(.user-avatar.has-image img) {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
+  aspect-ratio: 1 / 1 !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  outline: 0 !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  overflow: hidden !important;
+  clip-path: circle(50% at 50% 50%) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell .users-permissions-layout :where(.user-profile-cell) {
+  align-items: center !important;
+}
+
+@media (max-width: 720px) {
+  .admin-cms-shell .users-permissions-layout :where(.user-profile-cell) {
+    align-items: center !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-cms-shell.dashboard-theme-dark :where(.dashboard-bottom-tabs) {
+    gap: 4px !important;
+    border: 0 !important;
+    outline: 0 !important;
+    background: color-mix(in srgb, var(--dashboard-surface, #1e2330) 88%, transparent) !important;
+    box-shadow: 0 16px 44px rgb(0 0 0 / 0.22) !important;
+  }
+
+  .admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs :where(a.dashboard-bottom-tab-link, button),
+  .admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs :where(a.dashboard-bottom-tab-link, button):hover,
+  .admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs :where(a.dashboard-bottom-tab-link, button):focus-visible,
+  .admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs :where(a.dashboard-bottom-tab-link.active, button.active) {
+    border: 0 !important;
+    outline: 0 !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    color: var(--dashboard-muted, #8a8f9c) !important;
+    box-shadow: none !important;
+    filter: none !important;
+    transform: none !important;
+  }
+
+  .admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs :where(a.dashboard-bottom-tab-link.active, button.active),
+  .admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs :where(a.dashboard-bottom-tab-link.active, button.active) svg {
+    color: var(--dashboard-text, #f1f2f5) !important;
+    stroke: var(--dashboard-text, #f1f2f5) !important;
+  }
+}
+
+/* Final dark-mode readability guard for dashboard-only white legacy panels. */
+.admin-cms-shell.dashboard-theme-dark :where(
+  .users-permissions-layout,
+  .users-permissions-layout *,
+  .profile-modal,
+  .profile-modal *,
+  .dashboard-bottom-tabs,
+  .dashboard-bottom-tabs *
+) {
+  text-shadow: none !important;
+}
+
+/* Final Forms personal-list dark-mode repair. */
+.admin-cms-shell.dashboard-theme-dark :where(
+  .forms-dashboard,
+  .forms-personal-list,
+  .forms-personal-card
+) {
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark :where(.forms-personal-card) {
+  border: 0 !important;
+  background: var(--dashboard-surface, #1e2330) !important;
+  color: var(--dashboard-text, #f1f2f5) !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-personal-card :where(h1, h2, h3, h4, strong, b) {
+  color: var(--dashboard-text, #f1f2f5) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-personal-card :where(p, small, span, .forms-personal-meta, .formatted-text, .formatted-text p) {
+  color: var(--dashboard-muted, #8a8f9c) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-personal-card :where(.forms-status-pill) {
+  background: var(--dashboard-surface-2, #262c3b) !important;
+  color: var(--dashboard-text, #f1f2f5) !important;
+  border-color: transparent !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .forms-personal-card :where(.primary-action, button.primary-action) {
+  background: var(--dashboard-accent-soft, #0c447c) !important;
+  color: var(--dashboard-accent-text, #e6f1fb) !important;
+  border-color: var(--dashboard-accent-soft, #0c447c) !important;
+}
+
+/* Mobile bottom nav state repair: active stays active, inactive hover is visible. */
+@media (max-width: 768px) {
+  .admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs :where(a.dashboard-bottom-tab-link, button) {
+    border: 0 !important;
+    outline: 0 !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    color: var(--dashboard-muted, #8a8f9c) !important;
+    box-shadow: none !important;
+    filter: none !important;
+    transform: none !important;
+  }
+
+  .admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs :where(a.dashboard-bottom-tab-link:not(.active), button:not(.active)):hover,
+  .admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs :where(a.dashboard-bottom-tab-link:not(.active), button:not(.active)):focus-visible {
+    background: var(--dashboard-hover, #2b3345) !important;
+    background-color: var(--dashboard-hover, #2b3345) !important;
+    color: var(--dashboard-text, #f1f2f5) !important;
+  }
+
+  .admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs :where(a.dashboard-bottom-tab-link.active, button.active),
+  .admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs :where(a.dashboard-bottom-tab-link.active, button.active):hover,
+  .admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs :where(a.dashboard-bottom-tab-link.active, button.active):focus-visible {
+    background: var(--dashboard-accent-soft, #0c447c) !important;
+    background-color: var(--dashboard-accent-soft, #0c447c) !important;
+    color: var(--dashboard-accent-text, #e6f1fb) !important;
+  }
+
+  .admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs :where(a.dashboard-bottom-tab-link.active, button.active) svg,
+  .admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs :where(a.dashboard-bottom-tab-link.active, button.active):hover svg,
+  .admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs :where(a.dashboard-bottom-tab-link.active, button.active):focus-visible svg {
+    color: var(--dashboard-accent-text, #e6f1fb) !important;
+    stroke: var(--dashboard-accent-text, #e6f1fb) !important;
   }
 }

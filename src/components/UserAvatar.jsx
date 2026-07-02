@@ -11,9 +11,10 @@ export default function UserAvatar({ user, name, imageUrl, size = 40, className 
   const src = imageUrl ?? user?.profilePictureUrl ?? user?.authorProfilePictureUrl ?? null;
   const initials = getInitials(displayName);
   const style = { "--avatar-size": `${size}px` };
+  const avatarClassName = ["user-avatar", src ? "has-image" : "has-initials", className].filter(Boolean).join(" ");
 
   return (
-    <span className={`user-avatar ${className}`.trim()} style={style} aria-label={displayName} title={displayName}>
+    <span className={avatarClassName} style={style} aria-label={displayName} title={displayName}>
       {src ? <img src={src} alt="" loading="lazy" decoding="async" /> : <span>{initials}</span>}
     </span>
   );

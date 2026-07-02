@@ -3,12 +3,27 @@ import { getSupabasePublicFileUrl } from "./supabaseClient.js";
 export function normalizeProfile(profile) {
   const role = profile.role ?? profile.role_id ?? "chief";
   const chiefLevel = profile.chief_level ?? profile.chiefLevel ?? null;
+  const isCoordinator = Boolean(profile.is_coordinator ?? profile.isCoordinator);
+  const coordinatorGroupIds = Array.isArray(profile.coordinator_group_ids)
+    ? profile.coordinator_group_ids
+    : Array.isArray(profile.coordinatorGroupIds)
+      ? profile.coordinatorGroupIds
+      : [];
+  const assignedGroupIds = Array.from(new Set([profile.group_id ?? profile.groupId, ...coordinatorGroupIds].filter(Boolean)));
+  const roles = Array.from(new Set([
+    role === "admin" ? "admin" : null,
+    role === "chief" || assignedGroupIds.length || chiefLevel ? "chief" : null
+  ].filter(Boolean)));
 
   return {
     id: profile.id,
     name: profile.full_name ?? profile.display_name ?? profile.name ?? profile.email ?? "Internal user",
     email: profile.email ?? profile.username ?? "",
     role,
+    roles,
+    isCoordinator: assignedGroupIds.length > 1,
+    coordinatorGroupIds,
+    assignedGroupIds,
     groupId: profile.group_id ?? profile.groupId ?? null,
     chiefLevel,
     accountStatus: profile.account_status ?? profile.accountStatus ?? "active",

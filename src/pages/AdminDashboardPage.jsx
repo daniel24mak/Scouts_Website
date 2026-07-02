@@ -38,6 +38,7 @@ import {
   addRegisteredScout,
   changeOwnPassword,
   resetUserPassword,
+  removeDashboardUser,
   assignEquipeScouts,
   createAlbum,
   createBlog,
@@ -98,7 +99,9 @@ import {
   canPublishContent,
   canTakeAttendance,
   canUseForms,
-  canViewAllForms
+  canViewAllForms,
+  isAdmin as hasAdminRole,
+  isChief as hasChiefRole
 } from "../services/permissions.js";
 import { subscribeDashboardRealtime } from "../services/realtimeService.js";
 import { isSupabaseConfigured } from "../services/supabaseClient.js";
@@ -119,9 +122,10 @@ const emptyScout = {
 const emptyChief = {
   id: "",
   name: "",
-  email: "",
-  role: "chief",
+  email: "",  role: "chief",
   groupId: "",
+  assignedGroupIds: [],
+  coordinatorGroupIds: [],
   chiefLevel: "chief",
   accountStatus: "active",
   temporaryPassword: "",
@@ -285,11 +289,44 @@ function arrayBufferToBase64(buffer) {
   return window.btoa(binary);
 }
 
+function getCoordinatorGroupIds(user) {
+  return Array.isArray(user?.coordinatorGroupIds) ? user.coordinatorGroupIds : [];
+}
+
+function getProfileAssignedGroupIds(user) {
+  return Array.from(new Set([
+    ...(Array.isArray(user?.assignedGroupIds) ? user.assignedGroupIds : []),
+    user?.groupId,
+    ...getCoordinatorGroupIds(user)
+  ].filter(Boolean)));
+}
+
+function getUserRoles(user) {
+  if (!user) return [];
+  return Array.from(new Set([
+    user.role === "admin" ? "admin" : null,
+    user.role === "chief" || user.chiefLevel || getProfileAssignedGroupIds(user).length ? "chief" : null
+  ].filter(Boolean)));
+}
+
+function getPrimaryRole(roles) {
+  return roles.includes("admin") ? "admin" : "chief";
+}
+
+function getAssignableGroupIds(user) {
+  if (!user) return [];
+  return getProfileAssignedGroupIds(user);
+}
+
+function canAccessGroup(user, groupId) {
+  return hasAdminRole(user) || getAssignableGroupIds(user).includes(groupId);
+}
+
 function chiefDefaults(level) {
-    if (level === "head") {
+  if (level === "head") {
     return { canPublish: true, canCreateGroupMeetings: true, canEditScouts: true, manageFormTemplates: true, viewAllForms: true, postForms: true };
   }
-    if (level === "vice") {
+  if (level === "vice") {
     return { canPublish: true, canCreateGroupMeetings: true, canEditScouts: false, manageFormTemplates: false, viewAllForms: false, postForms: true };
   }
 
@@ -297,11 +334,15 @@ function chiefDefaults(level) {
 }
 
 function toChiefForm(user) {
+  const roles = getUserRoles(user);
+  const assignedGroupIds = getProfileAssignedGroupIds(user);
   return {
     name: user.name,
     email: user.email ?? "",
-    role: user.role ?? "chief",
-    groupId: user.groupId ?? "",
+    role: getPrimaryRole(roles),
+    assignedGroupIds,
+    groupId: assignedGroupIds[0] ?? "",
+    coordinatorGroupIds: assignedGroupIds,
     chiefLevel: user.chiefLevel ?? "chief",
     accountStatus: user.accountStatus ?? "active",
     canPublish: Boolean(user.permissions.canPublish),
@@ -315,7 +356,6 @@ function toChiefForm(user) {
     profilePicturePreview: ""
   };
 }
-
 function filterBySearch(items, search, fields) {
   const term = search.trim().toLowerCase();
     if (!term) {
@@ -346,7 +386,7 @@ function canSeeDashboardEvent(event, user) {
     return false;
   }
 
-  if (user?.role !== "admin" && (event.approvalStatus ?? "approved") !== "approved") {
+  if (!hasAdminRole(user) && (event.approvalStatus ?? "approved") !== "approved") {
     return false;
   }
 
@@ -358,7 +398,7 @@ function canSeeDashboardEvent(event, user) {
     return false;
   }
 
-  if (user.role === "admin") {
+  if (hasAdminRole(user)) {
     return true;
   }
 
@@ -367,7 +407,7 @@ function canSeeDashboardEvent(event, user) {
   }
 
   if (event.visibility === "group") {
-    return event.visibleGroupIds?.includes(user.groupId) || event.groupId === user.groupId;
+    return getAssignableGroupIds(user).some((groupId) => event.visibleGroupIds?.includes(groupId) || event.groupId === groupId);
   }
 
   return event.type !== "meeting";
@@ -377,13 +417,13 @@ function getEquipeName(scout, equipes) {
 }
 
 function hasChiefAccess(user) {
-  return user?.role === "chief" || Boolean(user?.groupId && user?.chiefLevel);
+  return hasChiefRole(user) || Boolean(getProfileAssignedGroupIds(user).length && user?.chiefLevel);
 }
 
 function canManageEquipesForGroup(user, groupId) {
   return canManageSystem(user) || (
-    user?.groupId === groupId &&
-    ["head", "vice"].includes(user?.chiefLevel) &&
+    canAccessGroup(user, groupId) &&
+    (["head", "vice"].includes(user?.chiefLevel)) &&
     user?.accountStatus !== "disabled"
   );
 }
@@ -397,7 +437,7 @@ function isSectionAllowed(section, user) {
     return access !== "settings";
   }
     if (id === "equipes") {
-    return ["head", "vice"].includes(user?.chiefLevel);
+    return ["head", "vice"].includes(user?.chiefLevel) && getProfileAssignedGroupIds(user).length > 0;
   }
     if (access === "settings" || access === "admin") {
     return false;
@@ -591,7 +631,7 @@ export default function AdminDashboardPage() {
   const [assignmentPreview, setAssignmentPreview] = useState(null);
   const [isEquipeActionLoading, setIsEquipeActionLoading] = useState(false);
   const [chiefEdits, setChiefEdits] = useState({});
-  const [newChief, setNewChief] = useState({ ...emptyChief, groupId: data.groups[0]?.id ?? "" });
+  const [newChief, setNewChief] = useState({ ...emptyChief, groupId: data.groups[0]?.id ?? "", assignedGroupIds: data.groups[0]?.id ? [data.groups[0].id] : [] });
   const [newChiefPreview, setNewChiefPreview] = useState("");
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -601,6 +641,7 @@ export default function AdminDashboardPage() {
   const [profileMessage, setProfileMessage] = useState("");
   const [passwordResetUser, setPasswordResetUser] = useState(null);
   const [passwordResetValue, setPasswordResetValue] = useState("");
+  const [editingUserId, setEditingUserId] = useState(null);
   const [avatarCropRequest, setAvatarCropRequest] = useState(null);
   const [postEdits, setPostEdits] = useState({});
   const [newPost, setNewPost] = useState(emptyPost);
@@ -665,13 +706,15 @@ export default function AdminDashboardPage() {
 
   const visibleSections = sections.filter((section) => isSectionAllowed(section, user));
   const isAdmin = canManageSystem(user);
-  const dashboardGroupId = isAdmin ? selectedGroupId : user?.groupId;
+  const assignedGroupIds = isAdmin ? data.groups.map((group) => group.id) : getAssignableGroupIds(user);
+  const dashboardGroupId = assignedGroupIds.includes(selectedGroupId) ? selectedGroupId : assignedGroupIds[0] ?? data.groups[0]?.id ?? "";
   const dashboardGroup = data.groups.find((group) => group.id === dashboardGroupId);
+  const groupSwitcherGroups = data.groups.filter((group) => assignedGroupIds.includes(group.id));
   const usersById = useMemo(() => new Map((data.users ?? []).map((profile) => [profile.id, profile])), [data.users]);
   const getSubmitterProfile = (submittedBy) => usersById.get(submittedBy) ?? null;
   const getSubmitterName = (item) => item.submitterName || getSubmitterProfile(item.submittedBy)?.name || (item.submittedBy && !String(item.submittedBy).includes("-") ? item.submittedBy : "Unknown");
   const getSubmitterPicture = (item) => item.submitterProfilePictureUrl || item.profilePictureUrl || getSubmitterProfile(item.submittedBy)?.profilePictureUrl || null;
-  const chiefs = data.users.filter((user) => user.role === "chief" || user.groupId || user.chiefLevel);
+  const chiefs = data.users.filter((profile) => hasChiefAccess(profile));
   const groupEquipes = (data.equipes ?? []).filter((equipe) => equipe.groupId === dashboardGroupId && equipe.isActive);
   const groupChiefs = chiefs.filter((chief) => chief.groupId === dashboardGroupId);
   const allPosts = data.allBlogPosts ?? data.blogPosts;
@@ -684,7 +727,7 @@ export default function AdminDashboardPage() {
   const isPostedFormTargetedToUser = (form, targetUser = user) => {
     if (!targetUser) return false;
     if (form.targetType === "all_chiefs") return true;
-    if (form.targetType === "groups") return form.targetGroupIds?.includes(targetUser.groupId);
+    if (form.targetType === "groups") return getAssignableGroupIds(targetUser).some((groupId) => form.targetGroupIds?.includes(groupId));
     if (form.targetType === "users") return form.targetUserIds?.includes(targetUser.id);
     return false;
   };
@@ -984,7 +1027,7 @@ export default function AdminDashboardPage() {
     () => {
       const permittedScouts = isAdmin
         ? data.registeredScouts
-        : data.registeredScouts.filter((scout) => scout.groupId === user?.groupId);
+        : data.registeredScouts.filter((scout) => scout.groupId === dashboardGroupId);
       const byEquipe =
         selectedEquipeId === "all"
           ? permittedScouts
@@ -994,7 +1037,7 @@ export default function AdminDashboardPage() {
 
       return filterBySearch(byEquipe, search, ["name", "schoolGrade", "school", "groupId"]);
     },
-    [data.registeredScouts, isAdmin, search, selectedEquipeId, user?.groupId]
+    [data.registeredScouts, dashboardGroupId, isAdmin, search, selectedEquipeId]
   );
   const visiblePosts = useMemo(() => {
     const availablePosts = isAdmin ? allPosts.filter((post) => post.approvalStatus !== "draft" || post.submittedBy === user?.id) : allPosts.filter((post) => post.submittedBy === user?.id);
@@ -1051,6 +1094,23 @@ export default function AdminDashboardPage() {
     await logAuditEvent("settings_changed", "Grouping rules", "active", { sortBy, assignmentMode });
     setSaveMessage("Sorting and grouping rules saved.");
     await refresh();
+  };
+  const scopedUser = useMemo(() => ({
+    ...user,
+    groupId: dashboardGroupId
+  }), [dashboardGroupId, user]);
+  const renderCoordinatorGroupSwitcher = (label = "View group") => {
+    if (groupSwitcherGroups.length <= 1) return null;
+    return (
+      <div className="cms-toolbar coordinator-group-switcher">
+        <label>
+          {label}
+          <select value={dashboardGroupId} onChange={(event) => setSelectedGroupId(event.target.value)}>
+            {groupSwitcherGroups.map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}
+          </select>
+        </label>
+      </div>
+    );
   };
   const openDashboardSection = (sectionId) => {
     setActiveSection(sectionId);
@@ -1402,6 +1462,45 @@ export default function AdminDashboardPage() {
 
     await saveAssignmentPreview(preview);
   };
+  const normalizeUserRolePayload = (profile) => {
+    const assignedGroupIds = Array.from(new Set([
+      ...(profile.assignedGroupIds ?? []),
+      profile.groupId
+    ].filter(Boolean)));
+    const role = profile.role === "admin" ? "admin" : "chief";
+
+    return {
+      ...profile,
+      role,
+      assignedGroupIds,
+      groupId: assignedGroupIds[0] ?? "",
+      coordinatorGroupIds: assignedGroupIds,
+      chiefLevel: role === "chief" || assignedGroupIds.length ? profile.chiefLevel ?? "chief" : null,
+      isCoordinator: assignedGroupIds.length > 1
+    };
+  };
+
+  const validateUserRolePayload = (profile) => {
+    if (!profile.role) {
+      throw new Error("Choose a role for this user.");
+    }
+    if (profile.role === "chief" && !profile.assignedGroupIds?.length) {
+      throw new Error("Select at least one group for this chief.");
+    }
+  };
+
+  const toggleAssignedGroup = (ids, groupId, checked) => {
+    const currentIds = ids ?? [];
+    return checked
+      ? Array.from(new Set([...currentIds, groupId]))
+      : currentIds.filter((id) => id !== groupId);
+  };
+
+  const startUserEdit = (chief) => {
+    setChiefEdits((current) => ({ ...current, [chief.id]: current[chief.id] ?? toChiefForm(chief) }));
+    setEditingUserId(chief.id);
+    setPasswordResetUser(null);
+  };
   const setChiefLevel = (chiefId, level) => {
     setChiefEdits((current) => ({
       ...current,
@@ -1454,9 +1553,16 @@ export default function AdminDashboardPage() {
     setNewChief((current) => ({ ...current, chiefLevel: level, ...chiefDefaults(level) }));
   };
   const saveChief = async (chiefId) => {
-    await updateChief(chiefId, chiefEdits[chiefId]);
-    setSaveMessage("User and permissions saved.");
-    await refresh();
+    try {
+      const payload = normalizeUserRolePayload(chiefEdits[chiefId] ?? toChiefForm(chiefs.find((chief) => chief.id === chiefId)));
+      validateUserRolePayload(payload);
+      await updateChief(chiefId, payload);
+      setEditingUserId(null);
+      setSaveMessage("User and permissions saved.");
+      await refresh();
+    } catch (error) {
+      setSaveMessage(`User could not be saved: ${error.message}`);
+    }
   };
   const createChief = async (event) => {
     event.preventDefault();
@@ -1470,16 +1576,28 @@ export default function AdminDashboardPage() {
       if (!newChief.temporaryPassword) {
         throw new Error("Enter a temporary password for the new user.");
       }
-      if (newChief.role !== "admin" && !newChief.groupId) {
-        throw new Error("Select a group for this user.");
-      }
+      const payload = normalizeUserRolePayload(newChief);
+      validateUserRolePayload(payload);
 
-      await addChief(newChief);
-      setNewChief({ ...emptyChief, groupId: data.groups[0]?.id ?? "" });
+      await addChief(payload);
+      setNewChief({ ...emptyChief, groupId: data.groups[0]?.id ?? "", assignedGroupIds: data.groups[0]?.id ? [data.groups[0].id] : [] });
       setSaveMessage("User created in Supabase Auth and added to Users & Permissions.");
       await refresh();
     } catch (error) {
       setSaveMessage(`User was not fully created: ${error.message}`);
+    }
+  };
+  const deleteChiefUser = async (chief) => {
+    if (!chief?.id) return;
+    const confirmed = window.confirm(`Delete ${chief.name}? This removes the dashboard user account and cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      await removeDashboardUser(chief.id);
+      setSaveMessage("User deleted.");
+      await refresh();
+    } catch (error) {
+      setSaveMessage(`User could not be deleted: ${error.message}`);
     }
   };
   const submitOwnProfileChange = async (event) => {
@@ -2176,8 +2294,37 @@ export default function AdminDashboardPage() {
 
   const notificationIcon = (notification, size = 18) => notification.type === "contact" ? <MessageSquare size={size} /> : notification.type === "form" ? <FileText size={size} /> : notification.type === "profile" ? <Users size={size} /> : <CheckCircle2 size={size} />;
 
-  const renderNotifications = () => <div className="notifications-page"><div className="notifications-page-toolbar"><div><p className="eyebrow">Updates</p><h2>Notifications</h2></div><button type="button" className="inline-action" onClick={async () => { await readAllDashboardNotifications(); await refresh(); }}>Mark all as read</button></div><div className="notifications-full-list">{notificationItems.length ? notificationItems.map((notification) => <div className={`notification-row notification-row-shell ${notification.isRead ? "" : "unread"}`} key={notification.id ?? `${notification.contentType}-${notification.entityId ?? notification.title}`}><button type="button" className="notification-row-main" onClick={() => openNotification(notification)}><span className="notification-type-icon">{notificationIcon(notification, 18)}</span><div><strong>{notification.title ?? notification.contentType}</strong><p>{notification.message ?? notification.title}</p><small>{formatRelativeTime(notification.createdAt)}</small></div>{!notification.isRead && <i aria-label="Unread" />}</button>{notification.id && !String(notification.id).startsWith("open-form-") && <button type="button" className="icon-button notification-delete-button danger-action" aria-label="Delete notification" onClick={(event) => deleteNotificationItem(event, notification)}><Trash2 size={16} /></button>}</div>) : <p className="empty-state">No notifications yet.</p>}</div></div>;
-  const renderMyGroup = () => {
+  const renderNotifications = () => (
+    <div className="notifications-page">
+      <div className="notifications-page-toolbar">
+        <div>
+          <p className="eyebrow">Updates</p>
+          <h2>Notifications</h2>
+        </div>
+        <button type="button" className="inline-action" onClick={async () => { await readAllDashboardNotifications(); await refresh(); }}>Mark all as read</button>
+      </div>
+      <div className="notifications-full-list">
+        {notificationItems.length ? notificationItems.map((notification) => (
+          <div className={`notification-row notification-row-shell ${notification.isRead ? "" : "unread"}`} key={notification.id ?? `${notification.contentType}-${notification.entityId ?? notification.title}`}>
+            <button type="button" className="notification-row-main" onClick={() => openNotification(notification)}>
+              <span className="notification-type-icon">{notificationIcon(notification, 18)}</span>
+              <div>
+                <strong>{notification.title ?? notification.contentType}</strong>
+                <p>{notification.message ?? notification.title}</p>
+                <small>{formatRelativeTime(notification.createdAt)}</small>
+              </div>
+              {!notification.isRead && <i aria-label="Unread" />}
+            </button>
+            {notification.id && !String(notification.id).startsWith("open-form-") && (
+              <button type="button" className="icon-button notification-delete-button danger-action" aria-label="Delete notification" onClick={(event) => deleteNotificationItem(event, notification)}>
+                <Trash2 size={16} />
+              </button>
+            )}
+          </div>
+        )) : <p className="empty-state">No notifications yet.</p>}
+      </div>
+    </div>
+  );  const renderMyGroup = () => {
     const groupScouts = sortScouts(
       data.registeredScouts.filter((scout) => scout.groupId === dashboardGroupId),
       data.registrationImportSettings.sortBy
@@ -2185,18 +2332,7 @@ export default function AdminDashboardPage() {
 
     return (
       <div className="cms-panel-stack my-group-reference">
-        {isAdmin && (
-          <div className="cms-toolbar">
-            <label>
-              View group
-              <select value={selectedGroupId} disabled={isEquipeActionLoading} onChange={(event) => setSelectedGroupId(event.target.value)}>
-                {data.groups.map((group) => (
-                  <option value={group.id} key={group.id}>{group.name}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-        )}
+{renderCoordinatorGroupSwitcher()}
         {canTakeAttendance(user) && (
           <div className="my-group-attendance-link">
             <button type="button" className="inline-action" onClick={() => setActiveSection("scoutAttendance")}>
@@ -2241,8 +2377,9 @@ export default function AdminDashboardPage() {
       ...allAlbums,
       ...data.plannedEvents
     ].filter((item) => item.submittedBy === user?.id);
-    const groupScouts = data.registeredScouts.filter((scout) => scout.groupId === user?.groupId);
-    const groupAttendance = data.attendanceMeetings.filter((meeting) => meeting.groupId === user?.groupId);
+    const overviewGroupIds = isAdmin ? data.groups.map((group) => group.id) : assignedGroupIds;
+    const groupScouts = data.registeredScouts.filter((scout) => overviewGroupIds.includes(scout.groupId));
+    const groupAttendance = data.attendanceMeetings.filter((meeting) => overviewGroupIds.includes(meeting.groupId));
     const stats = isAdmin
       ? [
           ["Active scouts", data.registeredScouts.length],
@@ -2475,7 +2612,7 @@ export default function AdminDashboardPage() {
             <option value="all">All Equipes</option>
             <option value="unassigned">Unassigned</option>
             {(data.equipes ?? [])
-              .filter((equipe) => isAdmin || equipe.groupId === user?.groupId)
+              .filter((equipe) => isAdmin || assignedGroupIds.includes(equipe.groupId))
               .map((equipe) => <option value={equipe.id} key={equipe.id}>{equipe.name}</option>)}
           </select>
         </label>
@@ -2569,16 +2706,7 @@ export default function AdminDashboardPage() {
     return (
       <div className="cms-panel-stack equipe-management-redesign">
         {isEquipeActionLoading && <UploadLoadingState message="Updating equipe management..." />}
-        {isAdmin && (
-          <div className="cms-toolbar">
-            <label>
-              Manage group
-              <select value={selectedGroupId} disabled={isEquipeActionLoading} onChange={(event) => setSelectedGroupId(event.target.value)}>
-                {data.groups.map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}
-              </select>
-            </label>
-          </div>
-        )}
+{renderCoordinatorGroupSwitcher("Manage group")}
 
         <article className="admin-panel equipe-zone equipe-create-zone">
           <div className="panel-heading compact-heading">
@@ -2761,12 +2889,122 @@ export default function AdminDashboardPage() {
       </div>
     );
   };
+  const renderAssignedGroupMultiSelect = (selectedIds, onChange) => (
+    <div className="group-checkbox-grid">
+      {data.groups.map((group) => (
+        <label className="checkbox-chip" key={group.id}>
+          <input
+            type="checkbox"
+            checked={(selectedIds ?? []).includes(group.id)}
+            onChange={(event) => onChange(toggleAssignedGroup(selectedIds, group.id, event.target.checked))}
+          />
+          <span>{group.name}</span>
+        </label>
+      ))}
+    </div>
+  );
+
+  const renderUserEditPanel = (chief, edit) => (
+    <div className="user-permission-edit-panel">
+      <div className="inline-editor-grid compact">
+        <label>
+          Name
+          <input value={edit.name} onChange={(event) => setChiefEdits((current) => ({ ...current, [chief.id]: normalizeUserRolePayload({ ...edit, name: event.target.value }) }))} />
+        </label>
+        <label>
+          Email
+          <input value={edit.email} onChange={(event) => setChiefEdits((current) => ({ ...current, [chief.id]: normalizeUserRolePayload({ ...edit, email: event.target.value }) }))} />
+        </label>
+        <label>
+          Role
+          <select value={edit.role} onChange={(event) => setChiefEdits((current) => ({ ...current, [chief.id]: normalizeUserRolePayload({ ...edit, role: event.target.value }) }))}>
+            <option value="chief">Chief</option>
+            <option value="admin">Admin</option>
+          </select>
+        </label>
+        <label>
+          Level
+          <select value={edit.chiefLevel ?? "chief"} onChange={(event) => setChiefLevel(chief.id, event.target.value)}>
+            <option value="chief">Chief</option>
+            <option value="vice">Vice head chief</option>
+            <option value="head">Head chief</option>
+          </select>
+        </label>
+        <label>
+          Status
+          <select value={edit.accountStatus} onChange={(event) => setChiefEdits((current) => ({ ...current, [chief.id]: normalizeUserRolePayload({ ...edit, accountStatus: event.target.value }) }))}>
+            <option value="active">Active</option>
+            <option value="disabled">Disabled</option>
+          </select>
+        </label>
+        <label className="avatar-replace-control wide-field">
+          <span>Profile picture</span>
+          <input type="file" accept={acceptedImageTypes} onChange={(event) => openAvatarCrop(event.target.files?.[0] ?? null, { type: "chief", chief })} />
+        </label>
+      </div>
+      <div className="form-section-heading compact-heading">
+        <h3>Assigned groups</h3>
+        <p className="helper-text">One selected group behaves like a normal chief. Multiple selected groups give this chief the same view with a group selector.</p>
+        {renderAssignedGroupMultiSelect(edit.assignedGroupIds, (ids) => setChiefEdits((current) => ({ ...current, [chief.id]: normalizeUserRolePayload({ ...edit, assignedGroupIds: ids }) })))}
+      </div>
+      <div className="permission-toggle-grid">
+        {[
+          ["canPublish", "Post/photos"],
+          ["canCreateGroupMeetings", "Meetings"],
+          ["canEditScouts", "Edit scouts"],
+          ["manageFormTemplates", "Form templates"],
+          ["postForms", "Post forms"],
+          ["viewAllForms", "All responses"]
+        ].map(([field, label]) => (
+          <label className="checkbox-chip" key={field}>
+            <input type="checkbox" checked={Boolean(edit[field])} onChange={(event) => setChiefEdits((current) => ({ ...current, [chief.id]: normalizeUserRolePayload({ ...edit, [field]: event.target.checked }) }))} />
+            <span>{label}</span>
+          </label>
+        ))}
+      </div>
+      <div className="action-row compact-actions">
+        <button type="button" className="primary-action" onClick={() => saveChief(chief.id)}>Save changes</button>
+        <button type="button" className="inline-action" onClick={() => setEditingUserId(null)}>Cancel</button>
+      </div>
+    </div>
+  );
+
   const renderChiefs = () => (
-    <div className="cms-panel-stack">
-      <form className="inline-editor-grid chief-add-form" onSubmit={createChief}>
-        <input required placeholder="Full name" value={newChief.name} onChange={(event) => setNewChief((current) => ({ ...current, name: event.target.value }))} />
-        <input required type="email" placeholder="Email / username" value={newChief.email} onChange={(event) => setNewChief((current) => ({ ...current, email: event.target.value }))} />
-        <input required type="password" placeholder="Temporary password" value={newChief.temporaryPassword} onChange={(event) => setNewChief((current) => ({ ...current, temporaryPassword: event.target.value }))} />
+    <div className="cms-panel-stack users-permissions-layout">
+      <form className="cms-form user-permissions-form" onSubmit={createChief}>
+        <div className="form-section-heading">
+          <h3>Add dashboard user</h3>
+          <p className="helper-text">Create admins or chiefs. Selecting multiple assigned groups gives a chief the group selector without changing the dashboard experience.</p>
+        </div>
+        <div className="inline-editor-grid compact">
+          <label>
+            Full name
+            <input required placeholder="Full name" value={newChief.name} onChange={(event) => setNewChief((current) => ({ ...current, name: event.target.value }))} />
+          </label>
+          <label>
+            Email / username
+            <input required type="email" placeholder="Email / username" value={newChief.email} onChange={(event) => setNewChief((current) => ({ ...current, email: event.target.value }))} />
+          </label>
+          <label>
+            Temporary password
+            <input required type="password" placeholder="Temporary password" value={newChief.temporaryPassword} onChange={(event) => setNewChief((current) => ({ ...current, temporaryPassword: event.target.value }))} />
+          </label>
+          <label>
+            Role
+            <select value={newChief.role} onChange={(event) => setNewChief((current) => normalizeUserRolePayload({ ...current, role: event.target.value }))}>
+              <option value="chief">Chief</option>
+              <option value="admin">Admin</option>
+            </select>
+          </label>
+          <label>
+            Level
+            <select value={newChief.chiefLevel ?? "chief"} onChange={(event) => setNewChiefLevel(event.target.value)}>
+              <option value="chief">Chief</option>
+              <option value="vice">Vice head chief</option>
+              <option value="head">Head chief</option>
+            </select>
+          </label>
+        </div>
         <label className="profile-picture-picker">
           <span>Profile picture</span>
           <input type="file" accept={acceptedImageTypes} onChange={(event) => openAvatarCrop(event.target.files?.[0] ?? null, { type: "newChief" })} />
@@ -2776,58 +3014,39 @@ export default function AdminDashboardPage() {
           </div>
           {newChief.profilePictureFile && <button type="button" className="inline-action" onClick={() => setNewChief((current) => ({ ...current, profilePictureFile: null }))}>Remove image</button>}
         </label>
-        <select value={newChief.role} onChange={(event) => setNewChief((current) => ({ ...current, role: event.target.value }))}><option value="chief">Chief</option><option value="admin">Admin + chief</option></select>
-        <select value={newChief.groupId} onChange={(event) => setNewChief((current) => ({ ...current, groupId: event.target.value }))}>{data.groups.map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}</select>
-        <select value={newChief.chiefLevel} onChange={(event) => setNewChiefLevel(event.target.value)}><option value="chief">Chief</option><option value="vice">Vice head chief</option><option value="head">Head chief</option></select>
-        <button type="submit">Add user</button>
+        <div className="form-section-heading compact-heading">
+          <h3>Assigned groups</h3>
+          {renderAssignedGroupMultiSelect(newChief.assignedGroupIds, (ids) => setNewChief((current) => normalizeUserRolePayload({ ...current, assignedGroupIds: ids })))}
+        </div>
+        <button type="submit" className="primary-action">Add user</button>
       </form>
-      <div className="table-panel">
-        <table className="editable-table users-permissions-table">
-          <thead><tr><th>Profile</th><th>Name</th><th>Email</th><th>Role</th><th>Group</th><th>Level</th><th>Status</th><th>Post/photos</th><th>Meetings</th><th>Edit scouts</th><th>Form templates</th><th>Post forms</th><th>All responses</th><th>Password</th><th>Save</th></tr></thead>
-          <tbody>
-            {chiefs.map((chief) => {
-              const edit = chiefEdits[chief.id] ?? toChiefForm(chief);
-              const setEdit = (field, value) => setChiefEdits((current) => ({ ...current, [chief.id]: { ...edit, [field]: value } }));
-              const setProfileImage = (file) => {
-                if (edit.profilePicturePreview) {
-                  URL.revokeObjectURL(edit.profilePicturePreview);
-                }
-                setChiefEdits((current) => ({
-                  ...current,
-                  [chief.id]: {
-                    ...edit,
-                    profilePictureFile: file ?? null,
-                    profilePicturePreview: file ? URL.createObjectURL(file) : ""
-                  }
-                }));
-              };
-              return (
-                <tr key={chief.id}>
-                  <td>
-                    <div className="user-profile-cell">
-                      <UserAvatar name={edit.name || chief.name} imageUrl={edit.profilePicturePreview || edit.profilePictureUrl} size={42} />
-                      <label className="avatar-replace-control">
-                        <span>Change</span>
-                        <input type="file" accept={acceptedImageTypes} onChange={(event) => openAvatarCrop(event.target.files?.[0] ?? null, { type: "chief", chief })} />
-                      </label>
-                    </div>
-                  </td>
-                  <td><input value={edit.name} onChange={(event) => setEdit("name", event.target.value)} /></td>
-                  <td><input value={edit.email} onChange={(event) => setEdit("email", event.target.value)} /></td>
-                  <td><select value={edit.role} onChange={(event) => setEdit("role", event.target.value)}><option value="chief">Chief</option><option value="admin">Admin + chief</option></select></td>
-                  <td><select value={edit.groupId} onChange={(event) => setEdit("groupId", event.target.value)}>{data.groups.map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}</select></td>
-                  <td><select value={edit.chiefLevel} onChange={(event) => setChiefLevel(chief.id, event.target.value)}><option value="chief">Chief</option><option value="vice">Vice head chief</option><option value="head">Head chief</option></select></td>
-                  <td><select value={edit.accountStatus} onChange={(event) => setEdit("accountStatus", event.target.value)}><option value="active">Active</option><option value="disabled">Disabled</option></select></td>
-                  {["canPublish", "canCreateGroupMeetings", "canEditScouts", "manageFormTemplates", "postForms", "viewAllForms"].map((field) => (
-                    <td key={field}><label className="checkbox-cell"><input type="checkbox" checked={Boolean(edit[field])} onChange={(event) => setEdit(field, event.target.checked)} /></label></td>
-                  ))}
-                  <td><button type="button" className="inline-action" onClick={() => { setPasswordResetUser(chief); setPasswordResetValue(""); }}>Reset</button></td>
-                  <td><button type="button" className="inline-action" onClick={() => saveChief(chief.id)}>Save</button></td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+
+      <div className="user-permissions-list">
+        {chiefs.map((chief) => {
+          const edit = chiefEdits[chief.id] ?? toChiefForm(chief);
+          const assignedNames = getProfileAssignedGroupIds(chief).map((groupId) => data.groups.find((group) => group.id === groupId)?.name ?? groupId);
+          return (
+            <article className="admin-panel user-permission-card" key={chief.id}>
+              <div className="panel-heading user-permission-row-heading">
+                <div className="user-profile-cell">
+                  <UserAvatar name={edit.name || chief.name} imageUrl={edit.profilePicturePreview || edit.profilePictureUrl} size={48} />
+                  <div>
+                    <strong>{chief.name}</strong>
+                    <p>{chief.email}</p>
+                    <small>{chief.role === "admin" ? "Admin" : "Chief"}{chief.chiefLevel ? ` - ${chief.chiefLevel}` : ""}</small>
+                    <small>{assignedNames.length ? assignedNames.join(", ") : "No group assigned"}</small>
+                  </div>
+                </div>
+                <div className="action-row compact-actions user-row-actions">
+                  <button type="button" className="inline-action" onClick={() => startUserEdit(chief)}>Edit user</button>
+                  <button type="button" className="inline-action" onClick={() => { setPasswordResetUser(chief); setPasswordResetValue(""); setEditingUserId(null); }}>Reset password</button>
+                  <button type="button" className="danger-action" onClick={() => deleteChiefUser(chief)}>Delete user</button>
+                </div>
+              </div>
+              {editingUserId === chief.id && renderUserEditPanel(chief, edit)}
+            </article>
+          );
+        })}
       </div>
     </div>
   );
@@ -3285,13 +3504,13 @@ export default function AdminDashboardPage() {
     if (activeSection === "contactMessages") return renderContactMessages();
     if (activeSection === "notifications") return renderNotifications();
     if (activeSection === "approvals") return renderApprovals();
-    if (activeSection === "scoutAttendance") return <ScoutAttendanceManager />;
-    if (activeSection === "attendanceSheets") return <AttendanceSheetsManager />;
-    if (activeSection === "chiefAttendance") return <ChiefAttendanceManager />;
+    if (activeSection === "scoutAttendance") return <><div className="cms-panel-stack">{renderCoordinatorGroupSwitcher("Take attendance for group")}</div><ScoutAttendanceManager dataOverride={data} userOverride={scopedUser} /></>;
+    if (activeSection === "attendanceSheets") return <><div className="cms-panel-stack">{renderCoordinatorGroupSwitcher("View attendance for group")}</div><AttendanceSheetsManager dataOverride={data} userOverride={scopedUser} /></>;
+    if (activeSection === "chiefAttendance") return <><div className="cms-panel-stack">{renderCoordinatorGroupSwitcher("Take chief attendance for group")}</div><ChiefAttendanceManager dataOverride={data} userOverride={scopedUser} /></>;
     if (["manageForms", "formsCreate", "formTemplates", "postedForms", "formResponses", "myForms", "myFormDrafts", "mySubmittedForms"].includes(activeSection)) {
-      return <FormsDashboard data={data} user={user} isAdmin={isAdmin} mode={activeSection} initialFormId={requestedFormId} onRefresh={refresh} setSaveMessage={setSaveMessage} />;
+      return <FormsDashboard data={data} user={scopedUser} isAdmin={isAdmin} mode={activeSection} initialFormId={requestedFormId} onRefresh={refresh} setSaveMessage={setSaveMessage} />;
     }
-    if (activeSection === "calendar") return <CalendarManagement />;
+    if (activeSection === "calendar") return <CalendarManagement dataOverride={data} userOverride={scopedUser} />;
     if (activeSection === "reports") return <EmptyAdminSection title="Reports" />;
     if (activeSection === "documents") return <EmptyAdminSection title="Documents" />;
     if (activeSection === "archives") return <EmptyAdminSection title="Archived Years" />;
