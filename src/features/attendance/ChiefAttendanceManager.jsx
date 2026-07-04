@@ -18,11 +18,22 @@ function hasChiefAccess(user) {
   return user?.role === "chief" || user?.roles?.includes?.("chief") || Boolean(user?.groupId && user?.chiefLevel);
 }
 
-export default function ChiefAttendanceManager({ dataOverride = null, userOverride = null } = {}) {
+function matchesSearch(item, query, fields) {
+  const term = query.trim().toLowerCase();
+  if (!term) return true;
+
+  return fields.some((field) => {
+    const value = typeof field === "function" ? field(item) : item?.[field];
+    return String(value ?? "").toLowerCase().includes(term);
+  });
+}
+
+export default function ChiefAttendanceManager({ dataOverride = null, userOverride = null, searchQuery = "" } = {}) {
   const { data: bootstrapData, refresh } = useBootstrap();
   const data = dataOverride ?? bootstrapData;
   const groupId = userOverride?.groupId;
-  const chiefs = data.users.filter((chief) => hasChiefAccess(chief) && (!groupId || chief.groupId === groupId));
+  const allChiefs = data.users.filter((chief) => hasChiefAccess(chief) && (!groupId || chief.groupId === groupId));
+  const chiefs = allChiefs.filter((chief) => matchesSearch(chief, searchQuery, ["name", "email", "role", "chiefLevel", "groupId", (item) => data.groups.find((group) => group.id === item.groupId)?.name]));
   const [selectedDate, setSelectedDate] = useState(getTodayDateInputValue);
   const [records, setRecords] = useState({});
   const [saveMessage, setSaveMessage] = useState("");
@@ -33,7 +44,7 @@ export default function ChiefAttendanceManager({ dataOverride = null, userOverri
       date: selectedDate,
       topic: meeting?.topic ?? "Chief meeting",
       records: Object.fromEntries(
-        chiefs.map((chief) => [chief.id, effectiveRecords[chief.id] ?? "Present"])
+        allChiefs.map((chief) => [chief.id, effectiveRecords[chief.id] ?? "Present"])
       )
     });
     setRecords({});

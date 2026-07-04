@@ -23,6 +23,16 @@ function getSessionLabel(session) {
   return label && label !== "Meeting" ? label : session.date;
 }
 
+function matchesSearch(item, query, fields) {
+  const term = query.trim().toLowerCase();
+  if (!term) return true;
+
+  return fields.some((field) => {
+    const value = typeof field === "function" ? field(item) : item?.[field];
+    return String(value ?? "").toLowerCase().includes(term);
+  });
+}
+
 function getAttendancePercentage(scoutId, sessions) {
   if (!sessions.length) {
     return "0%";
@@ -68,7 +78,7 @@ function downloadCsv({ group, scouts, sessions }) {
   URL.revokeObjectURL(url);
 }
 
-export default function AttendanceSheetsManager({ dataOverride = null, userOverride = null } = {}) {
+export default function AttendanceSheetsManager({ dataOverride = null, userOverride = null, searchQuery = "" } = {}) {
   const { user: authUser } = useAuth();
   const { data: bootstrapData, isLoading, error, refresh } = useBootstrap();
   const user = userOverride ?? authUser;
@@ -99,16 +109,17 @@ export default function AttendanceSheetsManager({ dataOverride = null, userOverr
     () =>
       data.attendanceMeetings
         .filter((session) => session.groupId === selectedGroup?.id && (session.scope ?? "group") !== "equipe")
+        .filter((session) => matchesSearch(session, searchQuery, ["date", "topic", (item) => getSessionLabel(item)]))
         .sort((a, b) => String(a.date).localeCompare(String(b.date))),
-    [data.attendanceMeetings, selectedGroup?.id]
+    [data.attendanceMeetings, searchQuery, selectedGroup?.id]
   );
   const groupScouts = useMemo(
     () =>
       sortScouts(
-        data.registeredScouts.filter((scout) => scout.groupId === selectedGroup?.id && scout.status !== "Archived"),
+        data.registeredScouts.filter((scout) => scout.groupId === selectedGroup?.id && scout.status !== "Archived" && matchesSearch(scout, searchQuery, ["name", "schoolGrade", "school", "age", "groupId"])),
         data.registrationImportSettings.sortBy
       ),
-    [data.registeredScouts, data.registrationImportSettings.sortBy, selectedGroup?.id]
+    [data.registeredScouts, data.registrationImportSettings.sortBy, searchQuery, selectedGroup?.id]
   );
 
   const handleLabelSave = async (session) => {

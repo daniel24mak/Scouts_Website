@@ -383,6 +383,143 @@ function filterBySearch(items, search, fields) {
   );
 }
 
+function auditMetaValue(metadata, side, key) {
+  return metadata?.[side]?.[key] ?? metadata?.[`${side}_${key}`] ?? null;
+}
+
+function auditChangedFields(metadata) {
+  return Array.isArray(metadata?.changed_fields) ? metadata.changed_fields : [];
+}
+
+function auditTitleFromMeta(metadata, fallback = "") {
+  return (
+    auditMetaValue(metadata, "new", "title") ||
+    auditMetaValue(metadata, "old", "title") ||
+    auditMetaValue(metadata, "new", "name") ||
+    auditMetaValue(metadata, "old", "name") ||
+    auditMetaValue(metadata, "new", "file_name") ||
+    auditMetaValue(metadata, "old", "file_name") ||
+    metadata?.title ||
+    metadata?.name ||
+    fallback
+  );
+}
+
+function formatAuditDetails(details) {
+  const entries = Object.entries(details ?? {}).filter(([, value]) => value !== null && value !== undefined && value !== "");
+  return entries.length ? entries.map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(", ") : value}`).join(" | ") : "";
+}
+
+function mapDashboardActivityLog(log, actorName) {
+  const metadata = log.metadata ?? {};
+  const table = metadata.table ?? log.entityType;
+  const operation = metadata.operation ?? String(log.action ?? "").split("_")[0]?.toUpperCase();
+  const changedFields = auditChangedFields(metadata);
+  const oldRole = auditMetaValue(metadata, "old", "role");
+  const newRole = auditMetaValue(metadata, "new", "role");
+  const oldStatus = auditMetaValue(metadata, "old", "account_status") ?? auditMetaValue(metadata, "old", "status");
+  const newStatus = auditMetaValue(metadata, "new", "account_status") ?? auditMetaValue(metadata, "new", "status");
+  const oldGroupId = auditMetaValue(metadata, "old", "group_id");
+  const newGroupId = auditMetaValue(metadata, "new", "group_id");
+  const source = auditMetaValue(metadata, "new", "source") ?? metadata.source;
+  const base = {
+    actor: actorName,
+    createdAt: formatDubaiDateTime(log.createdAt),
+    entityId: log.entityId,
+    details: ""
+  };
+  const makeRow = (category, action, details = {}) => ({
+    ...base,
+    category,
+    action,
+    entityType: category,
+    details: formatAuditDetails(details)
+  });
+
+  if (log.action === "settings_changed") return makeRow("Settings / System-level", "Dashboard-wide setting changed", metadata);
+  if (log.action === "active_scout_year_changed") return makeRow("Settings / System-level", "Dashboard-wide setting changed", { setting: "Active scouting year", from: metadata.previousYearId, to: metadata.yearId });
+  if (log.action === "archive_created") return makeRow("Archived Years", "Year archived", { year: metadata.label, by: actorName });
+  if (log.action === "documents_uploaded") return makeRow("Documents", "Document uploaded", { count: metadata.count, file: metadata.fileName, category: metadata.categoryName });
+  if (log.action === "document_deleted") return makeRow("Documents", "Document deleted", { document: metadata.title });
+  if (log.action === "document_category_created") return makeRow("Documents", "Document category created", { category: metadata.name });
+  if (log.action === "document_category_updated") return makeRow("Documents", "Document category renamed", { category: metadata.name });
+  if (log.action === "document_category_deleted") return makeRow("Documents", "Document category deleted", { category: metadata.name });
+  if (log.action === "document_updated") return makeRow("Documents", "Document reassigned to a different category", { document: metadata.title, fields: changedFields });
+  if (log.action === "blog_edited" || log.action === "blog_submitted") return makeRow("Content", log.action === "blog_edited" ? "Blog post edited" : "Blog post created", { title: metadata.title, status: metadata.status });
+  if (log.action === "album_edited" || log.action === "album_submitted") return makeRow("Content", log.action === "album_edited" ? "Gallery album edited" : "Gallery album created", { title: metadata.title, status: metadata.status });
+  if (log.action === "photo_batch_images_removed") return makeRow("Content", "Gallery photos deleted", { count: metadata.removedCount });
+  if (log.action === "attendance_taken") return makeRow("Attendance", "Attendance record taken", { date: metadata.date, group: metadata.groupId, scope: metadata.scope });
+  if (log.action === "attendance_updated_after_submission") return makeRow("Attendance", "Attendance record edited after submission", { date: metadata.date, group: metadata.groupId, scope: metadata.scope });
+
+  if (table === "user_profiles") {
+    if (operation === "INSERT") return makeRow("Users & Permissions", "User account created", { role: newRole, status: newStatus });
+    if (operation === "DELETE") return makeRow("Users & Permissions", "User permanently deleted", { role: oldRole, status: oldStatus });
+    if (operation === "UPDATE") {
+      if (oldRole && newRole && oldRole !== newRole) return makeRow("Users & Permissions", "Role changed", { before: oldRole, after: newRole });
+      if (oldStatus && newStatus && oldStatus !== newStatus) return makeRow("Users & Permissions", newStatus === "active" ? "User reactivated" : "User deactivated", { before: oldStatus, after: newStatus });
+      if (changedFields.some((field) => ["roles", "assigned_group_ids", "coordinator_group_ids"].includes(field))) return makeRow("Users & Permissions", "Coordinator access changed on user account", { fields: changedFields });
+    }
+  }
+  if (table === "scouts") {
+    if (operation === "INSERT" && source !== "excel") return makeRow("Scouts / Registration", "Scout record created manually", { scout: auditTitleFromMeta(metadata, log.entityId) });
+    if (operation === "DELETE") return makeRow("Scouts / Registration", "Scout record deleted", { scout: auditTitleFromMeta(metadata, log.entityId) });
+    if (operation === "UPDATE") {
+      if (oldGroupId && newGroupId && oldGroupId !== newGroupId) return makeRow("Scouts / Registration", "Scout moved between groups", { scout: auditTitleFromMeta(metadata, log.entityId), from: oldGroupId, to: newGroupId });
+      return makeRow("Scouts / Registration", "Scout record edited", { scout: auditTitleFromMeta(metadata, log.entityId), fields: changedFields });
+    }
+  }
+  if (table === "registration_uploads" && operation === "INSERT") return makeRow("Scouts / Registration", "Bulk registration upload performed", { file: auditTitleFromMeta(metadata, log.entityId), records: metadata.count ?? metadata.successCount, failed: metadata.failCount });
+  if (table === "groups") {
+    if (operation === "INSERT") return makeRow("Groups & Sorting Rules", "Group created", { group: auditTitleFromMeta(metadata, log.entityId) });
+    if (operation === "UPDATE") return makeRow("Groups & Sorting Rules", "Group renamed or edited", { group: auditTitleFromMeta(metadata, log.entityId), fields: changedFields });
+    if (operation === "DELETE") return makeRow("Groups & Sorting Rules", "Group deleted", { group: auditTitleFromMeta(metadata, log.entityId) });
+  }
+  if (table === "grouping_rules") return makeRow("Groups & Sorting Rules", "Sorting rule changed", { fields: changedFields });
+  if (table === "site_content_revisions") {
+    if (operation === "INSERT") return makeRow("Website Content", "Content edit submitted for approval", { page: auditTitleFromMeta(metadata, log.entityId), status: newStatus });
+    if (operation === "UPDATE" && newStatus === "approved") return makeRow("Website Content", "Content edit approved", { page: auditTitleFromMeta(metadata, log.entityId) });
+    if (operation === "UPDATE" && newStatus === "rejected") return makeRow("Website Content", "Content edit rejected", { page: auditTitleFromMeta(metadata, log.entityId) });
+  }
+  if (table === "site_content" && ["INSERT", "UPDATE"].includes(operation)) return makeRow("Website Content", "Content published live", { page: auditTitleFromMeta(metadata, log.entityId), fields: changedFields });
+  if (table === "documents") {
+    if (operation === "INSERT") return makeRow("Documents", "Document uploaded", { file: auditTitleFromMeta(metadata, log.entityId), category: auditMetaValue(metadata, "new", "category_id") });
+    if (operation === "DELETE") return makeRow("Documents", "Document deleted", { file: auditTitleFromMeta(metadata, log.entityId) });
+    if (operation === "UPDATE" && changedFields.includes("category_id")) return makeRow("Documents", "Document reassigned to a different category", { file: auditTitleFromMeta(metadata, log.entityId), from: auditMetaValue(metadata, "old", "category_id"), to: auditMetaValue(metadata, "new", "category_id") });
+  }
+  if (table === "document_categories") {
+    if (operation === "INSERT") return makeRow("Documents", "Document category created", { category: auditTitleFromMeta(metadata, log.entityId) });
+    if (operation === "UPDATE") return makeRow("Documents", "Document category renamed", { category: auditTitleFromMeta(metadata, log.entityId) });
+    if (operation === "DELETE") return makeRow("Documents", "Document category deleted", { category: auditTitleFromMeta(metadata, log.entityId) });
+  }
+  if (table === "posts") {
+    if (operation === "INSERT") return makeRow("Content", "Blog post created", { title: auditTitleFromMeta(metadata, log.entityId) });
+    if (operation === "UPDATE") return makeRow("Content", "Blog post edited", { title: auditTitleFromMeta(metadata, log.entityId), fields: changedFields });
+    if (operation === "DELETE") return makeRow("Content", "Blog post deleted", { title: auditTitleFromMeta(metadata, log.entityId) });
+  }
+  if (table === "gallery_albums") {
+    if (operation === "INSERT") return makeRow("Content", "Gallery album created", { title: auditTitleFromMeta(metadata, log.entityId) });
+    if (operation === "DELETE") return makeRow("Content", "Gallery album deleted", { title: auditTitleFromMeta(metadata, log.entityId) });
+    if (operation === "UPDATE") return makeRow("Content", "Gallery album edited", { title: auditTitleFromMeta(metadata, log.entityId), fields: changedFields });
+  }
+  if (table === "gallery_images" && operation === "INSERT") return makeRow("Content", "Gallery photos added", { album: auditMetaValue(metadata, "new", "album_id") });
+  if (table === "calendar_events") {
+    if (operation === "INSERT") return makeRow("Content", "Calendar event created", { title: auditTitleFromMeta(metadata, log.entityId), date: auditMetaValue(metadata, "new", "date_from") ?? auditMetaValue(metadata, "new", "date") });
+    if (operation === "UPDATE") return makeRow("Content", "Calendar event edited", { title: auditTitleFromMeta(metadata, log.entityId), fields: changedFields });
+    if (operation === "DELETE") return makeRow("Content", "Calendar event deleted", { title: auditTitleFromMeta(metadata, log.entityId) });
+  }
+  if (table === "form_templates" || table === "posted_forms") {
+    if (operation === "INSERT") return makeRow("Forms", "Form created", { title: auditTitleFromMeta(metadata, log.entityId) });
+    if (operation === "UPDATE") return makeRow("Forms", "Form edited", { title: auditTitleFromMeta(metadata, log.entityId), fields: changedFields });
+    if (operation === "DELETE") return makeRow("Forms", "Form deleted", { title: auditTitleFromMeta(metadata, log.entityId) });
+  }
+  if (table === "form_submissions" && operation === "DELETE") return makeRow("Forms", "Form submission deleted", { form: auditMetaValue(metadata, "old", "posted_form_id") });
+  if ((table === "attendance_sessions" || table === "chief_attendance_sessions") && operation === "UPDATE") return makeRow("Attendance", "Attendance record edited after submission", { date: auditMetaValue(metadata, "new", "date") ?? auditMetaValue(metadata, "old", "date"), group: auditMetaValue(metadata, "new", "group_id") ?? auditMetaValue(metadata, "old", "group_id"), fields: changedFields });
+  if (table === "contact_messages" && operation === "DELETE") return makeRow("Contact Messages", "Contact message deleted", { subject: auditTitleFromMeta(metadata, log.entityId) });
+  if (table === "archived_years" && operation === "INSERT") return makeRow("Archived Years", "Year archived", { year: auditTitleFromMeta(metadata, log.entityId), by: actorName });
+
+  return null;
+}
+
 function sortScouts(scouts, sortBy) {
   return [...scouts].sort((a, b) => String(a[sortBy] ?? "").localeCompare(String(b[sortBy] ?? "")));
 }
@@ -1216,6 +1353,16 @@ export default function AdminDashboardPage() {
     return filterBySearch(categoryFiltered, search, ["title", "fileName", "categoryName", "fileType"]);
   }, [data.documents, search, selectedDocumentCategory]);
 
+  const visibleChiefs = useMemo(
+    () => filterBySearch(chiefs, search, ["name", "email", "role", "chiefLevel", "groupId", "accountStatus"]),
+    [chiefs, search]
+  );
+
+  const visibleGroupEquipes = useMemo(
+    () => filterBySearch(groupEquipes, search, ["name", "description", "leaderName", "coLeaderName"]),
+    [groupEquipes, search]
+  );
+
   const reportApprovalRows = useMemo(() => {
     return [...reviewItems, ...profileReviewItems]
       .map((item) => ({
@@ -1232,15 +1379,8 @@ export default function AdminDashboardPage() {
   const reportActivityRows = useMemo(() => {
     return (reportsData.auditLogs ?? []).map((log) => {
       const actor = usersById.get(log.actorId);
-      return {
-        action: log.action,
-        entityType: log.entityType,
-        entityId: log.entityId,
-        actor: actor?.name ?? "System",
-        createdAt: formatDubaiDateTime(log.createdAt),
-        details: JSON.stringify(log.metadata ?? {})
-      };
-    });
+      return mapDashboardActivityLog(log, actor?.name ?? "System");
+    }).filter(Boolean);
   }, [reportsData.auditLogs, usersById]);
 
   const selectedArchive = (data.archivedYears ?? []).find((archive) => archive.id === selectedArchiveId) ?? (data.archivedYears ?? [])[0] ?? null;
@@ -1492,12 +1632,10 @@ export default function AdminDashboardPage() {
   const openCollapsedSidebarGroup = (groupId, event) => {
     const triggerRect = event?.currentTarget?.getBoundingClientRect?.();
     if (triggerRect) {
-      const group = sidebarGroups.find((item) => item.id === groupId);
-      const childCount = group?.children?.length ?? 0;
-      const estimatedFlyoutHeight = Math.min(window.innerHeight - 32, Math.max(160, childCount * 48 + 24));
-      const minimumTop = 16;
-      const maximumTop = Math.max(minimumTop, window.innerHeight - estimatedFlyoutHeight - 16);
-      setCollapsedFlyoutTop(Math.max(minimumTop, Math.min(triggerRect.top, maximumTop)));
+      const minimumTop = 12;
+      const maximumTop = Math.max(minimumTop, window.innerHeight - 120);
+      const preferredTop = triggerRect.top + triggerRect.height / 2 - 24;
+      setCollapsedFlyoutTop(Math.max(minimumTop, Math.min(preferredTop, maximumTop)));
     }
     setOpenSidebarGroups((current) => (current[groupId] ? {} : { [groupId]: true }));
     hideSidebarTooltip();
@@ -2618,7 +2756,7 @@ export default function AdminDashboardPage() {
   const renderContactMessages = () => {
     const messages = (data.contactMessages ?? []).filter((message) => {
       const matchesStatus = contactInboxStatus === "all" || message.status === contactInboxStatus;
-      const query = contactInboxSearch.trim().toLowerCase();
+      const query = `${contactInboxSearch} ${search}`.trim().toLowerCase();
       const matchesSearch = !query || [message.name, message.email, message.subject, message.message].some((value) => String(value ?? "").toLowerCase().includes(query));
       return matchesStatus && matchesSearch;
     });
@@ -2655,6 +2793,8 @@ export default function AdminDashboardPage() {
 
   const notificationIcon = (notification, size = 18) => notification.type === "contact" ? <MessageSquare size={size} /> : notification.type === "form" ? <FileText size={size} /> : notification.type === "profile" ? <Users size={size} /> : <CheckCircle2 size={size} />;
 
+  const filteredNotificationItems = filterBySearch(notificationItems, search, ["title", "message", "contentType", "type", "targetSection"]);
+
   const renderNotifications = () => (
     <div className="notifications-page">
       <div className="notifications-page-toolbar">
@@ -2665,7 +2805,7 @@ export default function AdminDashboardPage() {
         <button type="button" className="inline-action" onClick={async () => { await readAllDashboardNotifications(); await refresh(); }}>Mark all as read</button>
       </div>
       <div className="notifications-full-list">
-        {notificationItems.length ? notificationItems.map((notification) => (
+        {filteredNotificationItems.length ? filteredNotificationItems.map((notification) => (
           <div className={`notification-row notification-row-shell ${notification.isRead ? "" : "unread"}`} key={notification.id ?? `${notification.contentType}-${notification.entityId ?? notification.title}`}>
             <button type="button" className="notification-row-main" onClick={() => openNotification(notification)}>
               <span className="notification-type-icon">{notificationIcon(notification, 18)}</span>
@@ -2682,14 +2822,14 @@ export default function AdminDashboardPage() {
               </button>
             )}
           </div>
-        )) : <p className="empty-state">No notifications yet.</p>}
+        )) : <p className="empty-state">No notifications match this search.</p>}
       </div>
     </div>
   );  const renderMyGroup = () => {
-    const groupScouts = sortScouts(
+    const groupScouts = filterBySearch(sortScouts(
       data.registeredScouts.filter((scout) => scout.groupId === dashboardGroupId),
       data.registrationImportSettings.sortBy
-    );
+    ), search, ["name", "schoolGrade", "school", "groupId", "equipeId"]);
 
     return (
       <div className="cms-panel-stack my-group-reference">
@@ -2727,11 +2867,12 @@ export default function AdminDashboardPage() {
     );
   };
   const renderOverview = () => {
-    const visibleUpcomingEvents = data.plannedEvents
+    const visibleUpcomingEvents = filterBySearch(data.plannedEvents
       .filter((event) => canSeeDashboardEvent(event, user))
       .filter((event) => (event.dateTo ?? event.dateFrom ?? event.date) >= new Date().toISOString().slice(0, 10))
-      .sort((a, b) => String(a.dateFrom ?? a.date).localeCompare(String(b.dateFrom ?? b.date)))
+      .sort((a, b) => String(a.dateFrom ?? a.date).localeCompare(String(b.dateFrom ?? b.date))), search, ["title", "description", "location", "visibility", "approvalStatus"])
       .slice(0, 5);
+    const visiblePendingWorkItems = filterBySearch(pendingWorkItems, search, ["title", "contentType", "approvalStatus", "name", "pendingName", "message"]);
 
     const ownSubmissions = [
       ...allPosts,
@@ -2767,7 +2908,7 @@ export default function AdminDashboardPage() {
         </div>
         <div className="dashboard-overview-stack">
           <PendingWorkList
-            items={pendingWorkItems}
+            items={visiblePendingWorkItems}
             getSubmitterName={isAdmin ? getSubmitterName : () => user.name}
             getSubmitterPicture={isAdmin ? getSubmitterPicture : () => user.profilePictureUrl}
             onOpen={openPendingWorkItem}
@@ -3091,7 +3232,7 @@ export default function AdminDashboardPage() {
         <section className="equipe-zone">
           <div className="section-kicker">Equipe Cards</div>
           <div className="equipe-grid">
-            {groupEquipes.map((equipe) => {
+            {visibleGroupEquipes.map((equipe) => {
               const edit = equipeEdits[equipe.id] ?? equipe;
               const equipeScouts = groupScouts.filter((scout) => scout.equipeId === equipe.id);
               const maleCount = equipeScouts.filter((scout) => scout.gender === "male").length;
@@ -3383,7 +3524,7 @@ export default function AdminDashboardPage() {
       </form>
 
       <div className="user-permissions-list">
-        {chiefs.map((chief) => {
+        {visibleChiefs.map((chief) => {
           const edit = chiefEdits[chief.id] ?? toChiefForm(chief);
           const assignedNames = getProfileAssignedGroupIds(chief).map((groupId) => data.groups.find((group) => group.id === groupId)?.name ?? groupId);
           return (
@@ -3703,12 +3844,19 @@ export default function AdminDashboardPage() {
   const renderReports = () => {
     if (!isAdmin) return <AccessDenied message="Reports are admin-only because they include approval and system activity history." />;
     const rows = reportTab === "approvals" ? reportApprovalRows : reportActivityRows;
+    const visibleRows = filterBySearch(
+      rows,
+      search,
+      reportTab === "approvals"
+        ? ["type", "title", "status", "submittedBy", "createdAt", "updatedAt"]
+        : ["action", "entityType", "entityId", "actor", "createdAt", "details"]
+    );
     return (
       <section className="settings-workspace reports-workspace">
         <article className="admin-panel dashboard-upload-panel">
           <div className="panel-heading">
             <div><p className="eyebrow">Reports</p><h2>Approval and Activity History</h2><p>Read-only reporting for review decisions and important dashboard actions.</p></div>
-            <button type="button" className="inline-action" onClick={() => downloadCsvFile(`${reportTab}-report.csv`, rows)}>Export CSV</button>
+            <button type="button" className="inline-action" onClick={() => downloadCsvFile(`${reportTab}-report.csv`, visibleRows)}>Export CSV</button>
           </div>
           <div className="approval-type-tabs" role="tablist" aria-label="Report tabs">
             <button type="button" className={reportTab === "approvals" ? "active" : ""} onClick={() => setReportTab("approvals")}>Approval History</button>
@@ -3720,7 +3868,7 @@ export default function AdminDashboardPage() {
             <table>
               <thead>{reportTab === "approvals" ? <tr><th>Type</th><th>Title</th><th>Status</th><th>Submitted by</th><th>Created</th><th>Updated</th></tr> : <tr><th>Action</th><th>Entity</th><th>Actor</th><th>Created</th><th>Details</th></tr>}</thead>
               <tbody>
-                {rows.length ? rows.map((row, index) => reportTab === "approvals" ? (
+                {visibleRows.length ? visibleRows.map((row, index) => reportTab === "approvals" ? (
                   <tr key={`${row.type}-${row.title}-${index}`}><td>{row.type}</td><td>{row.title}</td><td><StatusBadge status={row.status} /></td><td>{row.submittedBy}</td><td>{row.createdAt}</td><td>{row.updatedAt}</td></tr>
                 ) : (
                   <tr key={`${row.action}-${row.entityId}-${index}`}><td>{row.action}</td><td>{row.entityType}<small>{row.entityId}</small></td><td>{row.actor}</td><td>{row.createdAt}</td><td><code>{row.details}</code></td></tr>
@@ -3733,8 +3881,13 @@ export default function AdminDashboardPage() {
     );
   };
 
-  const renderArchives = () => (
-    <section className="settings-workspace archives-workspace">
+  const renderArchives = () => {
+    const visibleArchives = filterBySearch(data.archivedYears ?? [], search, ["label", "archivedAt"]);
+    const archiveEvents = filterBySearch(selectedArchive?.snapshot?.events ?? [], search, ["title", "date", "dateFrom", "dateTo"]);
+    const archivePosts = filterBySearch(selectedArchive?.snapshot?.posts ?? [], search, ["title", "date", "author"]);
+    const archiveAlbums = filterBySearch(selectedArchive?.snapshot?.albums ?? [], search, ["title", "location", "category"]);
+
+    return <section className="settings-workspace archives-workspace">
       <div className="cms-panel-stack">
         <article className="admin-panel dashboard-upload-panel archive-banner">
           <div className="panel-heading">
@@ -3745,7 +3898,7 @@ export default function AdminDashboardPage() {
         </article>
         <div className="archive-layout">
           <aside className="archive-list">
-            {(data.archivedYears ?? []).length ? (data.archivedYears ?? []).map((archive) => (
+            {visibleArchives.length ? visibleArchives.map((archive) => (
               <button type="button" key={archive.id} className={selectedArchive?.id === archive.id ? "active" : ""} onClick={() => setSelectedArchiveId(archive.id)}>
                 <strong>{archive.label}</strong>
                 <span>{formatDubaiDateTime(archive.archivedAt)}</span>
@@ -3760,16 +3913,16 @@ export default function AdminDashboardPage() {
                 {summarizeArchiveSnapshot(selectedArchive.snapshot).map(([label, count]) => <article key={label}><span>{label}</span><strong>{count}</strong></article>)}
               </div>
               <div className="archive-content-grid">
-                <section><h3>Events</h3>{(selectedArchive.snapshot.events ?? []).slice(0, 8).map((event) => <p key={event.id}>{event.title} <small>{event.dateFrom ?? event.date}</small></p>)}</section>
-                <section><h3>Posts</h3>{(selectedArchive.snapshot.posts ?? []).slice(0, 8).map((post) => <p key={post.id}>{post.title} <small>{post.date}</small></p>)}</section>
-                <section><h3>Albums</h3>{(selectedArchive.snapshot.albums ?? []).slice(0, 8).map((album) => <p key={album.id}>{album.title} <small>{album.photoCount ?? 0} photos</small></p>)}</section>
+                <section><h3>Events</h3>{archiveEvents.slice(0, 8).map((event) => <p key={event.id}>{event.title} <small>{event.dateFrom ?? event.date}</small></p>)}</section>
+                <section><h3>Posts</h3>{archivePosts.slice(0, 8).map((post) => <p key={post.id}>{post.title} <small>{post.date}</small></p>)}</section>
+                <section><h3>Albums</h3>{archiveAlbums.slice(0, 8).map((album) => <p key={album.id}>{album.title} <small>{album.photoCount ?? 0} photos</small></p>)}</section>
               </div>
             </article>
           ) : <article className="admin-panel dashboard-upload-panel"><h3>Select an archive</h3><p>Archived snapshots will appear here after an admin creates one.</p></article>}
         </div>
       </div>
-    </section>
-  );
+    </section>;
+  };
   const renderSettings = () => (
     <section className="settings-detail">
       <div className="panel-heading">
@@ -4038,13 +4191,13 @@ export default function AdminDashboardPage() {
     if (activeSection === "contactMessages") return renderContactMessages();
     if (activeSection === "notifications") return renderNotifications();
     if (activeSection === "approvals") return renderApprovals();
-    if (activeSection === "scoutAttendance") return <><div className="cms-panel-stack">{renderCoordinatorGroupSwitcher("Take attendance for group")}</div><ScoutAttendanceManager dataOverride={data} userOverride={scopedUser} /></>;
-    if (activeSection === "attendanceSheets") return <><div className="cms-panel-stack">{renderCoordinatorGroupSwitcher("View attendance for group")}</div><AttendanceSheetsManager dataOverride={data} userOverride={scopedUser} /></>;
-    if (activeSection === "chiefAttendance") return <><div className="cms-panel-stack">{renderCoordinatorGroupSwitcher("Take chief attendance for group")}</div><ChiefAttendanceManager dataOverride={data} userOverride={scopedUser} /></>;
+    if (activeSection === "scoutAttendance") return <><div className="cms-panel-stack">{renderCoordinatorGroupSwitcher("Take attendance for group")}</div><ScoutAttendanceManager dataOverride={data} userOverride={scopedUser} searchQuery={search} /></>;
+    if (activeSection === "attendanceSheets") return <><div className="cms-panel-stack">{renderCoordinatorGroupSwitcher("View attendance for group")}</div><AttendanceSheetsManager dataOverride={data} userOverride={scopedUser} searchQuery={search} /></>;
+    if (activeSection === "chiefAttendance") return <><div className="cms-panel-stack">{renderCoordinatorGroupSwitcher("Take chief attendance for group")}</div><ChiefAttendanceManager dataOverride={data} userOverride={scopedUser} searchQuery={search} /></>;
     if (["manageForms", "formsCreate", "formTemplates", "postedForms", "formResponses", "myForms", "myFormDrafts", "mySubmittedForms"].includes(activeSection)) {
-      return <FormsDashboard data={data} user={scopedUser} isAdmin={isAdmin} mode={activeSection} initialFormId={requestedFormId} onRefresh={refresh} setSaveMessage={setSaveMessage} />;
+      return <FormsDashboard data={data} user={scopedUser} isAdmin={isAdmin} mode={activeSection} initialFormId={requestedFormId} onRefresh={refresh} setSaveMessage={setSaveMessage} searchQuery={search} />;
     }
-    if (activeSection === "calendar") return <CalendarManagement dataOverride={data} userOverride={scopedUser} />;
+    if (activeSection === "calendar") return <CalendarManagement dataOverride={data} userOverride={scopedUser} searchQuery={search} />;
     if (activeSection === "reports") return renderReports();
     if (activeSection === "documents") return renderDocuments();
     if (activeSection === "archives") return renderArchives();
@@ -4052,8 +4205,8 @@ export default function AdminDashboardPage() {
   };
 
   const activeTitle = selectedSection?.[1] ?? "Admin";
-  const mobilePrimaryIds = ["overview", "scoutAttendance", "aiAssistant", "myForms", "approvals"];
-  const mobilePrimaryItems = mobilePrimaryIds.map((id) => flatSidebarItems.find(([itemId]) => itemId === id)).filter(Boolean).slice(0, 5);
+  const mobilePrimaryIds = ["overview", "scoutAttendance", "aiAssistant", "myForms"];
+  const mobilePrimaryItems = mobilePrimaryIds.map((id) => flatSidebarItems.find(([itemId]) => itemId === id)).filter(Boolean).slice(0, 4);
   const mobilePrimaryIdSet = new Set(mobilePrimaryItems.map(([id]) => id));
   const mobileMoreItems = flatSidebarItems.filter(([id]) => !mobilePrimaryIdSet.has(id));
   const hasMobileMoreItems = mobileMoreItems.length > 0;

@@ -7,6 +7,7 @@ import {
   supabaseRequest
 } from "./supabaseClient.js";
 import { getActiveScoutYearId } from "./scoutService.js";
+import { logAuditEvent } from "./auditService.js";
 
 export async function getAttendanceData() {
   const [
@@ -89,22 +90,37 @@ export async function saveSupabaseScoutAttendance({ groupId, equipeId = null, sc
     )
   );
 
+  await logAuditEvent(existingSession ? "attendance_updated_after_submission" : "attendance_taken", "Attendance", session.id, {
+    groupId,
+    equipeId,
+    scope,
+    date,
+    topic,
+    recordCount: Object.keys(records ?? {}).length
+  });
+
   return { id: session.id };
 }
 
 export async function updateSupabaseAttendanceSessionLabel(sessionId, topic) {
   const label = String(topic ?? "").trim() || "Meeting";
 
-  return patchSupabaseRows("attendance_sessions", `id=eq.${encodeURIComponent(sessionId)}`, {
+  const result = await patchSupabaseRows("attendance_sessions", `id=eq.${encodeURIComponent(sessionId)}`, {
     topic: label
   });
+
+  await logAuditEvent("attendance_updated_after_submission", "Attendance", sessionId, { topic: label });
+  return result;
 }
 
 export async function updateSupabaseAttendanceSessionDate(sessionId, date) {
-  return supabaseRequest("/rest/v1/rpc/update_attendance_session_date", {
+  const result = await supabaseRequest("/rest/v1/rpc/update_attendance_session_date", {
     method: "POST",
     body: JSON.stringify({ target_session_id: sessionId, target_date: date })
   });
+
+  await logAuditEvent("attendance_updated_after_submission", "Attendance", sessionId, { date });
+  return result;
 }
 
 export async function deleteSupabaseAttendanceSession(sessionId) {
@@ -142,6 +158,12 @@ export async function saveSupabaseChiefAttendance({ date, topic = "Chief meeting
       })
     )
   );
+
+  await logAuditEvent(existingSession ? "attendance_updated_after_submission" : "attendance_taken", "Chief attendance", session.id, {
+    date,
+    topic,
+    recordCount: Object.keys(records ?? {}).length
+  });
 
   return { id: session.id };
 }

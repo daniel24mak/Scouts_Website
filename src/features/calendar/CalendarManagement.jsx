@@ -111,6 +111,13 @@ function canSeeEvent(event, user) {
   return event.type !== "meeting";
 }
 
+function matchesSearch(item, query, fields) {
+  const term = query.trim().toLowerCase();
+  if (!term) return true;
+
+  return fields.some((field) => String(item?.[field] ?? "").toLowerCase().includes(term));
+}
+
 function getEventsForDay(events, dateKey) {
   return events.filter((event) => {
     const dateFrom = event.dateFrom ?? event.date;
@@ -214,7 +221,7 @@ function ReviewGrid({ items }) {
   );
 }
 
-export default function CalendarManagement({ dataOverride = null, userOverride = null } = {}) {
+export default function CalendarManagement({ dataOverride = null, userOverride = null, searchQuery = "" } = {}) {
   const { user: authUser } = useAuth();
   const { data: bootstrapData, refresh } = useBootstrap();
   const user = userOverride ?? authUser;
@@ -258,8 +265,10 @@ export default function CalendarManagement({ dataOverride = null, userOverride =
   const monthCells = useMemo(() => getMonthCells(displayDate), [displayDate]);
   const monthLabel = monthFormatter.format(displayDate);
   const visibleEvents = useMemo(
-    () => data.plannedEvents.filter((event) => canSeeEvent(event, user)),
-    [data.plannedEvents, user]
+    () => data.plannedEvents
+      .filter((event) => canSeeEvent(event, user))
+      .filter((event) => matchesSearch(event, searchQuery, ["title", "description", "location", "visibility", "approvalStatus", "type", "date", "dateFrom", "dateTo"])),
+    [data.plannedEvents, searchQuery, user]
   );
   const selectedDateEvents = useMemo(
     () => getEventsForDay(visibleEvents, selectedDate),
@@ -268,8 +277,9 @@ export default function CalendarManagement({ dataOverride = null, userOverride =
   const ownCalendarDrafts = useMemo(
     () => data.plannedEvents
       .filter((event) => event.submittedBy === user?.id && event.approvalStatus === "draft")
+      .filter((event) => matchesSearch(event, searchQuery, ["title", "description", "location", "visibility", "date", "dateFrom", "dateTo"]))
       .sort((a, b) => new Date(b.updatedAt || b.createdAt || b.dateFrom || b.date).getTime() - new Date(a.updatedAt || a.createdAt || a.dateFrom || a.date).getTime()),
-    [data.plannedEvents, user?.id]
+    [data.plannedEvents, searchQuery, user?.id]
   );
   const agendaEventsByDate = useMemo(() => {
     const currentMonth = displayDate.getMonth();

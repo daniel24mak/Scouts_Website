@@ -72,6 +72,16 @@ function getQuestionTypeLabel(type) {
   return formQuestionTypes.find(([id]) => id === type)?.[1] ?? "Question";
 }
 
+function matchesSearch(item, query, fields) {
+  const term = query.trim().toLowerCase();
+  if (!term) return true;
+
+  return fields.some((field) => {
+    const value = typeof field === "function" ? field(item) : item?.[field];
+    return String(value ?? "").toLowerCase().includes(term);
+  });
+}
+
 function getQuestionPlaceholder(question) {
   if (question.type === "number") return "Enter a number";
   if (question.type === "date") return "Select a date";
@@ -308,7 +318,7 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
     </div>
   );
 }
-export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", initialFormId = null, onRefresh, setSaveMessage }) {
+export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", initialFormId = null, onRefresh, setSaveMessage, searchQuery = "" }) {
   const [view, setView] = useState(mode);
   const [builderTemplate, setBuilderTemplate] = useState(null);
   const [builderPostedForm, setBuilderPostedForm] = useState(null);
@@ -350,10 +360,11 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
   const canManageTemplates = isAdmin || Boolean(user?.permissions?.manageFormTemplates);
   const canPostForms = isAdmin || Boolean(user?.permissions?.postForms);
   const canViewAllForms = isAdmin || Boolean(user?.permissions?.viewAllForms);
-  const templates = data.formTemplates ?? [];
+  const templates = (data.formTemplates ?? []).filter((template) => matchesSearch(template, searchQuery, ["title", "description", "status", (item) => JSON.stringify(item.schemaJson ?? {})]));
   const postedForms = data.postedForms ?? [];
+  const searchedPostedForms = postedForms.filter((form) => matchesSearch(form, searchQuery, ["title", "description", "approvalStatus", "targetType", "dueDate", (item) => JSON.stringify(item.schemaJson ?? {})]));
   const submissions = data.formSubmissions ?? [];
-  const visiblePostedForms = canViewAllForms || canPostForms ? postedForms : postedForms.filter((form) => form.approvalStatus === "open" && isTargetedToUser(form, user));
+  const visiblePostedForms = canViewAllForms || canPostForms ? searchedPostedForms : searchedPostedForms.filter((form) => form.approvalStatus === "open" && isTargetedToUser(form, user));
   const mySubmissions = submissions.filter((submission) => submission.submittedBy === user?.id);
   const activeForm = postedForms.find((form) => form.id === activeFormId);
   useEffect(() => {
@@ -383,8 +394,21 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
     const value = submission.submittedAt || submission.updatedAt || submission.createdAt;
     if (submissionDateFrom && (!value || new Date(value) < new Date(`${submissionDateFrom}T00:00:00`))) return false;
     if (submissionDateTo && (!value || new Date(value) > new Date(`${submissionDateTo}T23:59:59`))) return false;
+    const form = postedForms.find((item) => item.id === submission.postedFormId);
+    const submitter = (data.users ?? []).find((item) => item.id === submission.submittedBy);
+    if (!matchesSearch(submission, searchQuery, [
+      "approvalStatus",
+      "submittedAt",
+      "updatedAt",
+      "createdAt",
+      (item) => form?.title,
+      (item) => submitter?.name,
+      (item) => submitter?.email,
+      (item) => getGroupName(data.groups, item.groupId ?? submitter?.groupId),
+      (item) => JSON.stringify(item.answersJson ?? {})
+    ])) return false;
     return true;
-  }), [submissions, submissionFormFilter, submissionGroupFilter, submissionDateFrom, submissionDateTo]);
+  }), [data.groups, data.users, postedForms, searchQuery, submissions, submissionFormFilter, submissionGroupFilter, submissionDateFrom, submissionDateTo]);
 
   const closeBuilder = async (nextView = null) => {
     setBuilderTemplate(null);
@@ -497,9 +521,9 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
       {view === "formTemplates" && <div className="forms-management-grid">{templates.length ? templates.map((template) => <article className="forms-management-card" key={template.id}><div className="forms-card-heading"><FileText size={22} /><span className="forms-count-badge">{safeSchema(template.schemaJson).questions.length} questions</span></div><div><p className="eyebrow">{template.status}</p><h3>{template.title}</h3><FormattedText text={template.description} fallback="No description." /></div><small>Last edited {formatDate(template.updatedAt)}</small><div className="action-row"><button type="button" className="primary-action" onClick={() => { setBuilderTemplate(template); setView("formsCreate"); }}>Use Template</button><button type="button" className="inline-action" onClick={async () => { await saveDashboardFormTemplate({ title: `${template.title} copy`, description: template.description, schemaJson: template.schemaJson, status: "active" }); setSaveMessage("Template duplicated."); await onRefresh(); }}>Save as New Template</button><button type="button" className="icon-button danger-action" title="Delete template" onClick={async () => { if (window.confirm("Delete this reusable template? Posted forms using it will remain available.")) { await deleteDashboardFormTemplate(template.id); setSaveMessage("Form template deleted."); await onRefresh(); } }}><Trash2 size={17} /></button></div></article>) : <EmptyFormsState title="No templates yet" text="Create a reusable form template to start." />}</div>}
       {view === "postedForms" && <div className="forms-management-grid">{visiblePostedForms.length ? visiblePostedForms.map((form) => { const formSubmissions = submissions.filter((submission) => submission.postedFormId === form.id); const eligible = (data.users ?? []).filter((profile) => (profile.role === "chief" || profile.roles?.includes?.("chief") || profile.assignedGroupIds?.length || profile.coordinatorGroupIds?.length) && isTargetedToUser(form, profile)).length; return <article className="forms-management-card" key={form.id}><div className="forms-card-heading"><span className={`forms-status-pill ${form.approvalStatus}`}>{form.approvalStatus}</span><small>{form.targetType === "groups" ? form.targetGroupIds.map((id) => getGroupName(data.groups, id)).join(", ") : "All chiefs"}</small></div><div><h3>{form.title}</h3><p className="forms-response-count"><Users size={16} />{formSubmissions.length}{eligible ? ` of ${eligible}` : ""} responded</p><p className="helper-text"><CalendarDays size={15} />Due {formatDate(form.dueDate)}</p></div><div className="action-row"><button type="button" className="inline-action" onClick={() => setBuilderPostedForm(form)}>Edit copy</button><button type="button" className="inline-action" onClick={() => openForm(form)}>Preview</button>{form.approvalStatus === "open" ? <button type="button" className="inline-action" onClick={async () => { if (window.confirm("Close this form? Chiefs will no longer be able to submit or edit responses.")) { await closeDashboardPostedForm(form.id); setSaveMessage("Form closed. Exports are now available."); await onRefresh(); } }}>Close</button> : <button type="button" className="inline-action" disabled={form.approvalStatus !== "closed"} onClick={async () => { if (window.confirm("Reopen this form? Targeted chiefs will be able to submit or edit again.")) { await reopenDashboardPostedForm(form.id); setSaveMessage("Form reopened."); await onRefresh(); } }}>Reopen</button>}<button type="button" className="inline-action" disabled={form.approvalStatus !== "closed"} onClick={() => downloadCsv({ form, submissions: formSubmissions, users: data.users, groups: data.groups })}>Export CSV</button><button type="button" className="icon-button danger-action" title="Delete posted form" onClick={async () => { if (window.confirm("Permanently delete this posted form and all responses? Its reusable template will be preserved.")) { await deleteDashboardPostedForm(form.id); setSaveMessage("Posted form deleted."); await onRefresh(); } }}><Trash2 size={17} /></button></div></article>; }) : <EmptyFormsState title="No posted forms yet" text="Posted and pending forms will appear here." />}</div>}
       {view === "formResponses" && <div className="forms-submissions-view"><div className="forms-filter-bar"><label><Search size={16} /><select value={submissionFormFilter} onChange={(event) => setSubmissionFormFilter(event.target.value)}><option value="all">All forms</option>{postedForms.map((form) => <option value={form.id} key={form.id}>{form.title}</option>)}</select></label><label><Users size={16} /><select value={submissionGroupFilter} onChange={(event) => setSubmissionGroupFilter(event.target.value)}><option value="all">All groups</option>{(data.groups ?? []).map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}</select></label><label>Date from<input type="date" value={submissionDateFrom} onChange={(event) => setSubmissionDateFrom(event.target.value)} /></label><label>Date to<input type="date" value={submissionDateTo} onChange={(event) => setSubmissionDateTo(event.target.value)} /></label></div><div className="table-panel forms-submissions-table"><table className="editable-table"><thead><tr><th>Select</th><th>Form</th><th>Submitted by</th><th>Group</th><th>Status</th><th>Submitted</th></tr></thead><tbody>{filteredSubmissions.length ? filteredSubmissions.map((submission) => { const form = postedForms.find((item) => item.id === submission.postedFormId); const submitter = (data.users ?? []).find((item) => item.id === submission.submittedBy); return <tr key={submission.id}><td><input type="checkbox" checked={selectedSubmissionIds.includes(submission.id)} onChange={(event) => setSelectedSubmissionIds((current) => event.target.checked ? [...current, submission.id] : current.filter((id) => id !== submission.id))} /></td><td>{form?.title ?? "Unknown form"}</td><td>{submitter?.name ?? "Unknown user"}</td><td>{getGroupName(data.groups, submission.groupId ?? submitter?.groupId)}</td><td><span className={`forms-status-pill ${submission.approvalStatus}`}>{submission.approvalStatus}</span></td><td>{formatDate(submission.submittedAt ?? submission.updatedAt)}</td></tr>; }) : <tr><td colSpan="6">No submissions match these filters.</td></tr>}</tbody></table></div><article className="forms-ai-summary-card"><div className="forms-section-heading"><div><p className="eyebrow">Response analysis</p><h3>AI Summary</h3></div><span className="forms-coming-soon-badge">Coming Soon</span></div><p>{selectedSubmissionIds.length ? `${selectedSubmissionIds.length} responses selected.` : "Select responses above to prepare a future summary."}</p><div className="forms-ai-sections">{aiSummarySections.map((section) => <span key={section}>{section}</span>)}</div><button type="button" className="primary-action" disabled>Generate AI Summary</button></article></div>}
-      {view === "myForms" && <FormsList forms={postedForms.filter((form) => form.approvalStatus === "open" && isTargetedToUser(form, user) && !mySubmissions.some((submission) => submission.postedFormId === form.id && submission.approvalStatus === "submitted"))} submissions={mySubmissions} type="pending" onOpen={openForm} empty="No pending forms right now." />}
-      {view === "myFormDrafts" && <FormsList forms={postedForms.filter((form) => mySubmissions.some((submission) => submission.postedFormId === form.id && submission.approvalStatus === "draft"))} submissions={mySubmissions} type="draft" onOpen={openForm} empty="No saved form drafts." />}
-      {view === "mySubmittedForms" && <FormsList forms={postedForms.filter((form) => mySubmissions.some((submission) => submission.postedFormId === form.id && submission.approvalStatus === "submitted"))} submissions={mySubmissions} type="submitted" onOpen={openForm} empty="No submitted forms yet." />}
+      {view === "myForms" && <FormsList forms={searchedPostedForms.filter((form) => form.approvalStatus === "open" && isTargetedToUser(form, user) && !mySubmissions.some((submission) => submission.postedFormId === form.id && submission.approvalStatus === "submitted"))} submissions={mySubmissions} type="pending" onOpen={openForm} empty="No pending forms match this search." />}
+      {view === "myFormDrafts" && <FormsList forms={searchedPostedForms.filter((form) => mySubmissions.some((submission) => submission.postedFormId === form.id && submission.approvalStatus === "draft"))} submissions={mySubmissions} type="draft" onOpen={openForm} empty="No saved form drafts match this search." />}
+      {view === "mySubmittedForms" && <FormsList forms={searchedPostedForms.filter((form) => mySubmissions.some((submission) => submission.postedFormId === form.id && submission.approvalStatus === "submitted"))} submissions={mySubmissions} type="submitted" onOpen={openForm} empty="No submitted forms match this search." />}
     </div>
   );
 }

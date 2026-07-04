@@ -29,6 +29,13 @@ function getSchoolGrade(scout) {
   return scout.schoolGrade || scout.school || "Unspecified";
 }
 
+function matchesSearch(item, query, fields) {
+  const term = query.trim().toLowerCase();
+  if (!term) return true;
+
+  return fields.some((field) => String(item?.[field] ?? "").toLowerCase().includes(term));
+}
+
 function getAttendancePercentage(scoutId, groupMeetings) {
   if (groupMeetings.length === 0) {
     return "0%";
@@ -41,7 +48,7 @@ function getAttendancePercentage(scoutId, groupMeetings) {
   return `${Math.round((attended / groupMeetings.length) * 100)}%`;
 }
 
-export default function ScoutAttendanceManager({ dataOverride = null, userOverride = null } = {}) {
+export default function ScoutAttendanceManager({ dataOverride = null, userOverride = null, searchQuery = "" } = {}) {
   const { user: authUser } = useAuth();
   const { data: bootstrapData, refresh } = useBootstrap();
   const user = userOverride ?? authUser;
@@ -72,13 +79,14 @@ export default function ScoutAttendanceManager({ dataOverride = null, userOverri
   );
   const selectedMeeting = groupMeetings.find((meeting) => meeting.date === selectedDate);
   const attendanceSheet = data.attendanceSheets.find((sheet) => sheet.groupId === selectedGroup?.id);
-  const scouts = sortScouts(
+  const scopedScouts = sortScouts(
     data.registeredScouts.filter((scout) =>
       scout.groupId === selectedGroup?.id &&
       (effectiveScope === "group" || scout.equipeId === effectiveEquipeId)
     ),
     data.registrationImportSettings.sortBy
   );
+  const scouts = scopedScouts.filter((scout) => matchesSearch(scout, searchQuery, ["name", "schoolGrade", "school", "age", "groupId"]));
   const effectiveRecords = { ...(selectedMeeting?.records ?? {}), ...records };
   const handleRecordChange = (scoutId, status) => {
     setRecords((current) => ({ ...current, [scoutId]: status }));
@@ -95,7 +103,7 @@ export default function ScoutAttendanceManager({ dataOverride = null, userOverri
       scope: effectiveScope,
       date: selectedDate,
       topic: selectedMeeting?.topic ?? "Meeting",
-      records: Object.fromEntries(scouts.map((scout) => [scout.id, effectiveRecords[scout.id] ?? "Present"]))
+      records: Object.fromEntries(scopedScouts.map((scout) => [scout.id, effectiveRecords[scout.id] ?? "Present"]))
     });
     setRecords({});
     setSaveMessage("Attendance saved to the database.");

@@ -15978,11 +15978,40 @@ span,
 
 .admin-cms-shell.sidebar-collapsed .admin-sidebar {
   padding-inline: 10px;
+  overflow: visible;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.admin-cms-shell.sidebar-collapsed .admin-sidebar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.admin-cms-shell.sidebar-collapsed .sidebar-navigation {
+  height: 100%;
+  min-height: 0;
+  align-content: stretch;
+  grid-auto-rows: minmax(0, 1fr);
+}
+
+.admin-cms-shell.sidebar-collapsed .sidebar-group {
+  min-height: 0;
+}
+
+.admin-cms-shell.sidebar-collapsed .sidebar-subitems {
+  display: none;
+  max-height: none;
+  overflow: visible;
+  padding-left: 0;
+  transition: none;
 }
 
 .admin-cms-shell.sidebar-collapsed .admin-sidebar button {
+  height: 100%;
+  min-height: 0;
   justify-content: center;
-  padding-inline: 0;
+  padding: 0;
 }
 
 .admin-cms-shell.sidebar-collapsed .admin-sidebar button span,
@@ -15998,11 +16027,12 @@ span,
 
 .admin-cms-shell.sidebar-collapsed .sidebar-group.open .sidebar-subitems {
   position: fixed;
+  display: grid;
   top: var(--sidebar-flyout-top, 96px);
-  left: calc(var(--dashboard-sidebar-width) + 24px);
+  left: calc(var(--dashboard-sidebar-width) + 40px);
   z-index: 90;
   width: min(240px, calc(100vw - 120px));
-  max-height: min(420px, calc(100vh - 32px));
+  max-height: min(420px, calc(100vh - var(--sidebar-flyout-top, 96px) - 16px));
   overflow: auto;
   border: 1px solid var(--dashboard-line);
   border-radius: 14px;
@@ -16012,8 +16042,10 @@ span,
 }
 
 .admin-cms-shell.sidebar-collapsed .sidebar-group.open .sidebar-subitems button {
+  height: auto;
+  min-height: 42px;
   justify-content: flex-start;
-  padding-inline: 12px;
+  padding: 9px 12px;
 }
 
 .admin-cms-shell.sidebar-collapsed .sidebar-group.open .sidebar-subitems button span {
@@ -16033,7 +16065,7 @@ span,
   grid-column: 2;
   grid-row: 2;
   min-width: 0;
-  padding: 16px;
+  padding: 26px 16px 16px;
   overflow-y: auto;
 }
 
@@ -16111,7 +16143,7 @@ span,
     position: fixed;
     left: 10px;
     right: 10px;
-    bottom: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom));
     z-index: 70;
     display: grid;
     grid-auto-flow: column;
@@ -16123,6 +16155,8 @@ span,
     background: color-mix(in srgb, var(--dashboard-surface) 94%, transparent);
     box-shadow: 0 16px 44px rgb(15 23 42 / 0.18);
     backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    touch-action: manipulation;
   }
 
   .dashboard-bottom-tabs button,
@@ -16143,6 +16177,8 @@ span,
     font-weight: 900;
     text-decoration: none;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
   .dashboard-bottom-tabs button:hover,
@@ -16163,6 +16199,85 @@ span,
     position: absolute;
     top: 3px;
     right: 14%;
+  }
+
+  .dashboard-more-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 85;
+    display: grid;
+    align-items: end;
+    padding: 12px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    background: rgb(12 18 38 / 0.34);
+    overscroll-behavior: contain;
+  }
+
+  .dashboard-more-sheet {
+    width: 100%;
+    max-height: min(78vh, 620px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--dashboard-line);
+    border-radius: 18px 18px 14px 14px;
+    padding: 16px 14px calc(20px + env(safe-area-inset-bottom));
+    background: var(--dashboard-surface);
+    color: var(--dashboard-text);
+    box-shadow: 0 -20px 60px rgb(15 23 42 / 0.24);
+  }
+
+  .dashboard-more-grid {
+    display: grid;
+    gap: 10px;
+  }
+
+  .dashboard-more-grid button,
+  .dashboard-more-group-trigger,
+  .dashboard-more-subitems button {
+    display: flex;
+    min-height: 48px;
+    align-items: center;
+    gap: 10px;
+    border: 0;
+    border-radius: 12px;
+    padding: 12px;
+    color: var(--dashboard-text);
+    background: transparent;
+    font-weight: 900;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .dashboard-more-grid button:hover,
+  .dashboard-more-grid button:focus-visible,
+  .dashboard-more-group-trigger:hover,
+  .dashboard-more-group-trigger:focus-visible,
+  .dashboard-more-subitems button:hover,
+  .dashboard-more-subitems button:focus-visible {
+    color: var(--dashboard-blue);
+    background: var(--dashboard-surface-2);
+  }
+
+  .dashboard-more-grid button.active,
+  .dashboard-more-group.active-group > .dashboard-more-group-trigger,
+  .dashboard-more-subitems button.active {
+    color: var(--dashboard-blue);
+    background: color-mix(in srgb, var(--dashboard-blue, #4055a6) 12%, transparent);
+  }
+
+  .dashboard-more-group {
+    display: grid;
+    gap: 6px;
+  }
+
+  .dashboard-more-subitems {
+    display: grid;
+    gap: 6px;
+    padding-left: 12px;
   }
 }
 
@@ -16189,4 +16304,112 @@ span,
     height: 36px;
     padding: 0;
   }
+}
+
+/* Dashboard shell dark-mode controls: transparent by default, visible only on hover/focus. */
+.admin-cms-shell.dashboard-theme-dark button.dashboard-shell-toggle,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-theme-toggle,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-notification-button,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-profile-button,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-mobile-search-toggle,
+.admin-cms-shell.dashboard-theme-dark .admin-sidebar button,
+.admin-cms-shell.dashboard-theme-dark .admin-sidebar button.active,
+.admin-cms-shell.dashboard-theme-dark .sidebar-group.active-group > button.sidebar-group-trigger,
+.admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs button,
+.admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs button.active,
+.admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs a.dashboard-bottom-tab-link,
+.admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs a.dashboard-bottom-tab-link.active,
+.admin-cms-shell.dashboard-theme-dark .dashboard-more-grid button,
+.admin-cms-shell.dashboard-theme-dark .dashboard-more-grid button.active,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-more-group-trigger,
+.admin-cms-shell.dashboard-theme-dark .dashboard-more-group.active-group > button.dashboard-more-group-trigger,
+.admin-cms-shell.dashboard-theme-dark .dashboard-more-subitems button,
+.admin-cms-shell.dashboard-theme-dark .dashboard-more-subitems button.active {
+  border-color: transparent !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark button.dashboard-shell-toggle,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-theme-toggle,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-notification-button,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-profile-button,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-mobile-search-toggle,
+.admin-cms-shell.dashboard-theme-dark .admin-sidebar button,
+.admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs button,
+.admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs a.dashboard-bottom-tab-link,
+.admin-cms-shell.dashboard-theme-dark .dashboard-more-grid button,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-more-group-trigger,
+.admin-cms-shell.dashboard-theme-dark .dashboard-more-subitems button {
+  transition: background-color 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+.admin-cms-shell.dashboard-theme-dark button.dashboard-shell-toggle:hover,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-shell-toggle:focus-visible,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-theme-toggle:hover,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-theme-toggle:focus-visible,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-notification-button:hover,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-notification-button:focus-visible,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-profile-button:hover,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-profile-button:focus-visible,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-mobile-search-toggle:hover,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-mobile-search-toggle:focus-visible,
+.admin-cms-shell.dashboard-theme-dark .admin-sidebar button:hover,
+.admin-cms-shell.dashboard-theme-dark .admin-sidebar button:focus-visible,
+.admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs button:hover,
+.admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs button:focus-visible,
+.admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs a.dashboard-bottom-tab-link:hover,
+.admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs a.dashboard-bottom-tab-link:focus-visible,
+.admin-cms-shell.dashboard-theme-dark .dashboard-more-grid button:hover,
+.admin-cms-shell.dashboard-theme-dark .dashboard-more-grid button:focus-visible,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-more-group-trigger:hover,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-more-group-trigger:focus-visible,
+.admin-cms-shell.dashboard-theme-dark .dashboard-more-subitems button:hover,
+.admin-cms-shell.dashboard-theme-dark .dashboard-more-subitems button:focus-visible {
+  color: var(--dashboard-blue, #8ea2ff) !important;
+  background: rgb(142 162 255 / 0.12) !important;
+  background-color: rgb(142 162 255 / 0.12) !important;
+}
+
+/* Final dashboard shell spacing: keep page panels slightly below the fixed top bar. */
+.admin-cms-shell .admin-main {
+  padding-top: 5px !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark .admin-sidebar button.active,
+.admin-cms-shell.dashboard-theme-dark .sidebar-group.active-group > button.sidebar-group-trigger,
+.admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs button.active,
+.admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs a.dashboard-bottom-tab-link.active,
+.admin-cms-shell.dashboard-theme-dark .dashboard-more-grid button.active,
+.admin-cms-shell.dashboard-theme-dark .dashboard-more-group.active-group > button.dashboard-more-group-trigger,
+.admin-cms-shell.dashboard-theme-dark .dashboard-more-subitems button.active {
+  color: var(--dashboard-blue, #8ea2ff) !important;
+}
+
+.admin-cms-shell.dashboard-theme-dark button.dashboard-shell-toggle:hover,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-shell-toggle:focus-visible,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-theme-toggle:hover,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-theme-toggle:focus-visible,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-notification-button:hover,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-notification-button:focus-visible,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-profile-button:hover,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-profile-button:focus-visible,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-mobile-search-toggle:hover,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-mobile-search-toggle:focus-visible,
+.admin-cms-shell.dashboard-theme-dark .admin-sidebar button:hover,
+.admin-cms-shell.dashboard-theme-dark .admin-sidebar button:focus-visible,
+.admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs button:hover,
+.admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs button:focus-visible,
+.admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs a.dashboard-bottom-tab-link:hover,
+.admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs a.dashboard-bottom-tab-link:focus-visible,
+.admin-cms-shell.dashboard-theme-dark .dashboard-more-grid button:hover,
+.admin-cms-shell.dashboard-theme-dark .dashboard-more-grid button:focus-visible,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-more-group-trigger:hover,
+.admin-cms-shell.dashboard-theme-dark button.dashboard-more-group-trigger:focus-visible,
+.admin-cms-shell.dashboard-theme-dark .dashboard-more-subitems button:hover,
+.admin-cms-shell.dashboard-theme-dark .dashboard-more-subitems button:focus-visible {
+  color: var(--dashboard-blue, #8ea2ff) !important;
+  background: rgb(142 162 255 / 0.12) !important;
+  background-color: rgb(142 162 255 / 0.12) !important;
 }

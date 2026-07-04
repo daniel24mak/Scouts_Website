@@ -36,8 +36,11 @@ Thumbs.db
 
 # Test/coverage
 coverage/
+test-results/
+tests/
 
 # Temporary files
 tmp/
 temp/
 tmp-*/
+tmp-dashboard-checks/

@@ -102,6 +102,22 @@ function html(theme = "light", collapsed = false) {
         <button>Forms</button>
         <button>More</button>
       </nav>
+      <div class="dashboard-more-sheet-backdrop">
+        <div class="dashboard-more-sheet">
+          <div class="panel-heading compact"><h2>Dashboard Sections</h2></div>
+          <div class="dashboard-more-grid">
+            <button type="button">My Group</button>
+            <div class="dashboard-more-group open">
+              <button type="button" class="dashboard-more-group-trigger">Content</button>
+              <div class="dashboard-more-subitems">
+                <button type="button">Blog Posts</button>
+                <button type="button">Calendar Events</button>
+                <button type="button">Gallery</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
   </body>
   </html>`;
@@ -134,6 +150,8 @@ async function measure(page) {
       mobileSearch: rect(".dashboard-mobile-search-toggle"),
       fullSearch: rect(".dashboard-topbar-search"),
       shellToggle: rect(".dashboard-shell-toggle"),
+      moreBackdrop: rect(".dashboard-more-sheet-backdrop"),
+      moreSheet: rect(".dashboard-more-sheet"),
       titleText: document.querySelector(".dashboard-topbar-title").textContent,
       titleWidth: rect(".dashboard-topbar-title").width,
       drawerCloseCount: document.querySelectorAll(".dashboard-drawer-close").length

@@ -65,6 +65,30 @@
       "scrollHeight": 34,
       "clientHeight": 34
     },
+    "moreBackdrop": {
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0,
+      "display": "none",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "auto",
+      "scrollHeight": 0,
+      "clientHeight": 0
+    },
+    "moreSheet": {
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0,
+      "display": "block",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "auto",
+      "scrollHeight": 0,
+      "clientHeight": 0
+    },
     "titleText": "Approval Requests",
     "titleWidth": 352,
     "drawerCloseCount": 0
@@ -93,10 +117,10 @@
       "width": 72,
       "height": 800,
       "display": "block",
-      "overflowY": "auto",
-      "overflowX": "hidden",
+      "overflowY": "visible",
+      "overflowX": "visible",
       "top": "84px",
-      "scrollHeight": 934,
+      "scrollHeight": 798,
       "clientHeight": 798
     },
     "mobileSearch": {
@@ -134,6 +158,30 @@
       "top": "auto",
       "scrollHeight": 34,
       "clientHeight": 34
+    },
+    "moreBackdrop": {
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0,
+      "display": "none",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "auto",
+      "scrollHeight": 0,
+      "clientHeight": 0
+    },
+    "moreSheet": {
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0,
+      "display": "block",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "auto",
+      "scrollHeight": 0,
+      "clientHeight": 0
     },
     "titleText": "Approval Requests",
     "titleWidth": 352,
@@ -205,6 +253,30 @@
       "scrollHeight": 34,
       "clientHeight": 34
     },
+    "moreBackdrop": {
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0,
+      "display": "none",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "auto",
+      "scrollHeight": 0,
+      "clientHeight": 0
+    },
+    "moreSheet": {
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0,
+      "display": "block",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "auto",
+      "scrollHeight": 0,
+      "clientHeight": 0
+    },
     "titleText": "Approval Requests",
     "titleWidth": 352,
     "drawerCloseCount": 0
@@ -233,10 +305,10 @@
       "width": 72,
       "height": 800,
       "display": "block",
-      "overflowY": "auto",
-      "overflowX": "hidden",
+      "overflowY": "visible",
+      "overflowX": "visible",
       "top": "84px",
-      "scrollHeight": 934,
+      "scrollHeight": 798,
       "clientHeight": 798
     },
     "mobileSearch": {
@@ -274,6 +346,30 @@
       "top": "auto",
       "scrollHeight": 34,
       "clientHeight": 34
+    },
+    "moreBackdrop": {
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0,
+      "display": "none",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "auto",
+      "scrollHeight": 0,
+      "clientHeight": 0
+    },
+    "moreSheet": {
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0,
+      "display": "block",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "auto",
+      "scrollHeight": 0,
+      "clientHeight": 0
     },
     "titleText": "Approval Requests",
     "titleWidth": 352,
@@ -346,6 +442,30 @@
         "scrollHeight": 0,
         "clientHeight": 0
       },
+      "moreBackdrop": {
+        "x": 0,
+        "y": 0,
+        "width": 375,
+        "height": 844,
+        "display": "grid",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "0px",
+        "scrollHeight": 844,
+        "clientHeight": 844
+      },
+      "moreSheet": {
+        "x": 12,
+        "y": 460,
+        "width": 351,
+        "height": 372,
+        "display": "block",
+        "overflowY": "auto",
+        "overflowX": "hidden",
+        "top": "auto",
+        "scrollHeight": 370,
+        "clientHeight": 370
+      },
       "titleText": "Approval Requests",
       "titleWidth": 143,
       "drawerCloseCount": 0
@@ -415,6 +535,30 @@
         "top": "auto",
         "scrollHeight": 0,
         "clientHeight": 0
+      },
+      "moreBackdrop": {
+        "x": 0,
+        "y": 0,
+        "width": 375,
+        "height": 844,
+        "display": "grid",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "0px",
+        "scrollHeight": 844,
+        "clientHeight": 844
+      },
+      "moreSheet": {
+        "x": 12,
+        "y": 460,
+        "width": 351,
+        "height": 372,
+        "display": "block",
+        "overflowY": "auto",
+        "overflowX": "hidden",
+        "top": "auto",
+        "scrollHeight": 370,
+        "clientHeight": 370
       },
       "titleText": "Approval Requests",
       "titleWidth": 143,
@@ -488,6 +632,30 @@
         "scrollHeight": 0,
         "clientHeight": 0
       },
+      "moreBackdrop": {
+        "x": 0,
+        "y": 0,
+        "width": 375,
+        "height": 844,
+        "display": "grid",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "0px",
+        "scrollHeight": 844,
+        "clientHeight": 844
+      },
+      "moreSheet": {
+        "x": 12,
+        "y": 460,
+        "width": 351,
+        "height": 372,
+        "display": "block",
+        "overflowY": "auto",
+        "overflowX": "hidden",
+        "top": "auto",
+        "scrollHeight": 370,
+        "clientHeight": 370
+      },
       "titleText": "Approval Requests",
       "titleWidth": 143,
       "drawerCloseCount": 0
@@ -557,6 +725,30 @@
         "top": "auto",
         "scrollHeight": 0,
         "clientHeight": 0
+      },
+      "moreBackdrop": {
+        "x": 0,
+        "y": 0,
+        "width": 375,
+        "height": 844,
+        "display": "grid",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "0px",
+        "scrollHeight": 844,
+        "clientHeight": 844
+      },
+      "moreSheet": {
+        "x": 12,
+        "y": 460,
+        "width": 351,
+        "height": 372,
+        "display": "block",
+        "overflowY": "auto",
+        "overflowX": "hidden",
+        "top": "auto",
+        "scrollHeight": 370,
+        "clientHeight": 370
       },
       "titleText": "Approval Requests",
       "titleWidth": 143,
@@ -630,6 +822,30 @@
         "scrollHeight": 0,
         "clientHeight": 0
       },
+      "moreBackdrop": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "display": "grid",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "0px",
+        "scrollHeight": 844,
+        "clientHeight": 844
+      },
+      "moreSheet": {
+        "x": 12,
+        "y": 460,
+        "width": 366,
+        "height": 372,
+        "display": "block",
+        "overflowY": "auto",
+        "overflowX": "hidden",
+        "top": "auto",
+        "scrollHeight": 370,
+        "clientHeight": 370
+      },
       "titleText": "Approval Requests",
       "titleWidth": 157,
       "drawerCloseCount": 0
@@ -699,6 +915,30 @@
         "top": "auto",
         "scrollHeight": 0,
         "clientHeight": 0
+      },
+      "moreBackdrop": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "display": "grid",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "0px",
+        "scrollHeight": 844,
+        "clientHeight": 844
+      },
+      "moreSheet": {
+        "x": 12,
+        "y": 460,
+        "width": 366,
+        "height": 372,
+        "display": "block",
+        "overflowY": "auto",
+        "overflowX": "hidden",
+        "top": "auto",
+        "scrollHeight": 370,
+        "clientHeight": 370
       },
       "titleText": "Approval Requests",
       "titleWidth": 157,
@@ -772,6 +1012,30 @@
         "scrollHeight": 0,
         "clientHeight": 0
       },
+      "moreBackdrop": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "display": "grid",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "0px",
+        "scrollHeight": 844,
+        "clientHeight": 844
+      },
+      "moreSheet": {
+        "x": 12,
+        "y": 460,
+        "width": 366,
+        "height": 372,
+        "display": "block",
+        "overflowY": "auto",
+        "overflowX": "hidden",
+        "top": "auto",
+        "scrollHeight": 370,
+        "clientHeight": 370
+      },
       "titleText": "Approval Requests",
       "titleWidth": 157,
       "drawerCloseCount": 0
@@ -841,6 +1105,30 @@
         "top": "auto",
         "scrollHeight": 0,
         "clientHeight": 0
+      },
+      "moreBackdrop": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "display": "grid",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "0px",
+        "scrollHeight": 844,
+        "clientHeight": 844
+      },
+      "moreSheet": {
+        "x": 12,
+        "y": 460,
+        "width": 366,
+        "height": 372,
+        "display": "block",
+        "overflowY": "auto",
+        "overflowX": "hidden",
+        "top": "auto",
+        "scrollHeight": 370,
+        "clientHeight": 370
       },
       "titleText": "Approval Requests",
       "titleWidth": 157,

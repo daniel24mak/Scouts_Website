@@ -1632,9 +1632,23 @@ AS $$
 DECLARE
   target_id text;
   action_name text;
+  old_row jsonb;
+  new_row jsonb;
+  changed_fields jsonb;
 BEGIN
   target_id := COALESCE(NEW.id::text, OLD.id::text);
   action_name := lower(TG_OP) || '_' || TG_TABLE_NAME;
+  old_row := CASE WHEN TG_OP IN ('UPDATE', 'DELETE') THEN to_jsonb(OLD) ELSE '{}'::jsonb END;
+  new_row := CASE WHEN TG_OP IN ('INSERT', 'UPDATE') THEN to_jsonb(NEW) ELSE '{}'::jsonb END;
+  changed_fields := CASE
+    WHEN TG_OP = 'UPDATE' THEN (
+      SELECT COALESCE(jsonb_agg(new_entry.key), '[]'::jsonb)
+      FROM jsonb_each(new_row) AS new_entry
+      JOIN jsonb_each(old_row) AS old_entry ON old_entry.key = new_entry.key
+      WHERE new_entry.value IS DISTINCT FROM old_entry.value
+    )
+    ELSE '[]'::jsonb
+  END;
 
   INSERT INTO public.audit_logs (actor_id, action, entity_type, entity_id, metadata)
   VALUES (
@@ -1645,8 +1659,49 @@ BEGIN
     jsonb_build_object(
       'operation', TG_OP,
       'table', TG_TABLE_NAME,
+      'changed_fields', changed_fields,
       'old_status', CASE WHEN TG_OP IN ('UPDATE', 'DELETE') THEN to_jsonb(OLD)->>'status' ELSE NULL END,
-      'new_status', CASE WHEN TG_OP IN ('INSERT', 'UPDATE') THEN to_jsonb(NEW)->>'status' ELSE NULL END
+      'new_status', CASE WHEN TG_OP IN ('INSERT', 'UPDATE') THEN to_jsonb(NEW)->>'status' ELSE NULL END,
+      'old', jsonb_strip_nulls(jsonb_build_object(
+        'name', old_row->>'name',
+        'title', old_row->>'title',
+        'file_name', old_row->>'file_name',
+        'role', old_row->>'role',
+        'account_status', old_row->>'account_status',
+        'status', old_row->>'status',
+        'approval_status', old_row->>'approval_status',
+        'chief_level', old_row->>'chief_level',
+        'group_id', old_row->>'group_id',
+        'category_id', old_row->>'category_id',
+        'date', old_row->>'date',
+        'date_from', old_row->>'date_from',
+        'source', old_row->>'source',
+        'roles', old_row->'roles',
+        'assigned_group_ids', old_row->'assigned_group_ids',
+        'coordinator_group_ids', old_row->'coordinator_group_ids',
+        'posted_form_id', old_row->>'posted_form_id',
+        'album_id', old_row->>'album_id'
+      )),
+      'new', jsonb_strip_nulls(jsonb_build_object(
+        'name', new_row->>'name',
+        'title', new_row->>'title',
+        'file_name', new_row->>'file_name',
+        'role', new_row->>'role',
+        'account_status', new_row->>'account_status',
+        'status', new_row->>'status',
+        'approval_status', new_row->>'approval_status',
+        'chief_level', new_row->>'chief_level',
+        'group_id', new_row->>'group_id',
+        'category_id', new_row->>'category_id',
+        'date', new_row->>'date',
+        'date_from', new_row->>'date_from',
+        'source', new_row->>'source',
+        'roles', new_row->'roles',
+        'assigned_group_ids', new_row->'assigned_group_ids',
+        'coordinator_group_ids', new_row->'coordinator_group_ids',
+        'posted_form_id', new_row->>'posted_form_id',
+        'album_id', new_row->>'album_id'
+      ))
     )
   );
 
@@ -1660,6 +1715,12 @@ DECLARE
 BEGIN
   FOREACH table_name IN ARRAY ARRAY[
     'user_profiles',
+    'scouts',
+    'registration_uploads',
+    'groups',
+    'grouping_rules',
+    'site_content',
+    'site_content_revisions',
     'posts',
     'post_revisions',
     'gallery_albums',
@@ -1667,6 +1728,9 @@ BEGIN
     'gallery_images',
     'photo_upload_batches',
     'calendar_events',
+    'attendance_sessions',
+    'chief_attendance_sessions',
+    'contact_messages',
     'documents',
     'document_categories',
     'archived_years',
