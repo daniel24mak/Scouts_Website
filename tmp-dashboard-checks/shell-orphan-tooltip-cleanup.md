@@ -1,0 +1,59 @@
+# Orphan collapsed-sidebar tooltip cleanup
+
+- line 1526: `.sidebar-control-button`
+- line 1547: `.sidebar-control-button`
+- line 3898: `.sidebar-account-summary`
+- line 3904: `.sidebar-account-summary strong, .sidebar-account-summary span`
+- line 3911: `.sidebar-account-summary strong`
+- line 3916: `.sidebar-account-summary span`
+- line 3922: `.sidebar-logout-button`
+- line 3937: `.sidebar-logout-button:hover`
+- line 3942: `.admin-cms-shell.sidebar-collapsed .sidebar-account-summary, .admin-cms-shell.sidebar-collapsed .sidebar-logout-button span`
+- line 3955: `.admin-cms-shell.sidebar-collapsed .sidebar-logout-button`
+- line 4182: `.admin-cms-shell.sidebar-collapsed .sidebar-account-summary, .admin-cms-shell.sidebar-collapsed .sidebar-logout-button span`
+- line 4191: `.admin-cms-shell.sidebar-collapsed .sidebar-logout-button`
+- line 4317: `.sidebar-website-button`
+- line 4321: `.admin-cms-shell.sidebar-collapsed .sidebar-website-button::after, .admin-cms-shell.sidebar-collapsed .sidebar-logout-button::after`
+- line 4340: `.admin-cms-shell.sidebar-collapsed .sidebar-logout-button::after`
+- line 4344: `.admin-cms-shell.sidebar-collapsed .sidebar-website-button:hover::after, .admin-cms-shell.sidebar-collapsed .sidebar-website-button:focus-visible::after, .admin-cms-shell.sidebar-collapsed .sidebar-logout-button:hover::after, .admin-cms-shell.sidebar-collapsed .sidebar-logout-button:focus-visible::after`
+- line 4384: `.admin-cms-shell.sidebar-collapsed .sidebar-website-button::after, .admin-cms-shell.sidebar-collapsed .sidebar-logout-button::after`
+- line 4415: `.admin-cms-shell.sidebar-collapsed .sidebar-control-button, .admin-cms-shell.sidebar-collapsed .sidebar-logout-button`
+- line 4420: `.admin-cms-shell.sidebar-collapsed .sidebar-control-button::after, .admin-cms-shell.sidebar-collapsed .sidebar-logout-button::after`
+- line 4441: `.admin-cms-shell.sidebar-collapsed .sidebar-control-button:hover::after, .admin-cms-shell.sidebar-collapsed .sidebar-control-button:focus-visible::after, .admin-cms-shell.sidebar-collapsed .sidebar-logout-button:hover::after, .admin-cms-shell.sidebar-collapsed .sidebar-logout-button:focus-visible::after`
+- line 4457: `.admin-cms-shell.sidebar-collapsed .sidebar-control-button::after, .admin-cms-shell.sidebar-collapsed .sidebar-logout-button::after`
+- line 4470: `.admin-cms-shell.sidebar-collapsed .sidebar-control-button::after, .admin-cms-shell.sidebar-collapsed .sidebar-website-button::after, .admin-cms-shell.sidebar-collapsed .sidebar-logout-button::after, .admin-cms-shell.sidebar-collapsed .sidebar-control-button:hover::after, .admin-cms-shell.sidebar-collapsed .sidebar-control-button:focus-visible::after, .admin-cms-shell.sidebar-collapsed .sidebar-website-button:hover::after, .admin-cms-shell.sidebar-collapsed .sidebar-website-button:focus-visible::after, .admin-cms-shell.sidebar-collapsed .sidebar-logout-button:hover::after, .admin-cms-shell.sidebar-collapsed .sidebar-logout-button:focus-visible::after`
+- line 4761: `.sidebar-control-button`
+- line 4767: `.sidebar-website-button`
+- line 4770: `.admin-cms-shell.sidebar-collapsed .sidebar-control-button span`
+- line 4778: `.admin-cms-shell.sidebar-collapsed .sidebar-control-button`
+- line 4783: `.admin-cms-shell.sidebar-collapsed .sidebar-control-button::after`
+- line 4803: `.admin-cms-shell.sidebar-collapsed .sidebar-control-button:hover::after, .admin-cms-shell.sidebar-collapsed .sidebar-control-button:focus-visible::after`
+- line 8739: `.sidebar-account-summary`
+- line 8752: `.sidebar-account-summary > span`
+- line 8757: `.sidebar-account-summary small`
+- line 8764: `.sidebar-collapsed .sidebar-account-summary > span`
+- line 9064: `.sidebar-control-button, .sidebar-logout-button`
+- line 9077: `.sidebar-control-button:hover`
+- line 9087: `.admin-cms-shell.sidebar-collapsed .sidebar-control-button, .admin-cms-shell.sidebar-collapsed .sidebar-logout-button, .admin-cms-shell.sidebar-collapsed .sidebar-account-summary`
+- line 9094: `.admin-cms-shell.sidebar-collapsed .sidebar-control-button::after, .admin-cms-shell.sidebar-collapsed .sidebar-account-summary::after, .admin-cms-shell.sidebar-collapsed .sidebar-logout-button::after`
+- line 9115: `.admin-cms-shell.sidebar-collapsed .sidebar-control-button:hover::after, .admin-cms-shell.sidebar-collapsed .sidebar-account-summary:hover::after, .admin-cms-shell.sidebar-collapsed .sidebar-logout-button:hover::after, .admin-cms-shell.sidebar-collapsed .sidebar-control-button:focus-visible::after, .admin-cms-shell.sidebar-collapsed .sidebar-account-summary:focus-visible::after, .admin-cms-shell.sidebar-collapsed .sidebar-logout-button:focus-visible::after`
+- line 9747: `.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-control-button span`
+- line 9756: `.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-control-button`
+- line 12603: `.admin-cms-shell.dashboard-theme-dark .sidebar-control-button`
+- line 12842: `.admin-cms-shell.dashboard-theme-dark a.sidebar-control-button`
+- line 13190: `.admin-cms-shell :where(button, .primary-action, .inline-action, .icon-button, .sidebar-control-button, .dashboard-theme-toggle, .dashboard-notification-button, .dashboard-profile-button)`
+- line 13665: `.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-control-button span, .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-account-summary > span`
+- line 13675: `.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-control-button, .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-account-summary`
+- line 13811: `.admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .sidebar-control-button, .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .sidebar-account-summary`
+- line 13817: `.admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .sidebar-control-button span, .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .sidebar-account-summary > span`
+- line 13828: `.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-control-button span, .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-account-summary > span`
+- line 13838: `.admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-control-button, .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-account-summary`
+- line 13844: `.admin-cms-shell.sidebar-collapsed :where(.sidebar-control-button, .sidebar-website-button, .sidebar-logout-button)::after, .admin-cms-shell.sidebar-collapsed :where(.sidebar-control-button, .sidebar-website-button, .sidebar-logout-button):hover::after, .admin-cms-shell.sidebar-collapsed :where(.sidebar-control-button, .sidebar-website-button, .sidebar-logout-button):focus-visible::after`
+- line 13863: `.admin-cms-shell.sidebar-collapsed .sidebar-control-button`
+- line 13867: `.admin-cms-shell.sidebar-collapsed .sidebar-control-button span`
+- line 16198: `.sidebar-control-button`
+- line 16214: `.sidebar-control-button:hover, .sidebar-control-button:focus-visible`
+- line 16228: `.sidebar-control-button svg`
+- line 16233: `.sidebar-control-button span`
+- line 16283: `.admin-cms-shell.sidebar-collapsed .sidebar-control-button`
+- line 16289: `.admin-cms-shell.sidebar-collapsed .sidebar-control-button span`

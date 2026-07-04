@@ -1,0 +1,56 @@
+{
+  "desktopMetrics": {
+    "topbar": {
+      "x": 114,
+      "y": 16,
+      "width": 1286,
+      "height": 70,
+      "top": 16,
+      "right": 1400,
+      "bottom": 86,
+      "left": 114
+    },
+    "sidebar": {
+      "x": 16,
+      "y": 16,
+      "width": 72,
+      "height": 868,
+      "top": 16,
+      "right": 88,
+      "bottom": 884,
+      "left": 16
+    },
+    "logo": {
+      "width": 28,
+      "height": 28
+    },
+    "sidebarButtonAfterContent": "none",
+    "bodyScrollWidth": 1440,
+    "viewportWidth": 1440
+  },
+  "mobileMetrics": {
+    "topbar": {
+      "x": 22,
+      "y": 22,
+      "width": 346,
+      "height": 62,
+      "top": 22,
+      "right": 368,
+      "bottom": 84,
+      "left": 22
+    },
+    "bottom": {
+      "x": 10,
+      "y": 764,
+      "width": 370,
+      "height": 70,
+      "top": 764,
+      "right": 380,
+      "bottom": 834,
+      "left": 10
+    },
+    "sidebarDisplay": "none",
+    "bodyScrollWidth": 390,
+    "viewportWidth": 390
+  }
+}

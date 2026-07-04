@@ -1,0 +1,31 @@
+- .admin-sidebar-title
+- .admin-sidebar-title strong
+- .admin-sidebar-title span
+- .admin-sidebar-title
+- /* Sidebar control and gallery/year management refinements. */ .admin-sidebar-title
+- .sidebar-brand-text
+- .sidebar-desktop-toggle
+- .sidebar-desktop-toggle:hover, .sidebar-desktop-toggle:focus-visible
+- .admin-sidebar-title
+- .admin-sidebar-title
+- .sidebar-brand
+- .sidebar-brand-expanded
+- .sidebar-brand-compact
+- .sidebar-desktop-toggle
+- .admin-cms-shell.sidebar-collapsed .admin-sidebar-title
+- .admin-cms-shell.sidebar-collapsed .sidebar-brand-expanded
+- .admin-cms-shell.sidebar-collapsed .sidebar-brand-compact
+- .sidebar-desktop-toggle, .admin-cms-shell.sidebar-collapsed .sidebar-desktop-toggle
+- .admin-cms-shell.sidebar-collapsed .sidebar-desktop-toggle
+- .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar-title
+- .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-brand-expanded
+- .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-brand-expanded
+- .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-brand-compact
+- .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .sidebar-brand-expanded, .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .sidebar-brand-compact
+- .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .admin-sidebar-title
+- .admin-cms-shell.sidebar-collapsed:not(.sidebar-temporary-expanded) .sidebar-desktop-toggle
+- .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-brand-expanded
+- .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .sidebar-brand-compact
+- .admin-cms-shell.sidebar-collapsed.sidebar-temporary-expanded .admin-sidebar-title
+- .admin-cms-shell.sidebar-collapsed .sidebar-brand-expanded
+- .admin-cms-shell.sidebar-collapsed .sidebar-brand-compact

@@ -1,0 +1,17 @@
+{
+  "metrics": {
+    "logoWidth": 28,
+    "logoHeight": 28,
+    "wordmarkDisplay": "flex",
+    "wordmarkWhiteSpace": "nowrap",
+    "drawerCloseDisplayDesktop": "none"
+  },
+  "mobileMetrics": {
+    "logoWidth": 28,
+    "logoHeight": 28,
+    "drawerCloseDisplayMobile": "grid",
+    "bodyScrollWidth": 390,
+    "viewportWidth": 390
+  },
+  "duplicateSelectorCount": 306
+}

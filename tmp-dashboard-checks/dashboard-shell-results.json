@@ -1,0 +1,850 @@
+{
+  "desktop-light-expanded": {
+    "viewport": {
+      "width": 1365,
+      "height": 900
+    },
+    "docScrollWidth": 1365,
+    "topbar": {
+      "x": 0,
+      "y": 0,
+      "width": 1365,
+      "height": 68,
+      "display": "flex",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "0px",
+      "scrollHeight": 67,
+      "clientHeight": 67
+    },
+    "sidebar": {
+      "x": 16,
+      "y": 84,
+      "width": 260,
+      "height": 800,
+      "display": "block",
+      "overflowY": "auto",
+      "overflowX": "hidden",
+      "top": "84px",
+      "scrollHeight": 1278,
+      "clientHeight": 798
+    },
+    "mobileSearch": {
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0,
+      "display": "none",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "auto",
+      "scrollHeight": 0,
+      "clientHeight": 0
+    },
+    "fullSearch": {
+      "x": 614,
+      "y": 24,
+      "width": 472,
+      "height": 20,
+      "display": "flex",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "auto",
+      "scrollHeight": 20,
+      "clientHeight": 20
+    },
+    "shellToggle": {
+      "x": 32,
+      "y": 16,
+      "width": 36,
+      "height": 36,
+      "display": "flex",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "auto",
+      "scrollHeight": 34,
+      "clientHeight": 34
+    },
+    "titleText": "Approval Requests",
+    "titleWidth": 352,
+    "drawerCloseCount": 0
+  },
+  "desktop-light-collapsed": {
+    "viewport": {
+      "width": 1365,
+      "height": 900
+    },
+    "docScrollWidth": 1365,
+    "topbar": {
+      "x": 0,
+      "y": 0,
+      "width": 1365,
+      "height": 68,
+      "display": "flex",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "0px",
+      "scrollHeight": 67,
+      "clientHeight": 67
+    },
+    "sidebar": {
+      "x": 16,
+      "y": 84,
+      "width": 72,
+      "height": 800,
+      "display": "block",
+      "overflowY": "auto",
+      "overflowX": "hidden",
+      "top": "84px",
+      "scrollHeight": 934,
+      "clientHeight": 798
+    },
+    "mobileSearch": {
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0,
+      "display": "none",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "auto",
+      "scrollHeight": 0,
+      "clientHeight": 0
+    },
+    "fullSearch": {
+      "x": 614,
+      "y": 24,
+      "width": 472,
+      "height": 20,
+      "display": "flex",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "auto",
+      "scrollHeight": 20,
+      "clientHeight": 20
+    },
+    "shellToggle": {
+      "x": 32,
+      "y": 16,
+      "width": 36,
+      "height": 36,
+      "display": "flex",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "auto",
+      "scrollHeight": 34,
+      "clientHeight": 34
+    },
+    "titleText": "Approval Requests",
+    "titleWidth": 352,
+    "drawerCloseCount": 0
+  },
+  "desktop-dark-expanded": {
+    "viewport": {
+      "width": 1365,
+      "height": 900
+    },
+    "docScrollWidth": 1365,
+    "topbar": {
+      "x": 0,
+      "y": 0,
+      "width": 1365,
+      "height": 68,
+      "display": "flex",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "0px",
+      "scrollHeight": 67,
+      "clientHeight": 67
+    },
+    "sidebar": {
+      "x": 16,
+      "y": 84,
+      "width": 260,
+      "height": 800,
+      "display": "block",
+      "overflowY": "auto",
+      "overflowX": "hidden",
+      "top": "84px",
+      "scrollHeight": 1278,
+      "clientHeight": 798
+    },
+    "mobileSearch": {
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0,
+      "display": "none",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "auto",
+      "scrollHeight": 0,
+      "clientHeight": 0
+    },
+    "fullSearch": {
+      "x": 614,
+      "y": 24,
+      "width": 472,
+      "height": 20,
+      "display": "flex",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "auto",
+      "scrollHeight": 20,
+      "clientHeight": 20
+    },
+    "shellToggle": {
+      "x": 32,
+      "y": 16,
+      "width": 36,
+      "height": 36,
+      "display": "flex",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "auto",
+      "scrollHeight": 34,
+      "clientHeight": 34
+    },
+    "titleText": "Approval Requests",
+    "titleWidth": 352,
+    "drawerCloseCount": 0
+  },
+  "desktop-dark-collapsed": {
+    "viewport": {
+      "width": 1365,
+      "height": 900
+    },
+    "docScrollWidth": 1365,
+    "topbar": {
+      "x": 0,
+      "y": 0,
+      "width": 1365,
+      "height": 68,
+      "display": "flex",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "0px",
+      "scrollHeight": 67,
+      "clientHeight": 67
+    },
+    "sidebar": {
+      "x": 16,
+      "y": 84,
+      "width": 72,
+      "height": 800,
+      "display": "block",
+      "overflowY": "auto",
+      "overflowX": "hidden",
+      "top": "84px",
+      "scrollHeight": 934,
+      "clientHeight": 798
+    },
+    "mobileSearch": {
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0,
+      "display": "none",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "auto",
+      "scrollHeight": 0,
+      "clientHeight": 0
+    },
+    "fullSearch": {
+      "x": 614,
+      "y": 24,
+      "width": 472,
+      "height": 20,
+      "display": "flex",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "auto",
+      "scrollHeight": 20,
+      "clientHeight": 20
+    },
+    "shellToggle": {
+      "x": 32,
+      "y": 16,
+      "width": 36,
+      "height": 36,
+      "display": "flex",
+      "overflowY": "visible",
+      "overflowX": "visible",
+      "top": "auto",
+      "scrollHeight": 34,
+      "clientHeight": 34
+    },
+    "titleText": "Approval Requests",
+    "titleWidth": 352,
+    "drawerCloseCount": 0
+  },
+  "mobile-375-light": {
+    "closed": {
+      "viewport": {
+        "width": 375,
+        "height": 844
+      },
+      "docScrollWidth": 375,
+      "topbar": {
+        "x": 0,
+        "y": 0,
+        "width": 375,
+        "height": 62,
+        "display": "flex",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "0px",
+        "scrollHeight": 61,
+        "clientHeight": 61
+      },
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "overflowY": "auto",
+        "overflowX": "hidden",
+        "top": "84px",
+        "scrollHeight": 0,
+        "clientHeight": 0
+      },
+      "mobileSearch": {
+        "x": 197,
+        "y": 13,
+        "width": 36,
+        "height": 36,
+        "display": "flex",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "auto",
+        "scrollHeight": 32,
+        "clientHeight": 32
+      },
+      "fullSearch": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "76px",
+        "scrollHeight": 0,
+        "clientHeight": 0
+      },
+      "shellToggle": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "auto",
+        "scrollHeight": 0,
+        "clientHeight": 0
+      },
+      "titleText": "Approval Requests",
+      "titleWidth": 143,
+      "drawerCloseCount": 0
+    },
+    "open": {
+      "viewport": {
+        "width": 375,
+        "height": 844
+      },
+      "docScrollWidth": 375,
+      "topbar": {
+        "x": 0,
+        "y": 0,
+        "width": 375,
+        "height": 62,
+        "display": "flex",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "0px",
+        "scrollHeight": 118,
+        "clientHeight": 61
+      },
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "overflowY": "auto",
+        "overflowX": "hidden",
+        "top": "84px",
+        "scrollHeight": 0,
+        "clientHeight": 0
+      },
+      "mobileSearch": {
+        "x": 197,
+        "y": 13,
+        "width": 36,
+        "height": 36,
+        "display": "flex",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "auto",
+        "scrollHeight": 32,
+        "clientHeight": 32
+      },
+      "fullSearch": {
+        "x": 12,
+        "y": 76,
+        "width": 351,
+        "height": 42,
+        "display": "flex",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "76px",
+        "scrollHeight": 40,
+        "clientHeight": 40
+      },
+      "shellToggle": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "auto",
+        "scrollHeight": 0,
+        "clientHeight": 0
+      },
+      "titleText": "Approval Requests",
+      "titleWidth": 143,
+      "drawerCloseCount": 0
+    }
+  },
+  "mobile-375-dark": {
+    "closed": {
+      "viewport": {
+        "width": 375,
+        "height": 844
+      },
+      "docScrollWidth": 375,
+      "topbar": {
+        "x": 0,
+        "y": 0,
+        "width": 375,
+        "height": 62,
+        "display": "flex",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "0px",
+        "scrollHeight": 61,
+        "clientHeight": 61
+      },
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "overflowY": "auto",
+        "overflowX": "hidden",
+        "top": "84px",
+        "scrollHeight": 0,
+        "clientHeight": 0
+      },
+      "mobileSearch": {
+        "x": 197,
+        "y": 13,
+        "width": 36,
+        "height": 36,
+        "display": "flex",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "auto",
+        "scrollHeight": 32,
+        "clientHeight": 32
+      },
+      "fullSearch": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "76px",
+        "scrollHeight": 0,
+        "clientHeight": 0
+      },
+      "shellToggle": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "auto",
+        "scrollHeight": 0,
+        "clientHeight": 0
+      },
+      "titleText": "Approval Requests",
+      "titleWidth": 143,
+      "drawerCloseCount": 0
+    },
+    "open": {
+      "viewport": {
+        "width": 375,
+        "height": 844
+      },
+      "docScrollWidth": 375,
+      "topbar": {
+        "x": 0,
+        "y": 0,
+        "width": 375,
+        "height": 62,
+        "display": "flex",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "0px",
+        "scrollHeight": 118,
+        "clientHeight": 61
+      },
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "overflowY": "auto",
+        "overflowX": "hidden",
+        "top": "84px",
+        "scrollHeight": 0,
+        "clientHeight": 0
+      },
+      "mobileSearch": {
+        "x": 197,
+        "y": 13,
+        "width": 36,
+        "height": 36,
+        "display": "flex",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "auto",
+        "scrollHeight": 32,
+        "clientHeight": 32
+      },
+      "fullSearch": {
+        "x": 12,
+        "y": 76,
+        "width": 351,
+        "height": 42,
+        "display": "flex",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "76px",
+        "scrollHeight": 40,
+        "clientHeight": 40
+      },
+      "shellToggle": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "auto",
+        "scrollHeight": 0,
+        "clientHeight": 0
+      },
+      "titleText": "Approval Requests",
+      "titleWidth": 143,
+      "drawerCloseCount": 0
+    }
+  },
+  "mobile-390-light": {
+    "closed": {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "docScrollWidth": 390,
+      "topbar": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 62,
+        "display": "flex",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "0px",
+        "scrollHeight": 61,
+        "clientHeight": 61
+      },
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "overflowY": "auto",
+        "overflowX": "hidden",
+        "top": "84px",
+        "scrollHeight": 0,
+        "clientHeight": 0
+      },
+      "mobileSearch": {
+        "x": 212,
+        "y": 13,
+        "width": 36,
+        "height": 36,
+        "display": "flex",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "auto",
+        "scrollHeight": 32,
+        "clientHeight": 32
+      },
+      "fullSearch": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "76px",
+        "scrollHeight": 0,
+        "clientHeight": 0
+      },
+      "shellToggle": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "auto",
+        "scrollHeight": 0,
+        "clientHeight": 0
+      },
+      "titleText": "Approval Requests",
+      "titleWidth": 157,
+      "drawerCloseCount": 0
+    },
+    "open": {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "docScrollWidth": 390,
+      "topbar": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 62,
+        "display": "flex",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "0px",
+        "scrollHeight": 118,
+        "clientHeight": 61
+      },
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "overflowY": "auto",
+        "overflowX": "hidden",
+        "top": "84px",
+        "scrollHeight": 0,
+        "clientHeight": 0
+      },
+      "mobileSearch": {
+        "x": 212,
+        "y": 13,
+        "width": 36,
+        "height": 36,
+        "display": "flex",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "auto",
+        "scrollHeight": 32,
+        "clientHeight": 32
+      },
+      "fullSearch": {
+        "x": 12,
+        "y": 76,
+        "width": 366,
+        "height": 42,
+        "display": "flex",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "76px",
+        "scrollHeight": 40,
+        "clientHeight": 40
+      },
+      "shellToggle": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "auto",
+        "scrollHeight": 0,
+        "clientHeight": 0
+      },
+      "titleText": "Approval Requests",
+      "titleWidth": 157,
+      "drawerCloseCount": 0
+    }
+  },
+  "mobile-390-dark": {
+    "closed": {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "docScrollWidth": 390,
+      "topbar": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 62,
+        "display": "flex",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "0px",
+        "scrollHeight": 61,
+        "clientHeight": 61
+      },
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "overflowY": "auto",
+        "overflowX": "hidden",
+        "top": "84px",
+        "scrollHeight": 0,
+        "clientHeight": 0
+      },
+      "mobileSearch": {
+        "x": 212,
+        "y": 13,
+        "width": 36,
+        "height": 36,
+        "display": "flex",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "auto",
+        "scrollHeight": 32,
+        "clientHeight": 32
+      },
+      "fullSearch": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "76px",
+        "scrollHeight": 0,
+        "clientHeight": 0
+      },
+      "shellToggle": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "auto",
+        "scrollHeight": 0,
+        "clientHeight": 0
+      },
+      "titleText": "Approval Requests",
+      "titleWidth": 157,
+      "drawerCloseCount": 0
+    },
+    "open": {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "docScrollWidth": 390,
+      "topbar": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 62,
+        "display": "flex",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "0px",
+        "scrollHeight": 118,
+        "clientHeight": 61
+      },
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "overflowY": "auto",
+        "overflowX": "hidden",
+        "top": "84px",
+        "scrollHeight": 0,
+        "clientHeight": 0
+      },
+      "mobileSearch": {
+        "x": 212,
+        "y": 13,
+        "width": 36,
+        "height": 36,
+        "display": "flex",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "auto",
+        "scrollHeight": 32,
+        "clientHeight": 32
+      },
+      "fullSearch": {
+        "x": 12,
+        "y": 76,
+        "width": 366,
+        "height": 42,
+        "display": "flex",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "76px",
+        "scrollHeight": 40,
+        "clientHeight": 40
+      },
+      "shellToggle": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "display": "none",
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "top": "auto",
+        "scrollHeight": 0,
+        "clientHeight": 0
+      },
+      "titleText": "Approval Requests",
+      "titleWidth": 157,
+      "drawerCloseCount": 0
+    }
+  }
+}

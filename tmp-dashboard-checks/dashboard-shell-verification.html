@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="file:///C:/Users/dania/OneDrive/Desktop/Scouts/Web_App/Website/src/styles.css">
+<style>
+  body { margin: 0; min-height: 120vh; }
+  .verify-shell { min-height: 100vh; }
+  .verify-content { display: grid; gap: 24px; }
+  .verify-card { padding: 24px; border-radius: 16px; background: var(--dashboard-surface, #fff); color: var(--dashboard-text, #111827); }
+  .verify-stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  .verify-stat { padding: 20px; border-radius: 14px; background: var(--dashboard-panel, #f8fafc); }
+  @media (max-width: 720px) { .verify-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+</style>
+</head>
+<body>
+<div class="admin-cms-shell verify-shell">
+  <header class="dashboard-topbar">
+    <a class="dashboard-wordmark" href="#" title="Back to website" aria-label="Back to website">
+      <img src="file:///C:/Users/dania/OneDrive/Desktop/Scouts/Web_App/Website/src/assets/smscouts_logo.png" alt="St. Mary's Scouts">
+      <span>St. Mary's Scouts</span>
+    </a>
+    <div class="dashboard-topbar-title"><h1>Overview</h1></div>
+    <div class="dashboard-search"><input placeholder="Search current section"></div>
+    <div class="dashboard-topbar-actions"><button class="dashboard-action-button">☾</button><button class="dashboard-action-button">♧</button></div>
+  </header>
+  <aside class="admin-sidebar" id="dashboard-sidebar">
+    <button type="button" class="dashboard-drawer-close" aria-label="Close dashboard menu">×</button>
+    <nav class="sidebar-navigation">
+      <button class="sidebar-link active"><span>▦</span><span>Overview</span></button>
+      <button class="sidebar-link"><span>✧</span><span>AI Assistant</span></button>
+      <button class="sidebar-link"><span>♧</span><span>Notifications</span></button>
+      <button class="sidebar-link sidebar-group-trigger"><span>👥</span><span>My Group</span></button>
+      <button class="sidebar-link sidebar-group-trigger"><span>✓</span><span>Attendance</span></button>
+      <button class="sidebar-link sidebar-group-trigger"><span>☷</span><span>Forms</span></button>
+    </nav>
+  </aside>
+  <main class="admin-main dashboard-main">
+    <section class="verify-content">
+      <div class="verify-stat-grid">
+        <div class="verify-stat"><p>Active scouts</p><strong>329</strong></div>
+        <div class="verify-stat"><p>Chiefs</p><strong>3</strong></div>
+        <div class="verify-stat"><p>Attendance days</p><strong>0</strong></div>
+        <div class="verify-stat"><p>Pending approvals</p><strong>0</strong></div>
+      </div>
+      <article class="verify-card"><h2>Pending Work</h2><p>No pending work right now.</p></article>
+    </section>
+  </main>
+  <nav class="dashboard-mobile-bottom-nav"><button>Website</button><button class="active">Overview</button><button>My Group</button><button>AI</button><button>My Forms</button></nav>
+</div>
+</body>
+</html>
