@@ -836,6 +836,7 @@ export default function AdminDashboardPage() {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
+  const [openMobileMoreGroups, setOpenMobileMoreGroups] = useState({});
   const [discardCloseRequest, setDiscardCloseRequest] = useState(null);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [profileEdit, setProfileEdit] = useState({ name: user?.name ?? "", profilePictureFile: null, profilePicturePreview: "", currentPassword: "", newPassword: "", confirmPassword: "" });
@@ -1591,6 +1592,7 @@ export default function AdminDashboardPage() {
   const selectSidebarItem = (id) => {
     setIsSidebarTemporarilyExpanded(false);
     setOpenSidebarGroups({});
+    setOpenMobileMoreGroups({});
     setCollapsedFlyoutTop(null);
     if (settingSections.some(([settingId]) => settingId === id)) {
       setActiveSetting(id);
@@ -1612,6 +1614,9 @@ export default function AdminDashboardPage() {
   };
   const toggleSidebarGroup = (id) => {
     setOpenSidebarGroups((current) => (current[id] ? {} : { [id]: true }));
+  };
+  const toggleMobileMoreGroup = (id) => {
+    setOpenMobileMoreGroups((current) => (current[id] ? {} : { [id]: true }));
   };
   const showSidebarTooltip = (label, event) => {
     if (sidebarMode !== "collapsed") return;
@@ -4351,21 +4356,21 @@ export default function AdminDashboardPage() {
           </button>
         ))}
         {hasMobileMoreItems && (
-          <button type="button" className={isMobileMoreOpen ? "active" : ""} onClick={() => setIsMobileMoreOpen((current) => !current)}>
+          <button type="button" className={isMobileMoreOpen ? "active" : ""} onClick={() => { setOpenMobileMoreGroups({}); setIsMobileMoreOpen((current) => !current); }}>
             <MoreHorizontal size={18} aria-hidden="true" />
             <span>More</span>
           </button>
         )}
       </nav>
       {hasMobileMoreItems && isMobileMoreOpen && (
-        <div className="dashboard-more-sheet-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setIsMobileMoreOpen(false); }}>
+        <div className="dashboard-more-sheet-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) { setIsMobileMoreOpen(false); setOpenMobileMoreGroups({}); } }}>
           <div className="dashboard-more-sheet" role="dialog" aria-modal="true" aria-label="More dashboard sections">
             <div className="panel-heading compact">
               <div>
                 <p className="eyebrow">More</p>
                 <h2>Dashboard Sections</h2>
               </div>
-              <button type="button" className="modal-close-button" aria-label="Close more menu" onClick={() => setIsMobileMoreOpen(false)}>
+              <button type="button" className="modal-close-button" aria-label="Close more menu" onClick={() => { setIsMobileMoreOpen(false); setOpenMobileMoreGroups({}); }}>
                 <X size={18} aria-hidden="true" />
               </button>
             </div>
@@ -4373,8 +4378,9 @@ export default function AdminDashboardPage() {
               {sidebarGroups.map((group) => {
                 if (group.type === "item") {
                   const [id, label, Icon] = group.item;
+                  if (mobilePrimaryIdSet.has(id)) return null;
                   return (
-                    <button type="button" key={id} className={isMobilePrimaryActive(id) ? "active" : ""} onClick={() => selectSidebarItem(id)}>
+                    <button type="button" key={id} className={isMobilePrimaryActive(id) ? "active" : ""} onClick={(event) => { event.preventDefault(); event.stopPropagation(); selectSidebarItem(id); }}>
                       <Icon size={18} aria-hidden="true" />
                       <span>{label}</span>
                       {id === "approvals" && pendingItems.length > 0 && <small>{pendingItems.length}</small>}
@@ -4382,20 +4388,22 @@ export default function AdminDashboardPage() {
                   );
                 }
 
-                const isOpen = Boolean(openSidebarGroups[group.id]);
-                const isActiveGroup = group.children.some(([id]) => id === activeSection);
+                const visibleChildren = group.children.filter(([id]) => !mobilePrimaryIdSet.has(id));
+                if (!visibleChildren.length) return null;
+                const isOpen = Boolean(openMobileMoreGroups[group.id]);
+                const isActiveGroup = visibleChildren.some(([id]) => id === activeSection);
                 const GroupIcon = group.Icon;
                 return (
                   <div className={`dashboard-more-group ${isOpen ? "open" : ""} ${isActiveGroup ? "active-group" : ""}`} key={group.id}>
-                    <button type="button" className="dashboard-more-group-trigger" onClick={() => toggleSidebarGroup(group.id)} aria-expanded={isOpen}>
+                    <button type="button" className="dashboard-more-group-trigger" onClick={(event) => { event.preventDefault(); event.stopPropagation(); toggleMobileMoreGroup(group.id); }} aria-expanded={isOpen}>
                       <GroupIcon size={18} aria-hidden="true" />
                       <span>{group.label}</span>
                       <ChevronDown size={16} aria-hidden="true" />
                     </button>
                     {isOpen && (
                       <div className="dashboard-more-subitems">
-                        {group.children.map(([id, label, Icon]) => (
-                          <button type="button" key={id} className={isMobilePrimaryActive(id) ? "active" : ""} onClick={() => selectSidebarItem(id)}>
+                        {visibleChildren.map(([id, label, Icon]) => (
+                          <button type="button" key={id} className={activeSection === id ? "active" : ""} onClick={(event) => { event.preventDefault(); event.stopPropagation(); selectSidebarItem(id); }}>
                             <Icon size={18} aria-hidden="true" />
                             <span>{label}</span>
                           </button>

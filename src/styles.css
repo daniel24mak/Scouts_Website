@@ -9256,6 +9256,9 @@ textarea:focus-visible {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    border-color: transparent !important;
+    background: transparent !important;
+    box-shadow: none !important;
   }
 
   .dashboard-shell-toggle {
@@ -16110,6 +16113,9 @@ span,
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    border-color: transparent !important;
+    background: transparent !important;
+    box-shadow: none !important;
   }
 
   .dashboard-shell-toggle {
@@ -16375,6 +16381,24 @@ span,
 /* Final dashboard shell spacing: keep page panels slightly below the fixed top bar. */
 .admin-cms-shell .admin-main {
   padding-top: 5px !important;
+}
+
+/* Light-mode selected tabs: keep section tabs visibly active after generic button resets. */
+.admin-cms-shell:not(.dashboard-theme-dark) :where(
+  .approval-type-tabs button.active,
+  .forms-section-tabs button.active,
+  .forms-mode-toggle button.active,
+  .calendar-view-toolbar button.active,
+  .documents-category-row button.active,
+  .settings-card-grid button.active,
+  .dashboard-more-grid button.active,
+  .dashboard-more-group.active-group > .dashboard-more-group-trigger,
+  .dashboard-more-subitems button.active
+) {
+  border-color: var(--dashboard-blue, #4055a6) !important;
+  background: var(--dashboard-blue, #4055a6) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 24px rgb(64 85 166 / 0.18) !important;
 }
 
 .admin-cms-shell.dashboard-theme-dark .admin-sidebar button.active,
