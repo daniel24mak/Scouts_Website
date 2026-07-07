@@ -44,3 +44,5 @@ tmp/
 temp/
 tmp-*/
 tmp-dashboard-checks/
+
+.codex/

@@ -1217,8 +1217,10 @@ export default function AdminDashboardPage() {
       const isMobile = window.matchMedia("(max-width: 768px)").matches;
       const isScrollingUp = currentScrollY < lastScrollY - 8;
       const isScrollingDown = currentScrollY > lastScrollY + 8;
-      if (!isMobile || currentScrollY < 180 || isMobileSidebarOpen) {
+      if (!isMobile || isMobileSidebarOpen) {
         setShowMobileMenuBar(false);
+      } else if (currentScrollY < 180) {
+        setShowMobileMenuBar(true);
       } else if (isScrollingUp) {
         setShowMobileMenuBar(true);
       } else if (isScrollingDown) {
@@ -1637,9 +1639,12 @@ export default function AdminDashboardPage() {
   const openCollapsedSidebarGroup = (groupId, event) => {
     const triggerRect = event?.currentTarget?.getBoundingClientRect?.();
     if (triggerRect) {
-      const minimumTop = 12;
-      const maximumTop = Math.max(minimumTop, window.innerHeight - 120);
-      const preferredTop = triggerRect.top + triggerRect.height / 2 - 24;
+      const group = sidebarGroups.find((item) => item.id === groupId);
+      const itemCount = group?.children?.length ?? 1;
+      const estimatedFlyoutHeight = Math.min(window.innerHeight - 48, itemCount * 72 + 28);
+      const minimumTop = 16;
+      const maximumTop = Math.max(minimumTop, window.innerHeight - estimatedFlyoutHeight - 24);
+      const preferredTop = triggerRect.top;
       setCollapsedFlyoutTop(Math.max(minimumTop, Math.min(preferredTop, maximumTop)));
     }
     setOpenSidebarGroups((current) => (current[groupId] ? {} : { [groupId]: true }));
@@ -2768,14 +2773,88 @@ export default function AdminDashboardPage() {
     const selected = (data.contactMessages ?? []).find((message) => message.id === selectedContactId) ?? messages[0] ?? null;
     const edit = selected ? (contactEdits[selected.id] ?? selected) : null;
     const setEdit = (field, value) => selected && setContactEdits((current) => ({ ...current, [selected.id]: { ...edit, [field]: value } }));
+    const statusOptions = ["all", "new", "read", "replied", "archived"];
+    const contactStats = [
+      { label: "Inbox", value: data.contactMessages?.length ?? 0 },
+      { label: "New", value: (data.contactMessages ?? []).filter((message) => message.status === "new").length },
+      { label: "Replied", value: (data.contactMessages ?? []).filter((message) => message.status === "replied").length },
+      { label: "Archived", value: (data.contactMessages ?? []).filter((message) => message.status === "archived").length }
+    ];
 
     return <div className={`contact-inbox-shell ${selectedContactId ? "mobile-detail-open" : ""}`}>
-      <aside className="contact-inbox-list">
-        <div className="contact-inbox-filters"><input placeholder="Search messages" value={contactInboxSearch} onChange={(event) => setContactInboxSearch(event.target.value)} /><select value={contactInboxStatus} onChange={(event) => setContactInboxStatus(event.target.value)}>{["all", "new", "read", "replied", "archived"].map((status) => <option value={status} key={status}>{status === "all" ? "All messages" : status}</option>)}</select></div>
-        <div className="contact-message-list">{messages.length ? messages.map((message) => <button type="button" className={`contact-message-row ${selected?.id === message.id ? "active" : ""} ${message.status === "new" ? "unread" : ""}`} key={message.id} onClick={() => openContactMessage(message)}><div><strong>{message.name}</strong><span className={`contact-status-pill ${message.status}`}>{message.status}</span></div><b>{message.subject}</b><p>{message.message}</p><small>{formatRelativeTime(message.createdAt)}</small></button>) : <p className="empty-state">No messages match these filters.</p>}</div>
+      <aside className="contact-inbox-list" aria-label="Contact message inbox">
+        <div className="contact-inbox-summary">
+          <div>
+            <p className="eyebrow">Inbox</p>
+            <h3>Visitor messages</h3>
+          </div>
+          <span>{messages.length}</span>
+        </div>
+        <div className="contact-inbox-stats" aria-label="Contact message status summary">
+          {contactStats.map((stat) => <span key={stat.label}><strong>{stat.value}</strong>{stat.label}</span>)}
+        </div>
+        <div className="contact-inbox-filters">
+          <label>
+            <span>Search inbox</span>
+            <input placeholder="Name, email, subject, or message" value={contactInboxSearch} onChange={(event) => setContactInboxSearch(event.target.value)} />
+          </label>
+          <label>
+            <span>Status</span>
+            <select value={contactInboxStatus} onChange={(event) => setContactInboxStatus(event.target.value)}>
+              {statusOptions.map((status) => <option value={status} key={status}>{status === "all" ? "All messages" : status}</option>)}
+            </select>
+          </label>
+        </div>
+        <div className="contact-message-list">
+          {messages.length ? messages.map((message, index) => (
+            <button
+              type="button"
+              className={`contact-message-row ${selected?.id === message.id ? "active" : ""} ${message.status === "new" ? "unread" : ""}`}
+              key={message.id}
+              onClick={() => openContactMessage(message)}
+              style={{ "--row-index": index }}
+              aria-pressed={selected?.id === message.id}
+            >
+              <span className="contact-row-icon"><MessageSquare size={18} aria-hidden="true" /></span>
+              <span className="contact-row-content">
+                <span className="contact-row-topline"><strong>{message.name}</strong><span className={`contact-status-pill ${message.status}`}>{message.status}</span></span>
+                <b>{message.subject}</b>
+                <p>{message.message}</p>
+                <small>{formatRelativeTime(message.createdAt)} · {message.email}</small>
+              </span>
+            </button>
+          )) : <div className="empty-state contact-empty-state"><MessageSquare size={26} aria-hidden="true" /><strong>No messages match these filters.</strong><span>Try a different search term or status.</span></div>}
+        </div>
       </aside>
-      <section className="contact-message-detail">
-        {selected && edit ? <><button type="button" className="inline-action contact-mobile-back" onClick={() => setSelectedContactId(null)}><ArrowLeft size={16} />Back to messages</button><div className="contact-detail-header"><div><p className="eyebrow">Contact message</p><h2>{selected.subject}</h2><span>Received {formatDubaiDateTime(selected.createdAt)}</span></div><span className={`contact-status-pill ${edit.status}`}>{edit.status}</span></div><dl className="contact-sender-details"><div><dt>From</dt><dd>{selected.name}</dd></div><div><dt>Email</dt><dd><a href={`mailto:${selected.email}`}>{selected.email}</a></dd></div>{selected.phone && <div><dt>Phone</dt><dd><a href={`tel:${selected.phone}`}>{selected.phone}</a></dd></div>}</dl><div className="contact-message-body">{selected.message}</div><label>Status<select value={edit.status} onChange={(event) => setEdit("status", event.target.value)}>{["new", "read", "replied", "archived"].map((status) => <option value={status} key={status}>{status}</option>)}</select></label><label>Internal notes<textarea rows="6" value={edit.notes ?? ""} onChange={(event) => setEdit("notes", event.target.value)} placeholder="Private notes for administrators..." /></label><div className="action-row"><button type="button" className="primary-action" onClick={() => saveContact(selected.id, edit)}>Save changes</button><button type="button" className="inline-action danger-action" onClick={() => deleteContact(selected.id)}>Delete</button></div></> : <div className="empty-approval-preview"><MessageSquare size={34} /><h3>Select a message</h3><p>Choose a message from the inbox to view its details.</p></div>}
+      <section className="contact-message-detail" aria-label="Selected contact message">
+        {selected && edit ? <>
+          <button type="button" className="inline-action contact-mobile-back" onClick={() => setSelectedContactId(null)}><ArrowLeft size={16} />Back to messages</button>
+          <div className="contact-detail-header">
+            <div>
+              <p className="eyebrow">Contact message</p>
+              <h2>{selected.subject}</h2>
+              <span>Received {formatDubaiDateTime(selected.createdAt)}</span>
+            </div>
+            <span className={`contact-status-pill ${edit.status}`}>{edit.status}</span>
+          </div>
+          <dl className="contact-sender-details">
+            <div><dt>From</dt><dd>{selected.name}</dd></div>
+            <div><dt>Email</dt><dd><a href={`mailto:${selected.email}`}>{selected.email}</a></dd></div>
+            {selected.phone && <div><dt>Phone</dt><dd><a href={`tel:${selected.phone}`}>{selected.phone}</a></dd></div>}
+          </dl>
+          <div className="contact-message-body">
+            <p>{selected.message}</p>
+          </div>
+          <div className="contact-response-panel">
+            <label className="contact-status-field">Status<select value={edit.status} onChange={(event) => setEdit("status", event.target.value)}>{["new", "read", "replied", "archived"].map((status) => <option value={status} key={status}>{status}</option>)}</select></label>
+            <label>Internal notes<textarea rows="6" value={edit.notes ?? ""} onChange={(event) => setEdit("notes", event.target.value)} placeholder="Private notes for administrators..." /></label>
+          </div>
+          <div className="action-row contact-detail-actions">
+            <a className="inline-action" href={`mailto:${selected.email}?subject=${encodeURIComponent(`Re: ${selected.subject}`)}`}><Send size={16} />Reply by email</a>
+            <button type="button" className="primary-action" onClick={() => saveContact(selected.id, edit)}>Save changes</button>
+            <button type="button" className="inline-action danger-action" onClick={() => deleteContact(selected.id)}>Delete</button>
+          </div>
+        </> : <div className="empty-approval-preview contact-detail-empty"><MessageSquare size={34} /><h3>Select a message</h3><p>Choose a message from the inbox to view its details.</p></div>}
       </section>
     </div>;
   };

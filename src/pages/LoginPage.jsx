@@ -49,10 +49,11 @@ export default function LoginPage() {
   };
 
   return (
-    <section className="page-section narrow">
+    <section className="page-section narrow login-page">
       <p className="eyebrow">Internal login</p>
       <h1>Sign in to the scouts portal</h1>
-      <form className="editor-panel" onSubmit={handlePasswordLogin}>
+      <p className="helper-text">Dashboard access is for admins, chiefs, coordinators, and approved leaders.</p>
+      <form className="editor-panel login-form" onSubmit={handlePasswordLogin}>
         <label>
           Email
           <input

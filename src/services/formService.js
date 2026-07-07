@@ -25,14 +25,27 @@ export const formQuestionTypes = [
 ];
 
 export function blankFormSchema() {
+  const pageId = crypto.randomUUID();
   return {
+    pages: [
+      {
+        id: pageId,
+        title: "Page 1",
+        description: "",
+        order: 0,
+        conditionalLogic: { enabled: false, sourceQuestionId: "", operator: "equals", value: "" }
+      }
+    ],
     questions: [
       {
         id: crypto.randomUUID(),
+        pageId,
+        order: 0,
         type: "short_text",
         text: "Untitled question",
         required: false,
-        options: []
+        options: [],
+        conditionalLogic: { enabled: false, sourceQuestionId: "", operator: "equals", value: "" }
       }
     ]
   };

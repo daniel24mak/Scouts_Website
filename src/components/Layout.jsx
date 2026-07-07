@@ -149,7 +149,7 @@ export default function Layout() {
         </div>
         <div className="footer-column footer-social-column">
           <strong>Social</strong>
-          <a className="footer-social" href="https://www.instagram.com/" target="_blank" rel="noreferrer" aria-label="Follow St. Mary's Scouts Dubai on Instagram">
+          <a className="footer-social" href="https://www.instagram.com/stmaryscoutsdubai" target="_blank" rel="noreferrer" aria-label="Follow St. Mary's Scouts Dubai on Instagram">
             <Instagram size={20} aria-hidden="true" />
             <span>Instagram</span>
           </a>
