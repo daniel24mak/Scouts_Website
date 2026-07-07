@@ -12,7 +12,7 @@
     "preview": "vite preview",
     "db:reset": "sqlite3 database/scouts.db \".read database/schema.sql\" \".read database/seed.sql\"",
     "db:tables": "sqlite3 database/scouts.db \".tables\"",
-    "test:dark-mode": "playwright test tests/dashboard-dark-mode-audit.spec.js"
+    "test:dark-mode": "playwright test --config=tests dashboard-dark-mode-audit.spec.js"
   },
   "dependencies": {
     "@tiptap/extension-color": "^3.27.0",

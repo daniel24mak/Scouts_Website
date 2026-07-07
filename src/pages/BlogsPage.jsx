@@ -65,6 +65,7 @@ export default function BlogsPage() {
       <div className="blog-page-header">
         <p className="eyebrow">News</p>
         <h1>News &amp; Blog</h1>
+        <p>Stories, announcements, and updates from the St. Mary's Scouts Dubai community.</p>
       </div>
       <div className="blog-filter-bar">
         <label className="blog-search-field">

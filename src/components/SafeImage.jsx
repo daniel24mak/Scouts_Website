@@ -111,7 +111,7 @@ export default function SafeImage({ src, alt = "", className = "", imageClassNam
         alt={alt}
         loading={loading}
         decoding={decoding}
-        fetchPriority={fetchPriority}
+        fetchpriority={fetchPriority}
         width={width}
         height={height}
         sizes={sizes}

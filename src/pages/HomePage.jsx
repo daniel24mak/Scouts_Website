@@ -387,7 +387,7 @@ export default function HomePage() {
               <span><MapPin size={18} aria-hidden="true" /> {contactLocation}</span>
               <span><Mail size={18} aria-hidden="true" /> {contactEmail}</span>
               <span><Phone size={18} aria-hidden="true" /> {contactPhone}</span>
-              <a href="https://www.instagram.com/" target="_blank" rel="noreferrer">
+              <a href="https://www.instagram.com/stmaryscoutsdubai" target="_blank" rel="noreferrer">
                 <Instagram size={18} aria-hidden="true" /> Instagram
               </a>
               <span><MessageCircle size={18} aria-hidden="true" /> Meeting hours placeholder</span>

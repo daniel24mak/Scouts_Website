@@ -31,6 +31,7 @@ export default function GalleryPage() {
     <section className="page-section">
       <p className="eyebrow">Gallery</p>
       <h1>Photo albums from every event</h1>
+      <p>Browse approved albums from meetings, camps, ceremonies, church events, and scout activities.</p>
       {error && <p className="empty-public-state">Albums could not be loaded: {error.message}</p>}
       <div className="album-grid" aria-busy={isLoading}>
         {isLoading && !albums.length ? Array.from({ length: 6 }, (_, index) => (
