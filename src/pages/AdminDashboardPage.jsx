@@ -1211,20 +1211,27 @@ export default function AdminDashboardPage() {
   }, [isMobileSidebarOpen]);
   useEffect(() => {
     let lastScrollY = window.scrollY;
+    let lastToggleY = window.scrollY;
 
     const handleDashboardScroll = () => {
       const currentScrollY = window.scrollY;
       const isMobile = window.matchMedia("(max-width: 768px)").matches;
-      const isScrollingUp = currentScrollY < lastScrollY - 8;
-      const isScrollingDown = currentScrollY > lastScrollY + 8;
+      const delta = currentScrollY - lastScrollY;
+      const distanceFromToggle = Math.abs(currentScrollY - lastToggleY);
+      const isScrollingUp = delta < -6 && distanceFromToggle > 18;
+      const isScrollingDown = delta > 6 && currentScrollY > 120 && distanceFromToggle > 28;
       if (!isMobile || isMobileSidebarOpen) {
         setShowMobileMenuBar(false);
+        lastToggleY = currentScrollY;
       } else if (currentScrollY < 180) {
         setShowMobileMenuBar(true);
+        lastToggleY = currentScrollY;
       } else if (isScrollingUp) {
         setShowMobileMenuBar(true);
+        lastToggleY = currentScrollY;
       } else if (isScrollingDown) {
         setShowMobileMenuBar(false);
+        lastToggleY = currentScrollY;
       }
 
       lastScrollY = currentScrollY;
@@ -4295,6 +4302,16 @@ export default function AdminDashboardPage() {
   const mobileMoreItems = flatSidebarItems.filter(([id]) => !mobilePrimaryIdSet.has(id));
   const hasMobileMoreItems = mobileMoreItems.length > 0;
   const isMobilePrimaryActive = (id) => activeSection === id;
+  const mobileTabCount = mobilePrimaryItems.length + (hasMobileMoreItems ? 1 : 0);
+  const activeMobileTabIndex = (() => {
+    const primaryIndex = mobilePrimaryItems.findIndex(([id]) => isMobilePrimaryActive(id));
+    if (primaryIndex >= 0) return primaryIndex;
+    if (isMobileMoreOpen || mobileMoreItems.some(([id]) => id === activeSection)) return mobilePrimaryItems.length;
+    return 0;
+  })();
+  const triggerMobileNavPress = () => {
+    if (window.matchMedia("(max-width: 768px)").matches) navigator.vibrate?.(8);
+  };
   const visibleNotificationItems = activeNotificationItems.slice(0, 8);
 
   const dashboardTopbar = (
@@ -4426,16 +4443,17 @@ export default function AdminDashboardPage() {
           })}
         </nav>
       </aside>
-      <nav className="dashboard-bottom-tabs" aria-label="Dashboard mobile navigation">
+      <nav className="dashboard-bottom-tabs" aria-label="Dashboard mobile navigation" style={{ "--mobile-tab-count": mobileTabCount, "--mobile-active-index": activeMobileTabIndex }}>
+        <span className="dashboard-bottom-indicator" aria-hidden="true" />
         {mobilePrimaryItems.map(([id, label, Icon]) => (
-          <button type="button" key={id} className={isMobilePrimaryActive(id) ? "active" : ""} onClick={() => selectSidebarItem(id)}>
+          <button type="button" key={id} className={isMobilePrimaryActive(id) ? "active" : ""} onPointerDown={triggerMobileNavPress} onClick={() => selectSidebarItem(id)}>
             <Icon size={18} aria-hidden="true" />
             <span>{label}</span>
             {id === "approvals" && pendingItems.length > 0 && <small>{pendingItems.length}</small>}
           </button>
         ))}
         {hasMobileMoreItems && (
-          <button type="button" className={isMobileMoreOpen ? "active" : ""} onClick={() => { setOpenMobileMoreGroups({}); setIsMobileMoreOpen((current) => !current); }}>
+          <button type="button" className={isMobileMoreOpen ? "active" : ""} onPointerDown={triggerMobileNavPress} onClick={() => { setOpenMobileMoreGroups({}); setIsMobileMoreOpen((current) => !current); }}>
             <MoreHorizontal size={18} aria-hidden="true" />
             <span>More</span>
           </button>
@@ -4810,5 +4828,3 @@ function AccessDenied({ message = "Your role, chief level, assigned group, and p
     </article>
   );
 }
-
-

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ArrowDown, ArrowLeft, ArrowUp, CalendarDays, CheckCircle2, Clock, Copy, FileText, GripVertical, Plus, Save, Search, Send, ShieldCheck, Star, Trash2, Users } from "lucide-react";
 import {
   closeDashboardPostedForm,
@@ -17,6 +18,66 @@ const optionQuestionTypes = new Set(["multiple_choice", "checkboxes", "dropdown"
 const aiSummarySections = ["Recommendations", "Course of action", "What went wrong", "What was good", "Key risks", "Follow-up actions"];
 const builderSteps = ["Form Details", "Build Questions", "Posting Settings / Review"];
 const defaultCondition = { enabled: false, sourceQuestionId: "", operator: "equals", value: "" };
+const defaultFormSettings = {
+  appearance: {
+    accentColor: "#4055a6",
+    backgroundColor: "#eef3fb",
+    cardColor: "#ffffff",
+    headerImageUrl: "",
+    logoUrl: "",
+    darkLogoUrl: "",
+    organizationName: "St. Mary's Scouts Dubai",
+    subtitle: "",
+    headerAlignment: "left",
+    logoSize: "medium",
+    fontStyle: "system",
+    cornerRadius: "medium",
+    shadowStrength: "soft",
+    headerMode: "compact_later"
+  },
+  startScreen: {
+    enabled: true,
+    buttonLabel: "Start form",
+    estimatedMinutes: "",
+    notice: "Your response is saved securely and can only be viewed by authorized leaders.",
+    requireConfirmation: false,
+    confirmationLabel: "I have read the instructions and understand this form."
+  },
+  behavior: {
+    requiredNotice: true,
+    progressDisplay: "bar",
+    hiddenAnswerMode: "preserve"
+  }
+};
+
+function normalizeFormSettings(settings = {}) {
+  return {
+    appearance: { ...defaultFormSettings.appearance, ...(settings.appearance ?? {}) },
+    startScreen: { ...defaultFormSettings.startScreen, ...(settings.startScreen ?? {}) },
+    behavior: { ...defaultFormSettings.behavior, ...(settings.behavior ?? {}) }
+  };
+}
+
+function getFormSettings(schema) {
+  return normalizeFormSettings(schema?.settings);
+}
+
+function getFormThemeStyle(settings) {
+  const appearance = normalizeFormSettings(settings).appearance;
+  return {
+    "--form-accent": appearance.accentColor || defaultFormSettings.appearance.accentColor,
+    "--form-page-bg": appearance.backgroundColor || defaultFormSettings.appearance.backgroundColor,
+    "--form-card-bg": appearance.cardColor || defaultFormSettings.appearance.cardColor,
+    "--form-radius": appearance.cornerRadius === "large" ? "28px" : appearance.cornerRadius === "small" ? "14px" : "20px",
+    "--form-shadow": appearance.shadowStrength === "strong" ? "0 28px 70px rgb(15 23 42 / 0.2)" : appearance.shadowStrength === "none" ? "none" : "0 18px 44px rgb(15 23 42 / 0.12)"
+  };
+}
+
+function getLogoSizeClass(size) {
+  if (size === "small") return "small";
+  if (size === "large") return "large";
+  return "medium";
+}
 
 function makePage(order = 0) {
   return {
@@ -35,6 +96,9 @@ function makeQuestion(type = "short_text", pageId = null, order = 0) {
     order,
     type,
     text: "Untitled question",
+    description: "",
+    helperText: "",
+    placeholder: "",
     required: false,
     options: optionQuestionTypes.has(type) ? ["Option 1"] : [],
     conditionalLogic: { ...defaultCondition }
@@ -66,6 +130,7 @@ function safeSchema(schema) {
   const pageIds = new Set(pages.map((page) => page.id));
   const primaryPageId = pages[0]?.id || fallbackPageId;
   return {
+    settings: normalizeFormSettings(nextSchema.settings),
     pages,
     questions: nextSchema.questions.map((question) => ({
       id: question.id || crypto.randomUUID(),
@@ -73,6 +138,9 @@ function safeSchema(schema) {
       order: Number.isFinite(Number(question.order)) ? Number(question.order) : 0,
       type: question.type || "short_text",
       text: question.text ?? "Untitled question",
+      description: question.description ?? "",
+      helperText: question.helperText ?? "",
+      placeholder: question.placeholder ?? "",
       required: Boolean(question.required),
       options: Array.isArray(question.options) ? question.options : [],
       conditionalLogic: normalizeConditionalLogic(question.conditionalLogic)
@@ -188,6 +256,7 @@ function matchesSearch(item, query, fields) {
 }
 
 function getQuestionPlaceholder(question) {
+  if (question.placeholder) return question.placeholder;
   if (question.type === "number") return "Enter a number";
   if (question.type === "date") return "Select a date";
   if (question.type === "dropdown") return "Select an option";
@@ -196,12 +265,13 @@ function getQuestionPlaceholder(question) {
 }
 
 function getQuestionHelper(question) {
+  if (question.helperText) return question.helperText;
   if (question.required) return "This question is required.";
   if (question.type === "number") return "Numbers only.";
   if (question.type === "rating") return "Choose one rating from 1 to 5.";
   if (question.type === "checkboxes") return "Select all options that apply.";
   if (question.type === "multiple_choice") return "Select one option.";
-  return "Optional";
+  return "";
 }
 
 function getFormStats(form, answers) {
@@ -271,10 +341,73 @@ function QuestionInput({ question, value, onChange, disabled = false }) {
   return <input className="forms-premium-input" disabled={disabled} value={value ?? ""} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />;
 }
 
-export function FormPreview({ form, answers = {}, onAnswerChange = null, disabled = false, errorQuestionIds = [], meta = null, showHeader = true, isStarted = null, onStart = null }) {
+function FormBrandHeader({ form, settings, compact = false, meta = null }) {
+  const appearance = settings.appearance;
+  const logo = appearance.logoUrl || appearance.darkLogoUrl;
+  const alignment = appearance.headerAlignment === "center" ? "center" : appearance.headerAlignment === "right" ? "right" : "left";
+  const hasVisualHeader = Boolean(appearance.headerImageUrl || logo || appearance.organizationName || appearance.subtitle);
+
+  if (!hasVisualHeader && compact) return null;
+
+  return (
+    <div className={`forms-brand-header ${compact ? "compact" : ""} align-${alignment}`}>
+      {appearance.headerImageUrl && !compact && <img className="forms-brand-banner" src={appearance.headerImageUrl} alt={`${form.title || "Form"} banner`} />}
+      <div className="forms-brand-lockup">
+        {logo && <img className={`forms-brand-logo ${getLogoSizeClass(appearance.logoSize)}`} src={logo} alt={`${appearance.organizationName || form.title || "Form"} logo`} />}
+        <div>
+          {appearance.organizationName && <span>{appearance.organizationName}</span>}
+          <strong>{compact ? form.title || "Untitled form" : appearance.subtitle || form.title || "Untitled form"}</strong>
+          {meta?.postedAt && !compact && <small>Posted {formatDate(meta.postedAt)}</small>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FormReviewAnswerGroups({ form, answers }) {
   const schema = safeSchema(form.schemaJson);
   const visiblePages = getVisiblePages(schema, answers);
-  const [internalStarted, setInternalStarted] = useState(!showHeader);
+
+  return (
+    <div className="forms-review-answer-list grouped">
+      {visiblePages.map((page, pageIndex) => {
+        const questions = getVisibleQuestionsForPage(schema, page.id, answers);
+        const pageTitle = page.title && !/^page\s*\d+$/i.test(page.title.trim()) ? page.title : "";
+        if (!questions.length) return null;
+        return (
+          <section className="forms-review-page-group" key={page.id}>
+            {pageTitle && <header><strong>{pageTitle}</strong></header>}
+            {questions.map((question, index) => (
+              <article key={question.id}>
+                <div className="forms-review-question-title">
+                  <span>{index + 1}</span>
+                  <FormattedText text={question.text} fallback="Untitled question" />
+                  {question.required && <em aria-label="Required">*</em>}
+                </div>
+                {question.description && <FormattedText text={question.description} className="forms-review-question-description" />}
+                {isAnswerFilled(answers[question.id])
+                  ? question.type === "long_text"
+                    ? <FormattedText text={answers[question.id]} className="forms-review-answer-rich" />
+                    : <p>{answerToText(answers[question.id])}</p>
+                  : <p>Not answered</p>}
+              </article>
+            ))}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+export function FormPreview({ form, answers = {}, onAnswerChange = null, disabled = false, errorQuestionIds = [], meta = null, showHeader = true, isStarted = null, onStart = null }) {
+  const schema = safeSchema(form.schemaJson);
+  const settings = getFormSettings(schema);
+  const themeStyle = getFormThemeStyle(settings);
+  const visiblePages = getVisiblePages(schema, answers);
+  const formTopRef = useRef(null);
+  const showStartScreen = showHeader && settings.startScreen.enabled !== false;
+  const [internalStarted, setInternalStarted] = useState(!showStartScreen);
+  const [confirmedStart, setConfirmedStart] = useState(false);
   const [currentPageId, setCurrentPageId] = useState(visiblePages[0]?.id ?? schema.pages[0]?.id);
   const [pageErrors, setPageErrors] = useState([]);
   const currentPage = visiblePages.find((page) => page.id === currentPageId) ?? visiblePages[0] ?? schema.pages[0];
@@ -282,13 +415,36 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
   const visibleQuestions = currentPage ? getVisibleQuestionsForPage(schema, currentPage.id, answers) : [];
   const stats = getFormStats(form, answers);
   const combinedErrors = [...new Set([...errorQuestionIds, ...pageErrors])];
-  const started = !showHeader || (isStarted ?? internalStarted);
+  const started = !showStartScreen || (isStarted ?? internalStarted);
+  const startDisabled = settings.startScreen.requireConfirmation && !confirmedStart;
+  const progressPercent = stats.percent;
+  const progressDisplay = settings.behavior.progressDisplay;
+  const showProgressBar = visiblePages.length > 1 && progressDisplay !== "minimal" && progressDisplay !== "dots";
+  const showProgressDots = visiblePages.length > 1 && (progressDisplay === "dots" || (progressDisplay === "bar" && visiblePages.length <= 5));
+  const firstPageIntroVisible = !showStartScreen && currentPageIndex === 0 && (hasMeaningfulText(form.description) || hasMeaningfulText(form.instructions));
+  const pageTitle = currentPage?.title && !/^page\s*\d+$/i.test(currentPage.title.trim()) ? currentPage.title : "";
+
+  const scrollFormToTop = () => {
+    window.requestAnimationFrame(() => {
+      const container = formTopRef.current?.closest(".forms-fill-shell");
+      if (container) {
+        container.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      formTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
 
   useEffect(() => {
     if (!visiblePages.some((page) => page.id === currentPageId)) {
       setCurrentPageId(visiblePages[0]?.id ?? schema.pages[0]?.id);
+      scrollFormToTop();
     }
   }, [currentPageId, schema.pages, visiblePages]);
+
+  useEffect(() => {
+    if (started) scrollFormToTop();
+  }, [currentPageId, started]);
 
   const validateCurrentPage = () => {
     const missing = visibleQuestions.filter((question) => question.required && !isAnswerFilled(answers[question.id]));
@@ -307,6 +463,7 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
     const nextIndex = Math.max(0, Math.min(visiblePages.length - 1, currentPageIndex + direction));
     setCurrentPageId(visiblePages[nextIndex]?.id);
     setPageErrors([]);
+    scrollFormToTop();
   };
 
   const startForm = () => {
@@ -314,46 +471,62 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
     onStart?.();
   };
 
-  if (showHeader && !started) {
+  if (showStartScreen && !started) {
     return (
-      <article className="forms-preview-card premium-form-card forms-start-card">
+      <article className="forms-preview-card premium-form-card forms-start-card google-form-canvas" style={themeStyle}>
+        <FormBrandHeader form={form} settings={settings} meta={meta} />
         <div className="forms-preview-header premium-form-header">
-          <p className="eyebrow">Form</p>
+          <p className="eyebrow">Form introduction</p>
           <h2>{form.title || "Untitled form"}</h2>
           <FormattedText text={form.description} fallback="No description provided." />
           {form.instructions && <div className="forms-preview-instructions premium"><strong>Instructions</strong><FormattedText text={form.instructions} /></div>}
           <div className="premium-form-meta-grid">
             <span><Users size={16} />Assigned by <strong>{meta?.assignedBy ?? "Scouts Admin"}</strong></span>
             <span><CalendarDays size={16} />Due <strong>{formatDate(form.dueDate)}</strong></span>
-            <span><Clock size={16} />Estimated <strong>{stats.estimateMinutes} min</strong></span>
+            <span><Clock size={16} />Estimated <strong>{settings.startScreen.estimatedMinutes || stats.estimateMinutes} min</strong></span>
+            <span><FileText size={16} />Structure <strong>{visiblePages.length} pages / {stats.questions.length} questions</strong></span>
+            <span><ShieldCheck size={16} />Editing <strong>{form.allowEdits ? "Allowed while open" : "Locked after submit"}</strong></span>
           </div>
-          <button type="button" className="primary-action forms-start-button" onClick={startForm}>Start form</button>
+          {settings.startScreen.notice && <p className="forms-start-notice">{settings.startScreen.notice}</p>}
+          {settings.startScreen.requireConfirmation && <label className="forms-start-confirm"><input type="checkbox" checked={confirmedStart} onChange={(event) => setConfirmedStart(event.target.checked)} />{settings.startScreen.confirmationLabel}</label>}
+          <button type="button" className="primary-action forms-start-button" disabled={startDisabled} onClick={startForm}>{settings.startScreen.buttonLabel || "Start form"}</button>
         </div>
       </article>
     );
   }
 
   return (
-    <article className="forms-preview-card premium-form-card">
-      {currentPage && <div className="forms-page-fill-header">
+    <article className="forms-preview-card premium-form-card google-form-canvas" style={themeStyle} ref={formTopRef}>
+      {(settings.appearance.headerMode === "repeat" || currentPageIndex === 0 || settings.appearance.headerMode === "compact_later") && (
+        <FormBrandHeader form={form} settings={settings} compact={currentPageIndex > 0 && settings.appearance.headerMode === "compact_later"} meta={meta} />
+      )}
+      {currentPage && <div className={`forms-page-fill-header ${showProgressBar || showProgressDots ? "" : "single-column"}`}>
         <div>
           <p className="eyebrow">{form.title || "Untitled form"}</p>
-          <h3>Page {currentPageIndex + 1} of {visiblePages.length}</h3>
+          <h3>{pageTitle || "Questions"}</h3>
+          {firstPageIntroVisible && <div className="forms-page-intro">
+            {hasMeaningfulText(form.description) && <FormattedText text={form.description} fallback="" />}
+            {hasMeaningfulText(form.instructions) && <div className="forms-preview-instructions premium"><strong>Instructions</strong><FormattedText text={form.instructions} /></div>}
+          </div>}
           {currentPage.description && <div className="forms-page-instructions"><strong>Instructions</strong><FormattedText text={currentPage.description} /></div>}
+          {settings.behavior.requiredNotice && <small className="forms-required-note">* Indicates a required question</small>}
         </div>
-        <div className="forms-page-dots" aria-label="Visible form pages">{visiblePages.map((page, index) => <button type="button" key={page.id} className={page.id === currentPage.id ? "active" : ""} aria-label={`Go to ${page.title}`} onClick={() => { if (index <= currentPageIndex || validateCurrentPage()) setCurrentPageId(page.id); }}>{index + 1}</button>)}</div>
+        {(showProgressBar || showProgressDots) && <div className="forms-page-progress-block">
+          {showProgressBar && <div className="premium-form-progress"><div><span style={{ width: `${progressPercent}%` }} /></div><strong>{progressPercent}%</strong></div>}
+          {showProgressDots && <div className="forms-page-dots" aria-label="Visible form pages">{visiblePages.map((page, index) => <button type="button" key={page.id} className={page.id === currentPage.id ? "active" : ""} aria-label={`Go to ${page.title}`} onClick={() => { if (index <= currentPageIndex || validateCurrentPage()) { setCurrentPageId(page.id); setPageErrors([]); scrollFormToTop(); } }}>{index + 1}</button>)}</div>}
+        </div>}
       </div>}
       <div className="forms-preview-questions premium-question-stack">
         {visibleQuestions.map((question, index) => (
           <section className={`forms-fill-question premium-question-card ${combinedErrors.includes(question.id) ? "has-error" : ""}`} key={question.id} data-question-id={question.id}>
             <div className="premium-question-topline">
               <span className="premium-question-number">{String(index + 1).padStart(2, "0")}</span>
-              <span className="forms-status-pill neutral">{getQuestionTypeLabel(question.type)}</span>
-              {question.required ? <em>Required</em> : <small>Optional</small>}
+              {question.required && <em aria-label="Required">*</em>}
             </div>
             <label>
               <span className="premium-question-title">{question.text}</span>
-              <small className="premium-question-helper">{combinedErrors.includes(question.id) ? "This question is required before submission." : getQuestionHelper(question)}</small>
+              {question.description && <FormattedText text={question.description} className="premium-question-description" />}
+              {(combinedErrors.includes(question.id) || getQuestionHelper(question)) && <small className="premium-question-helper">{combinedErrors.includes(question.id) ? "This question is required before submission." : getQuestionHelper(question)}</small>}
               <QuestionInput question={question} value={answers[question.id]} disabled={disabled || !onAnswerChange} onChange={(nextValue) => { onAnswerChange?.(question.id, nextValue); setPageErrors((current) => current.filter((id) => id !== question.id)); }} />
               {combinedErrors.includes(question.id) && <small className="forms-field-error">This question is required.</small>}
             </label>
@@ -362,7 +535,7 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
       </div>
       {visiblePages.length > 1 && <div className="forms-page-navigation">
         <button type="button" className="inline-action" disabled={currentPageIndex <= 0} onClick={() => goToPage(-1)}>Previous</button>
-        <span>{Math.round(((currentPageIndex + 1) / visiblePages.length) * 100)}% through pages</span>
+        <span>{stats.percent}% complete</span>
         <button type="button" className="primary-action" disabled={currentPageIndex >= visiblePages.length - 1} onClick={() => goToPage(1)}>Next</button>
       </div>}
     </article>
@@ -424,6 +597,7 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
   const [addQuestionType, setAddQuestionType] = useState("short_text");
   const [draggedIndex, setDraggedIndex] = useState(null);
 
+  const formSettings = getFormSettings(schemaJson);
   const orderedQuestions = getOrderedQuestions(schemaJson);
   const builderIssues = useMemo(() => {
     const issues = [];
@@ -437,6 +611,13 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
     return issues;
   }, [description, orderedQuestions, title]);
   const builderIssueIds = new Set(builderIssues.map((issue) => issue.id));
+  const updateSettings = (patch) => setSchemaJson((current) => {
+    const schema = safeSchema(current);
+    return safeSchema({ ...schema, settings: normalizeFormSettings({ ...schema.settings, ...patch }) });
+  });
+  const updateAppearance = (patch) => updateSettings({ appearance: { ...formSettings.appearance, ...patch } });
+  const updateStartScreen = (patch) => updateSettings({ startScreen: { ...formSettings.startScreen, ...patch } });
+  const updateBehavior = (patch) => updateSettings({ behavior: { ...formSettings.behavior, ...patch } });
   const updatePage = (id, patch) => setSchemaJson((current) => safeSchema({ ...current, pages: current.pages.map((page) => page.id === id ? { ...page, ...patch } : page) }));
   const updateQuestion = (id, patch) => setSchemaJson((current) => safeSchema({ ...current, questions: current.questions.map((question) => question.id === id ? { ...question, ...patch } : question) }));
   const movePage = (index, direction) => setSchemaJson((current) => {
@@ -560,13 +741,57 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
         {step === 0 && <div className="forms-wizard-panel">
           <div className="forms-section-heading"><div><p className="eyebrow">Step 1</p><h2>Form details</h2></div><button type="button" className="inline-action" onClick={() => setShowTemplates((current) => !current)}><FileText size={16} />Start from Template</button></div>
           {showTemplates && <TemplatePicker templates={data.formTemplates ?? []} onUse={useTemplate} />}
-          <label className={`forms-field-label ${builderIssueIds.has("form-title") ? "has-error" : ""}`} data-builder-field="form-title">Form title<input className="forms-title-input" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Form title" />{builderIssueIds.has("form-title") && <small className="forms-field-error">Form title is required before posting.</small>}</label>
-          <div className={`forms-builder-field ${builderIssueIds.has("form-description") ? "has-error" : ""}`} data-builder-field="form-description"><RichTextEditor label="Description" value={description} onChange={setDescription} minHeight={150} placeholder="Explain the purpose of this form..." />{builderIssueIds.has("form-description") && <small className="forms-field-error">Form description is required before posting.</small>}</div>
-          <RichTextEditor label="Instructions" value={instructions} onChange={setInstructions} minHeight={130} placeholder="Add instructions for chiefs..." />
+          <div className="forms-builder-settings-grid forms-builder-details-layout">
+            <section className="forms-builder-settings-card forms-builder-primary-card">
+              <div className="forms-section-heading compact"><div><p className="eyebrow">Basics</p><h3>Information users see first</h3></div></div>
+              <label className={`forms-field-label ${builderIssueIds.has("form-title") ? "has-error" : ""}`} data-builder-field="form-title">Form title<input className="forms-title-input" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Camp evaluation, yearly commitment..." />{builderIssueIds.has("form-title") && <small className="forms-field-error">Form title is required before posting.</small>}</label>
+              <div className={`forms-builder-field ${builderIssueIds.has("form-description") ? "has-error" : ""}`} data-builder-field="form-description"><RichTextEditor label="Description" value={description} onChange={setDescription} minHeight={150} placeholder="Explain the purpose of this form..." />{builderIssueIds.has("form-description") && <small className="forms-field-error">Form description is required before posting.</small>}</div>
+              <RichTextEditor label="Instructions" value={instructions} onChange={setInstructions} minHeight={130} placeholder="Add instructions for chiefs..." />
+            </section>
+
+            <aside className="forms-builder-side-rail" aria-label="Form display settings">
+            <section className="forms-builder-settings-card">
+              <div className="forms-section-heading compact"><div><p className="eyebrow">Branding</p><h3>Appearance and header</h3></div></div>
+              <div className="forms-appearance-grid">
+                <label>Accent color<input type="color" value={formSettings.appearance.accentColor} onChange={(event) => updateAppearance({ accentColor: event.target.value })} /></label>
+                <label>Page background<input type="color" value={formSettings.appearance.backgroundColor} onChange={(event) => updateAppearance({ backgroundColor: event.target.value })} /></label>
+                <label>Card color<input type="color" value={formSettings.appearance.cardColor} onChange={(event) => updateAppearance({ cardColor: event.target.value })} /></label>
+                <label>Header alignment<select value={formSettings.appearance.headerAlignment} onChange={(event) => updateAppearance({ headerAlignment: event.target.value })}><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></label>
+                <label>Logo size<select value={formSettings.appearance.logoSize} onChange={(event) => updateAppearance({ logoSize: event.target.value })}><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select></label>
+                <label>Header behavior<select value={formSettings.appearance.headerMode} onChange={(event) => updateAppearance({ headerMode: event.target.value })}><option value="compact_later">Full first page, compact later</option><option value="repeat">Repeat full header</option><option value="first_only">First page only</option></select></label>
+                <label>Organization name<input value={formSettings.appearance.organizationName} onChange={(event) => updateAppearance({ organizationName: event.target.value })} placeholder="St. Mary's Scouts Dubai" /></label>
+                <label>Subtitle<input value={formSettings.appearance.subtitle} onChange={(event) => updateAppearance({ subtitle: event.target.value })} placeholder="Optional label, event, or category" /></label>
+                <label>Logo URL<input value={formSettings.appearance.logoUrl} onChange={(event) => updateAppearance({ logoUrl: event.target.value })} placeholder="https://..." /></label>
+                <label>Dark logo URL<input value={formSettings.appearance.darkLogoUrl} onChange={(event) => updateAppearance({ darkLogoUrl: event.target.value })} placeholder="Optional dark-mode logo" /></label>
+                <label className="wide">Banner image URL<input value={formSettings.appearance.headerImageUrl} onChange={(event) => updateAppearance({ headerImageUrl: event.target.value })} placeholder="Optional header or cover image URL" /></label>
+              </div>
+            </section>
+
+            <section className="forms-builder-settings-card">
+              <div className="forms-section-heading compact"><div><p className="eyebrow">Start experience</p><h3>Before users begin</h3></div></div>
+              <label className="toggle-row"><input type="checkbox" checked={formSettings.startScreen.enabled} onChange={(event) => updateStartScreen({ enabled: event.target.checked })} />Show start screen before the form begins</label>
+              <div className="inline-editor-grid">
+                <label>Start button label<input value={formSettings.startScreen.buttonLabel} onChange={(event) => updateStartScreen({ buttonLabel: event.target.value })} placeholder="Start form" /></label>
+                <label>Estimated minutes<input type="number" min="1" value={formSettings.startScreen.estimatedMinutes} onChange={(event) => updateStartScreen({ estimatedMinutes: event.target.value })} placeholder="Auto" /></label>
+              </div>
+              <label>Privacy or notice<textarea value={formSettings.startScreen.notice} onChange={(event) => updateStartScreen({ notice: event.target.value })} placeholder="Explain who can see responses and what happens after submission." /></label>
+              <label className="toggle-row"><input type="checkbox" checked={formSettings.startScreen.requireConfirmation} onChange={(event) => updateStartScreen({ requireConfirmation: event.target.checked })} />Require confirmation checkbox before starting</label>
+              {formSettings.startScreen.requireConfirmation && <label>Confirmation text<input value={formSettings.startScreen.confirmationLabel} onChange={(event) => updateStartScreen({ confirmationLabel: event.target.value })} /></label>}
+            </section>
+
+            <section className="forms-builder-settings-card">
+              <div className="forms-section-heading compact"><div><p className="eyebrow">Behavior</p><h3>Progress and hidden answers</h3></div></div>
+              <label className="toggle-row"><input type="checkbox" checked={formSettings.behavior.requiredNotice} onChange={(event) => updateBehavior({ requiredNotice: event.target.checked })} />Show required-question notice</label>
+              <label>Progress display<select value={formSettings.behavior.progressDisplay} onChange={(event) => updateBehavior({ progressDisplay: event.target.value })}><option value="bar">Progress bar</option><option value="dots">Dots for short forms</option><option value="minimal">Minimal page count</option></select></label>
+              <label>Hidden conditional answers<select value={formSettings.behavior.hiddenAnswerMode} onChange={(event) => updateBehavior({ hiddenAnswerMode: event.target.value })}><option value="preserve">Preserve answers when hidden</option><option value="clear">Clear answers when hidden later</option></select></label>
+              <div className="forms-theme-preview" style={getFormThemeStyle(formSettings)}><span />Theme preview</div>
+            </section>
+            </aside>
+          </div>
         </div>}
 
         {step === 1 && <div className="forms-wizard-panel">
-          <div className="forms-section-heading"><div><p className="eyebrow">Step 2</p><h2>Build questions</h2></div><div className="forms-mode-toggle" role="tablist" aria-label="Question builder mode"><span className={`forms-mode-slider ${questionMode}`} aria-hidden="true" /><button type="button" className={questionMode === "edit" ? "active" : ""} onClick={() => setQuestionMode("edit")}>Edit</button><button type="button" className={questionMode === "preview" ? "active" : ""} onClick={() => setQuestionMode("preview")}>Preview</button></div></div>
+          <div className="forms-section-heading"><div><p className="eyebrow">Step 2</p><h2>Build questions</h2></div><div className="forms-mode-toggle" role="tablist" aria-label="Question builder mode"><button type="button" className={questionMode === "edit" ? "active" : ""} aria-pressed={questionMode === "edit"} onClick={() => setQuestionMode("edit")}>Edit</button><button type="button" className={questionMode === "preview" ? "active" : ""} aria-pressed={questionMode === "preview"} onClick={() => setQuestionMode("preview")}>Preview</button></div></div>
           {questionMode === "preview" ? <FormPreview form={{ title, description, instructions, schemaJson }} /> : <>
             <div className="forms-page-builder-list">{schemaJson.pages.map((page, pageIndex) => {
               const pageQuestions = getQuestionsForPage(schemaJson, page.id);
@@ -588,6 +813,14 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
                 <div className="forms-question-list">{pageQuestions.map((question, index) => <article className={`forms-question-card ${builderIssueIds.has(`question-${question.id}`) ? "has-error" : ""}`} key={question.id} data-builder-field={`question-${question.id}`} draggable onDragStart={() => setDraggedIndex({ pageId: page.id, index })} onDragOver={(event) => event.preventDefault()} onDrop={() => dropQuestion(page.id, index)}>
                   <div className="forms-question-card-topline"><span className="forms-drag-handle" title="Drag to reorder"><GripVertical size={20} /></span><span className="forms-question-number">Question {index + 1}</span><div className="forms-question-icon-actions"><button type="button" className="icon-button" title="Move up" disabled={index === 0} onClick={() => moveQuestion(page.id, index, -1)}><ArrowUp size={16} /></button><button type="button" className="icon-button" title="Move down" disabled={index === pageQuestions.length - 1} onClick={() => moveQuestion(page.id, index, 1)}><ArrowDown size={16} /></button><button type="button" className="icon-button" title="Duplicate" onClick={() => duplicateQuestion(page.id, index)}><Copy size={16} /></button><button type="button" className="icon-button danger-action" title="Delete" onClick={() => deleteQuestion(question.id)} disabled={schemaJson.questions.length === 1}><Trash2 size={16} /></button></div></div>
                   <div className="forms-question-header"><label>Question<input value={question.text} onChange={(event) => updateQuestion(question.id, { text: event.target.value })} placeholder="Write the question" />{builderIssueIds.has(`question-${question.id}`) && <small className="forms-field-error">Question text is required before posting.</small>}</label><label>Answer type<select value={question.type} onChange={(event) => updateQuestion(question.id, { type: event.target.value, options: optionQuestionTypes.has(event.target.value) ? (question.options.length ? question.options : ["Option 1"]) : [] })}>{formQuestionTypes.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label><label>Page<select value={question.pageId} onChange={(event) => updateQuestion(question.id, { pageId: event.target.value, order: getQuestionsForPage(schemaJson, event.target.value).length })}>{schemaJson.pages.map((schemaPage) => <option key={schemaPage.id} value={schemaPage.id}>{schemaPage.title || `Page ${schemaPage.order + 1}`}</option>)}</select></label></div>
+                  <details className="forms-question-advanced">
+                    <summary>Question guidance and placeholder</summary>
+                    <div className="forms-question-support-grid">
+                      <label>Description<textarea value={question.description} onChange={(event) => updateQuestion(question.id, { description: event.target.value })} placeholder="Optional context shown under the question title" /></label>
+                      <label>Helper text<input value={question.helperText} onChange={(event) => updateQuestion(question.id, { helperText: event.target.value })} placeholder="Example: Use numbers only" /></label>
+                      <label>Placeholder<input value={question.placeholder} onChange={(event) => updateQuestion(question.id, { placeholder: event.target.value })} placeholder="Example answer or input hint" /></label>
+                    </div>
+                  </details>
                   {optionQuestionTypes.has(question.type) && <div className="forms-options-editor">{question.options.map((option, optionIndex) => <div key={`${question.id}-${optionIndex}`}><span>{optionIndex + 1}</span><input value={option} onChange={(event) => updateQuestion(question.id, { options: question.options.map((item, idx) => idx === optionIndex ? event.target.value : item) })} /><button type="button" className="icon-button" onClick={() => updateQuestion(question.id, { options: question.options.filter((_, idx) => idx !== optionIndex) })}><Trash2 size={15} /></button></div>)}<button type="button" className="inline-action" onClick={() => updateQuestion(question.id, { options: [...question.options, `Option ${question.options.length + 1}`] })}>Add option</button></div>}
                   <ConditionalLogicEditor label="Show this question when..." item={question} questions={orderedQuestions} onChange={(rule) => updateQuestion(question.id, { conditionalLogic: rule })} />
                   <label className="toggle-row"><input type="checkbox" checked={question.required} onChange={(event) => updateQuestion(question.id, { required: event.target.checked })} />Required when visible</label>
@@ -725,6 +958,8 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
 
   const submitCurrentForm = async (status = "submitted", options = {}) => {
     if (!activeForm) return;
+    const quiet = Boolean(options.quiet);
+    const keepOpen = Boolean(options.keepOpen);
     const missing = getVisibleQuestions(activeForm.schemaJson, answers).filter((question) => {
       const answer = answers[question.id];
       return question.required && (answer === undefined || answer === null || answer === "" || (Array.isArray(answer) && !answer.length));
@@ -742,26 +977,32 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
       return;
     }
     setIsSaving(true);
-    setSubmitProgress({ percent: 15, label: status === "draft" ? "Saving draft..." : "Submitting form..." });
-    setSaveMessage(status === "draft" ? "Saving draft..." : "Submitting form...");
+    if (!quiet) {
+      setSubmitProgress({ percent: 15, label: status === "draft" ? "Saving draft..." : "Submitting form..." });
+      setSaveMessage(status === "draft" ? "Saving draft..." : "Submitting form...");
+    }
     try {
-      setSubmitProgress({ percent: 48, label: "Saving answers securely..." });
-      setSaveMessage("Saving answers securely...");
+      if (!quiet) {
+        setSubmitProgress({ percent: 48, label: "Saving answers securely..." });
+        setSaveMessage("Saving answers securely...");
+      }
       await saveDashboardFormSubmission({ postedFormId: activeForm.id, submittedBy: user.id, groupId: user.groupId, answersJson: answers, status });
-      setSubmitProgress({ percent: 82, label: "Refreshing..." });
-      setSaveMessage("Refreshing...");
+      if (!quiet) {
+        setSubmitProgress({ percent: 82, label: "Refreshing..." });
+        setSaveMessage("Refreshing...");
+      }
       await onRefresh();
-      setSubmitProgress({ percent: 100, label: "Complete" });
+      if (!quiet) setSubmitProgress({ percent: 100, label: "Complete" });
       if (status === "submitted") {
         setIsReviewingForm(false);
         setSubmittedSuccess({ title: activeForm.title, timestamp: new Date().toISOString(), locked: !activeForm.allowEdits });
-      } else {
+      } else if (!keepOpen) {
         setActiveFormId(null);
       }
-      setSaveMessage(status === "draft" ? "Form draft saved." : "Form submitted.");
+      if (!quiet) setSaveMessage(status === "draft" ? "Form draft saved." : "Form submitted.");
     } finally {
       window.clearTimeout(progressTimerRef.current);
-      progressTimerRef.current = window.setTimeout(() => setSubmitProgress(null), 700);
+      if (!quiet) progressTimerRef.current = window.setTimeout(() => setSubmitProgress(null), 700);
       setIsSaving(false);
     }
   };
@@ -775,18 +1016,30 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
     const stats = getFormStats(activeForm, answers);
     const assignedBy = getUserName(data.users ?? [], activeForm.createdBy ?? activeForm.submittedBy);
     const returnToForms = () => { setSubmittedSuccess(null); setIsReviewingForm(false); setIsFormStarted(false); setActiveFormId(null); };
+    const saveDraftAndReturn = async () => {
+      const hasDraftableAnswers = Object.values(answers).some(isAnswerFilled);
+      if (!locked && activeForm && (hasDraftableAnswers || existing?.approvalStatus === "draft")) {
+        try {
+          await submitCurrentForm("draft", { quiet: true, keepOpen: true });
+          setSaveMessage("Form draft saved.");
+        } catch (error) {
+          setSaveMessage(`Draft could not be saved: ${error.message}`);
+        }
+      }
+      returnToForms();
+    };
 
     if (submittedSuccess) {
-      return <div className="forms-fill-shell premium-completion-shell"><article className="forms-submission-success-card"><div className="forms-success-icon"><CheckCircle2 size={42} /></div><p className="eyebrow">Submission complete</p><h2>{submittedSuccess.title}</h2><p>Your response was submitted successfully and saved securely.</p><div className="premium-form-meta-grid"><span><CalendarDays size={16} />Submitted <strong>{formatDate(submittedSuccess.timestamp)}</strong></span><span><ShieldCheck size={16} />Editing <strong>{submittedSuccess.locked ? "Locked" : "Available while open"}</strong></span></div><button type="button" className="primary-action" onClick={returnToForms}>Return to My Forms</button></article></div>;
+      return createPortal(<div className="forms-fill-shell premium-completion-shell"><article className="forms-submission-success-card"><div className="forms-success-icon"><CheckCircle2 size={42} /></div><p className="eyebrow">Submission complete</p><h2>{submittedSuccess.title}</h2><p>Your response was submitted successfully and saved securely.</p><div className="premium-form-meta-grid"><span><CalendarDays size={16} />Submitted <strong>{formatDate(submittedSuccess.timestamp)}</strong></span><span><ShieldCheck size={16} />Editing <strong>{submittedSuccess.locked ? "Locked" : "Available while open"}</strong></span></div><button type="button" className="primary-action" onClick={returnToForms}>Return to My Forms</button></article></div>, document.body);
     }
 
     if (isReviewingForm) {
-      return <div className="forms-fill-shell premium-review-shell"><button type="button" className="inline-action" onClick={() => setIsReviewingForm(false)}><ArrowLeft size={16} />Back to answers</button><article className="forms-review-experience"><div className="premium-form-kicker"><ShieldCheck size={18} /><span>Final review</span></div><h2>Review your answers before submitting</h2><p>Check the summary below. You can still go back and edit anything before final submission.</p><div className="forms-review-stats-grid"><div><strong>{stats.completed}</strong><span>Completed</span></div><div><strong>{stats.questions.length}</strong><span>Total questions</span></div><div><strong>{stats.missingRequired.length}</strong><span>Missing required</span></div><div><strong>{stats.optionalUnanswered}</strong><span>Optional unanswered</span></div></div>{stats.missingRequired.length ? <div className="forms-review-warning"><strong>Missing required answers</strong>{stats.missingRequired.map((question) => <button type="button" key={question.id} onClick={() => { setIsReviewingForm(false); setRequiredErrors(stats.missingRequired.map((item) => item.id)); window.requestAnimationFrame(() => document.querySelector(`[data-question-id="${question.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" })); }}>{question.text}</button>)}</div> : <div className="forms-review-ready"><CheckCircle2 size={22} /><span>All required questions are complete.</span></div>}<div className="forms-review-answer-list">{stats.questions.map((question, index) => <section key={question.id}><small>{index + 1}. {getQuestionTypeLabel(question.type)}</small><strong>{question.text}</strong><p>{isAnswerFilled(answers[question.id]) ? answerToText(answers[question.id]) : "No answer provided"}</p></section>)}</div><div className="forms-fill-actions premium-sticky-actions review"><button type="button" className="inline-action" disabled={isSaving || locked} onClick={() => submitCurrentForm("draft")}>{isSaving ? "Working..." : "Save Draft"}</button><button type="button" className="inline-action" onClick={() => setIsReviewingForm(false)}>Edit Answers</button><button type="button" className="primary-action" disabled={isSaving || locked || Boolean(stats.missingRequired.length)} onClick={() => submitCurrentForm("submitted", { confirmed: true })}><Send size={17} />{isSaving ? "Submitting..." : "Submit Form"}</button></div></article></div>;
+      return createPortal(<div className="forms-fill-shell premium-review-shell"><button type="button" className="inline-action premium-back-link" disabled={isSaving} onClick={saveDraftAndReturn}><ArrowLeft size={16} />Back to forms</button><article className="forms-review-experience"><div className="premium-form-kicker"><ShieldCheck size={18} /><span>Final review</span></div><h2>Review your answers before submitting</h2><p>Check the summary below. You can still go back and edit anything before final submission.</p><div className="forms-review-stats-grid compact"><div><strong>{stats.completed}</strong><span>Completed</span></div><div><strong>{stats.questions.length}</strong><span>Total questions</span></div><div><strong>{stats.missingRequired.length}</strong><span>Missing required</span></div></div>{stats.missingRequired.length ? <div className="forms-review-warning"><strong>Missing required answers</strong>{stats.missingRequired.map((question) => <button type="button" key={question.id} onClick={() => { setIsReviewingForm(false); setRequiredErrors(stats.missingRequired.map((item) => item.id)); window.requestAnimationFrame(() => document.querySelector(`[data-question-id="${question.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" })); }}>{question.text}</button>)}</div> : <div className="forms-review-ready"><CheckCircle2 size={22} /><span>All required questions are complete.</span></div>}<FormReviewAnswerGroups form={activeForm} answers={answers} /><div className="forms-fill-actions premium-sticky-actions review"><button type="button" className="inline-action" disabled={isSaving || locked} onClick={() => submitCurrentForm("draft")}><Save size={15} /><span className="form-action-full">{isSaving ? "Working..." : "Save Draft"}</span><span className="form-action-short">{isSaving ? "Saving" : "Save"}</span></button><button type="button" className="inline-action" onClick={() => setIsReviewingForm(false)}><ArrowLeft size={15} /><span className="form-action-full">Edit Answers</span><span className="form-action-short">Edit</span></button><button type="button" className="primary-action" disabled={isSaving || locked || Boolean(stats.missingRequired.length)} onClick={() => submitCurrentForm("submitted", { confirmed: true })}><Send size={17} /><span className="form-action-full">{isSaving ? "Submitting..." : "Submit Form"}</span><span className="form-action-short">{isSaving ? "Sending" : "Submit"}</span></button></div></article></div>, document.body);
     }
 
-    return (
+    return createPortal((
       <div className="forms-fill-shell premium-form-experience">
-        <button type="button" className="inline-action premium-back-link" onClick={returnToForms}><ArrowLeft size={16} />Back to forms</button>
+        <button type="button" className="inline-action premium-back-link" disabled={isSaving} onClick={saveDraftAndReturn}><ArrowLeft size={16} />Back to forms</button>
         <FormPreview form={activeForm} answers={answers} disabled={locked} errorQuestionIds={requiredErrors} meta={{ assignedBy, postedAt: activeForm.postedAt ?? activeForm.createdAt }} isStarted={isFormStarted} onStart={() => setIsFormStarted(true)} onAnswerChange={(questionId, value) => { setAnswers((current) => ({ ...current, [questionId]: value })); setRequiredErrors((current) => current.filter((id) => id !== questionId)); }} />
         {submitProgress && (
           <div className="upload-progress compact forms-submit-progress premium" aria-label={submitProgress.label}>
@@ -797,13 +1050,13 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
         )}
         {isFormStarted && <div className="forms-fill-actions premium-sticky-actions">
           <div><strong>{stats.percent}% complete</strong><span>{stats.completed} of {stats.questions.length} answered</span></div>
-          <button type="button" className="inline-action" disabled={isSaving || locked} onClick={() => submitCurrentForm("draft")}><Save size={17} />{isSaving ? "Working..." : "Save Draft"}</button>
-          <button type="button" className="inline-action" disabled={isSaving} onClick={() => submitCurrentForm("submitted")}>Review Answers</button>
-          <button type="button" className="primary-action" disabled={isSaving || locked} onClick={() => submitCurrentForm("submitted")}><Send size={17} />{isSaving ? "Submitting..." : existing?.approvalStatus === "submitted" ? "Update Response" : "Submit Form"}</button>
+          <button type="button" className="inline-action" disabled={isSaving || locked} onClick={() => submitCurrentForm("draft")}><Save size={17} /><span className="form-action-full">{isSaving ? "Working..." : "Save Draft"}</span><span className="form-action-short">{isSaving ? "Saving" : "Save"}</span></button>
+          <button type="button" className="inline-action" disabled={isSaving} onClick={() => submitCurrentForm("submitted")}><ShieldCheck size={17} /><span className="form-action-full">Review Answers</span><span className="form-action-short">Review</span></button>
+          <button type="button" className="primary-action" disabled={isSaving || locked} onClick={() => submitCurrentForm("submitted")}><Send size={17} /><span className="form-action-full">{isSaving ? "Submitting..." : existing?.approvalStatus === "submitted" ? "Update Response" : "Submit Form"}</span><span className="form-action-short">{isSaving ? "Sending" : existing?.approvalStatus === "submitted" ? "Update" : "Submit"}</span></button>
           {locked && <span className="helper-text">This form is locked because it is closed or editing is disabled.</span>}
         </div>}
       </div>
-    );
+    ), document.body);
   }
   const manageTabs = [
     ...(canManageTemplates || canPostForms ? [["formsCreate", "Create Form"], ["formTemplates", "Templates"], ["postedForms", "Posted Forms"]] : []),
