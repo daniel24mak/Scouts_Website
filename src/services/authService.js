@@ -10,6 +10,33 @@ import { getProfileById } from "./userService.js";
 const authCallbackStorageKey = "scouts-supabase-auth-callback";
 let invitationCallbackPromise = null;
 
+function requireAuthSession() {
+  const session = getStoredSupabaseSession();
+  if (!session?.access_token) {
+    throw new Error("You must be logged in to manage multi-factor authentication.");
+  }
+  return session;
+}
+
+function readJwtPayload(accessToken) {
+  try {
+    const encoded = accessToken?.split(".")[1];
+    if (!encoded) return {};
+    const normalized = encoded.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    return JSON.parse(window.atob(padded));
+  } catch {
+    return {};
+  }
+}
+
+function normalizeMfaFactors(response) {
+  const factors = Array.isArray(response)
+    ? response
+    : response?.all ?? response?.totp ?? response?.factors ?? [];
+  return factors.filter((factor) => factor?.factor_type === "totp" || factor?.type === "totp");
+}
+
 function authUserToProfile(authUser, profile) {
   if (!authUser || !profile) {
     return null;
@@ -93,6 +120,64 @@ export async function updateCurrentUserPassword(newPassword) {
 
   await callSupabaseAuth("user", { password: newPassword }, {
     method: "PUT",
+    accessToken: session.access_token
+  });
+}
+
+export async function getMfaStatus() {
+  const session = requireAuthSession();
+  const response = await callSupabaseAuth("factors", null, {
+    method: "GET",
+    accessToken: session.access_token
+  });
+  const factors = normalizeMfaFactors(response);
+  const claims = readJwtPayload(session.access_token);
+
+  return {
+    currentLevel: claims.aal ?? "aal1",
+    factors,
+    verifiedFactors: factors.filter((factor) => factor.status === "verified")
+  };
+}
+
+export async function enrollTotpMfa() {
+  const session = requireAuthSession();
+  return callSupabaseAuth("factors", {
+    factor_type: "totp",
+    friendly_name: "St. Mary's Scouts Dashboard"
+  }, {
+    accessToken: session.access_token
+  });
+}
+
+export async function challengeAndVerifyMfa(factorId, code) {
+  const session = requireAuthSession();
+  const cleanCode = String(code ?? "").replace(/\s/g, "");
+  if (!factorId) throw new Error("Choose an authenticator factor first.");
+  if (!/^\d{6}$/.test(cleanCode)) throw new Error("Enter the 6-digit code from your authenticator app.");
+
+  const challenge = await callSupabaseAuth(`factors/${factorId}/challenge`, {}, {
+    accessToken: session.access_token
+  });
+  const verified = await callSupabaseAuth(`factors/${factorId}/verify`, {
+    challenge_id: challenge.id,
+    code: cleanCode
+  }, {
+    accessToken: session.access_token
+  });
+  const upgradedSession = {
+    ...session,
+    ...verified,
+    user: verified?.user ?? session.user
+  };
+  storeSupabaseSession(upgradedSession);
+  return upgradedSession;
+}
+
+export async function removeMfaFactor(factorId) {
+  const session = requireAuthSession();
+  await callSupabaseAuth(`factors/${factorId}`, null, {
+    method: "DELETE",
     accessToken: session.access_token
   });
 }

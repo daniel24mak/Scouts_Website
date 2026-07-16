@@ -114,6 +114,23 @@ test("Supabase invitation hashes are bridged out of HashRouter and accepted safe
   assert.match(edgeFunction, /redirectTo/);
 });
 
+test("dashboard MFA supports TOTP enrollment and aal2 session verification", () => {
+  const auth = read("../../src/services/authService.js");
+  const panel = read("../../src/components/MfaSecurityPanel.jsx");
+  const dashboard = read("../../src/pages/AdminDashboardPage.jsx");
+
+  assert.match(auth, /enrollTotpMfa/);
+  assert.match(auth, /factors[\s\S]*factor_type:\s*"totp"/);
+  assert.match(auth, /challengeAndVerifyMfa/);
+  assert.match(auth, /factors\/\$\{factorId\}\/challenge/);
+  assert.match(auth, /factors\/\$\{factorId\}\/verify/);
+  assert.match(auth, /storeSupabaseSession\(upgradedSession\)/);
+  assert.match(panel, /qr_code/);
+  assert.match(panel, /manual secret/i);
+  assert.match(panel, /Verify this session/i);
+  assert.match(dashboard, /<MfaSecurityPanel/);
+});
+
 test("legacy access backfill preserves omitted flags as review items", () => {
   const sql = read("../../database/supabase-access-control-backfill.sql");
   assert.match(sql, /'can_create_group_meetings', p\.can_create_group_meetings/);
