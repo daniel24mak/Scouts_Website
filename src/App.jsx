@@ -10,6 +10,7 @@ import SiteRecoveryPrompt from "./components/SiteRecoveryPrompt.jsx";
 import { ToastProvider } from "./components/ToastProvider.jsx";
 
 const AboutPage = lazy(() => import("./pages/AboutPage.jsx"));
+const AcceptInvitationPage = lazy(() => import("./pages/AcceptInvitationPage.jsx"));
 const AdminChiefAttendancePage = lazy(() => import("./pages/AdminChiefAttendancePage.jsx"));
 const AdminDashboardPage = lazy(() => import("./pages/AdminDashboardPage.jsx"));
 const AlbumDetailPage = lazy(() => import("./pages/AlbumDetailPage.jsx"));
@@ -44,6 +45,7 @@ export default function App() {
             <Route path="gallery" element={<GalleryPage />} />
             <Route path="gallery/:albumId" element={<AlbumDetailPage />} />
             <Route path="login" element={<LoginPage />} />
+            <Route path="accept-invite" element={<AcceptInvitationPage />} />
             <Route
               path="chiefs"
               element={<Navigate to="/dashboard" replace />}

@@ -7,6 +7,9 @@ import {
 } from "./supabaseClient.js";
 import { getProfileById } from "./userService.js";
 
+const authCallbackStorageKey = "scouts-supabase-auth-callback";
+let invitationCallbackPromise = null;
+
 function authUserToProfile(authUser, profile) {
   if (!authUser || !profile) {
     return null;
@@ -92,6 +95,48 @@ export async function updateCurrentUserPassword(newPassword) {
     method: "PUT",
     accessToken: session.access_token
   });
+}
+
+async function consumeStoredInvitationCallback() {
+  const rawCallback = window.sessionStorage.getItem(authCallbackStorageKey);
+  window.sessionStorage.removeItem(authCallbackStorageKey);
+
+  if (!rawCallback) {
+    throw new Error("This invitation link is missing or has already been used.");
+  }
+
+  const params = new URLSearchParams(rawCallback);
+  if (params.get("error")) {
+    const description = params.get("error_description")?.replaceAll("+", " ");
+    throw new Error(description || "This invitation link is invalid or has expired.");
+  }
+
+  const accessToken = params.get("access_token");
+  if (!accessToken) {
+    throw new Error("This invitation link is invalid or has expired.");
+  }
+
+  const authUser = await callSupabaseAuth("user", null, {
+    method: "GET",
+    accessToken
+  });
+  storeSupabaseSession({
+    access_token: accessToken,
+    refresh_token: params.get("refresh_token") || null,
+    expires_in: Number(params.get("expires_in") || 0),
+    expires_at: Number(params.get("expires_at") || 0),
+    token_type: params.get("token_type") || "bearer",
+    user: authUser
+  });
+
+  return { type: params.get("type") || "invite", user: authUser };
+}
+
+export function consumeInvitationCallback() {
+  if (!invitationCallbackPromise) {
+    invitationCallbackPromise = consumeStoredInvitationCallback();
+  }
+  return invitationCallbackPromise;
 }
 
 export async function signOut() {

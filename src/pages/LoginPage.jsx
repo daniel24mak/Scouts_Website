@@ -12,6 +12,7 @@ export default function LoginPage() {
   const from = location.state?.from?.pathname ?? "/dashboard";
   const [credentials, setCredentials] = useState({ email: "", password: "" });
   const [errorMessage, setErrorMessage] = useState("");
+  const invitationAccepted = Boolean(location.state?.invitationAccepted);
 
   useEffect(() => {
     refreshUsers();
@@ -53,6 +54,7 @@ export default function LoginPage() {
       <p className="eyebrow">Internal login</p>
       <h1>Sign in to the scouts portal</h1>
       <p className="helper-text">Dashboard access is for admins, chiefs, coordinators, and approved leaders.</p>
+      {invitationAccepted && <p className="status-message success" role="status">Your account is ready. Sign in with your new password.</p>}
       <form className="editor-panel login-form" onSubmit={handlePasswordLogin}>
         <label>
           Email

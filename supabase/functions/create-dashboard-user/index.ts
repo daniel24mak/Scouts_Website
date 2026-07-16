@@ -33,8 +33,10 @@ serve(async (req) => {
       if (error || groups?.length !== groupIds.length) throw new AuthorizationError("One or more groups are invalid", 400);
     }
 
+    const siteUrl = Deno.env.get("SITE_URL")?.replace(/\/$/, "");
     const { data: invitation, error: inviteError } = await context.adminClient.auth.admin.inviteUserByEmail(email, {
-      data: { full_name: fullName }
+      data: { full_name: fullName },
+      ...(siteUrl ? { redirectTo: `${siteUrl}/` } : {})
     });
     if (inviteError || !invitation.user) throw new AuthorizationError("The invitation could not be sent", 400);
     const userId = invitation.user.id;
