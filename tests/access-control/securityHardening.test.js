@@ -96,6 +96,24 @@ test("frontend auth and bootstrap paths fail closed per authenticated user", () 
   assert.doesNotMatch(client, /\.catch\(\(\) => request\(/);
 });
 
+test("Supabase invitation hashes are bridged out of HashRouter and accepted safely", () => {
+  const main = read("../../src/main.jsx");
+  const app = read("../../src/App.jsx");
+  const auth = read("../../src/services/authService.js");
+  const invitePage = read("../../src/pages/AcceptInvitationPage.jsx");
+  const edgeFunction = read("../../supabase/functions/create-dashboard-user/index.ts");
+
+  assert.match(main, /scouts-supabase-auth-callback/);
+  assert.match(main, /access_token/);
+  assert.match(main, /#\/accept-invite/);
+  assert.match(app, /path="accept-invite"/);
+  assert.match(auth, /consumeInvitationCallback/);
+  assert.match(auth, /storeSupabaseSession/);
+  assert.match(invitePage, /updateCurrentUserPassword/);
+  assert.match(invitePage, /Invitation links are single-use/);
+  assert.match(edgeFunction, /redirectTo/);
+});
+
 test("legacy access backfill preserves omitted flags as review items", () => {
   const sql = read("../../database/supabase-access-control-backfill.sql");
   assert.match(sql, /'can_create_group_meetings', p\.can_create_group_meetings/);
