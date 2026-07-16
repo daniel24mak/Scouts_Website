@@ -120,6 +120,9 @@ test("dashboard MFA supports TOTP enrollment and aal2 session verification", () 
   const dashboard = read("../../src/pages/AdminDashboardPage.jsx");
 
   assert.match(auth, /enrollTotpMfa/);
+  assert.match(auth, /getMfaStatus[\s\S]*callSupabaseAuth\("user"/);
+  assert.match(auth, /authUser\.factors/);
+  assert.doesNotMatch(auth, /callSupabaseAuth\("factors", null, \{\s*method: "GET"/);
   assert.match(auth, /factors[\s\S]*factor_type:\s*"totp"/);
   assert.match(auth, /challengeAndVerifyMfa/);
   assert.match(auth, /factors\/\$\{factorId\}\/challenge/);

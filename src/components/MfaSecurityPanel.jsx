@@ -6,11 +6,7 @@ import {
   getMfaStatus,
   removeMfaFactor
 } from "../services/authService.js";
-
-function qrImageSource(qrCode) {
-  if (!qrCode || !qrCode.trim().startsWith("<svg")) return qrCode;
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(qrCode)}`;
-}
+import { toMfaQrImageSource } from "../utils/mfaQr.js";
 
 export default function MfaSecurityPanel({ onSessionUpgraded }) {
   const [status, setStatus] = useState(null);
@@ -118,9 +114,13 @@ export default function MfaSecurityPanel({ onSessionUpgraded }) {
             <li><strong>Scan the QR code</strong><span>Open your authenticator app and add a new account.</span></li>
             <li><strong>Enter its 6-digit code</strong><span>The code changes about every 30 seconds.</span></li>
           </ol>
-          <div className="mfa-qr-wrap">
-            <img src={qrImageSource(enrollment.totp?.qr_code)} alt="QR code for authenticator setup" />
-          </div>
+          {toMfaQrImageSource(enrollment.totp?.qr_code) ? (
+            <div className="mfa-qr-wrap">
+              <img src={toMfaQrImageSource(enrollment.totp.qr_code)} alt="QR code for authenticator setup" />
+            </div>
+          ) : (
+            <p className="error-text">The QR image could not be rendered. Use the manual secret below.</p>
+          )}
           <div className="mfa-manual-secret">
             <span>Manual secret</span>
             <code>{enrollment.totp?.secret}</code>
