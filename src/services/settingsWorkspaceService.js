@@ -1,8 +1,8 @@
 import {
   deleteSupabaseFile,
   deleteSupabaseRows,
+  createSupabaseSignedFileUrl,
   getCurrentSupabaseUserId,
-  getSupabasePublicFileUrl,
   getSupabaseRows,
   insertSupabaseRow,
   patchSupabaseRows,
@@ -34,7 +34,7 @@ function normalizeDashboardDocument(row) {
     scoutYearId: row.scout_year_id ?? null,
     title: row.title,
     storagePath: row.storage_path,
-    fileUrl: row.file_url ?? getSupabasePublicFileUrl(row.storage_path, documentBucket),
+    fileUrl: row.file_url ?? null,
     fileName: row.file_name ?? row.title,
     fileType: row.file_type ?? extensionFromFileName(row.file_name ?? row.title),
     mimeType: row.mime_type ?? "",
@@ -94,10 +94,18 @@ export async function getDocumentsWorkspaceData() {
     ),
     getSupabaseRows("archived_years", "select=*&deleted_at=is.null&order=archived_at.desc").catch(() => [])
   ]);
+  const documents = await Promise.all(documentRows.map(async (row) => {
+    const document = normalizeDashboardDocument(row);
+    if (!document.storagePath) return document;
+    return {
+      ...document,
+      fileUrl: await createSupabaseSignedFileUrl(document.storagePath, documentBucket).catch(() => null)
+    };
+  }));
 
   return {
     documentCategories: categoryRows.map(normalizeDocumentCategory),
-    documents: documentRows.map(normalizeDashboardDocument),
+    documents,
     archivedYears: archiveRows.map(normalizeArchivedYear)
   };
 }
@@ -148,12 +156,12 @@ export async function uploadDashboardDocuments(files, categoryId = null, scoutYe
     const extension = validateDocumentFile(file);
     const safeName = file.name.replace(/[^a-z0-9_.-]+/gi, "-");
     const storagePath = `${currentUserId ?? "admin"}/${Date.now()}-${crypto.randomUUID()}-${safeName}`;
-    const fileUrl = await uploadSupabaseFile(storagePath, file, documentBucket, { cacheControl: "3600" });
+    await uploadSupabaseFile(storagePath, file, documentBucket, { cacheControl: "3600", isPublic: false });
     const [created] = await insertSupabaseRow("documents", {
       scout_year_id: scoutYearId || null,
       title: file.name.replace(/\.[^.]+$/, ""),
       storage_path: storagePath,
-      file_url: fileUrl,
+      file_url: null,
       file_name: file.name,
       file_type: extension,
       mime_type: file.type || "application/octet-stream",
@@ -163,7 +171,10 @@ export async function uploadDashboardDocuments(files, categoryId = null, scoutYe
       status: "approved",
       submitted_by: currentUserId
     });
-    uploadedRows.push(normalizeDashboardDocument(created));
+    uploadedRows.push({
+      ...normalizeDashboardDocument(created),
+      fileUrl: await createSupabaseSignedFileUrl(storagePath, documentBucket).catch(() => null)
+    });
   }
 
   return uploadedRows;

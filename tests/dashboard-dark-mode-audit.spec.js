@@ -118,4 +118,11 @@ test.describe("dashboard dark mode visual audit", () => {
       expect(offenders, JSON.stringify(offenders.slice(0, 25), null, 2)).toEqual([]);
     });
   }
+
+  test("admin reports expose the read-only authorization migration review", async ({ page }) => {
+    await openSection(page, "Reports");
+    await page.getByRole("button", { name: "Access Migration" }).click();
+    await expect(page.getByRole("heading", { name: "Authorization migration review" })).toBeVisible();
+    await expect(page.getByText(/No access changes can be made here/i)).toBeVisible();
+  });
 });

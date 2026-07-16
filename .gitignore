@@ -38,6 +38,10 @@ Thumbs.db
 coverage/
 test-results/
 tests/
+!tests/
+tests/*
+!tests/access-control/
+!tests/access-control/**
 
 # Temporary files
 tmp/

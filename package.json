@@ -12,6 +12,7 @@
     "preview": "vite preview",
     "db:reset": "sqlite3 database/scouts.db \".read database/schema.sql\" \".read database/seed.sql\"",
     "db:tables": "sqlite3 database/scouts.db \".tables\"",
+    "test:access-control": "node --test tests/access-control/*.test.js",
     "test:dark-mode": "playwright test --config=tests dashboard-dark-mode-audit.spec.js"
   },
   "dependencies": {

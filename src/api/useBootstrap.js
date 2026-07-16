@@ -1,24 +1,36 @@
 import { useEffect, useState } from "react";
 import { getBootstrap, loadingData } from "./client.js";
 import { notifySiteLoadError } from "../services/siteErrorService.js";
+import { getCurrentSupabaseUserId } from "../services/supabaseClient.js";
 
 let cachedBootstrap = null;
+let cachedBootstrapUserId = null;
 let inFlightBootstrap = null;
+let inFlightBootstrapUserId = null;
+
+function currentCache() {
+  const userId = getCurrentSupabaseUserId();
+  if (!userId || cachedBootstrapUserId !== userId) return null;
+  return cachedBootstrap;
+}
 
 function loadBootstrap({ force = false } = {}) {
-  if (!force && cachedBootstrap) {
+  const userId = getCurrentSupabaseUserId();
+  if (!force && currentCache()) {
     return Promise.resolve(cachedBootstrap);
   }
 
-  if (!force && inFlightBootstrap) {
+  if (!force && inFlightBootstrap && inFlightBootstrapUserId === userId) {
     return inFlightBootstrap;
   }
 
   console.debug("[dashboard] bootstrap fetch start", { force });
 
-  inFlightBootstrap = getBootstrap()
+  inFlightBootstrapUserId = userId;
+  const request = getBootstrap()
     .then((nextData) => {
       cachedBootstrap = nextData;
+      cachedBootstrapUserId = userId;
       console.debug("[dashboard] bootstrap fetch complete");
       return nextData;
     })
@@ -28,15 +40,20 @@ function loadBootstrap({ force = false } = {}) {
       throw error;
     })
     .finally(() => {
-      inFlightBootstrap = null;
+      if (inFlightBootstrap === request) {
+        inFlightBootstrap = null;
+        inFlightBootstrapUserId = null;
+      }
     });
+  inFlightBootstrap = request;
 
-  return inFlightBootstrap;
+  return request;
 }
 
 export function useBootstrap() {
-  const [data, setData] = useState(cachedBootstrap ?? loadingData);
-  const [isLoading, setIsLoading] = useState(!cachedBootstrap);
+  const safeCachedBootstrap = currentCache();
+  const [data, setData] = useState(safeCachedBootstrap ?? loadingData);
+  const [isLoading, setIsLoading] = useState(!safeCachedBootstrap);
   const [error, setError] = useState(null);
 
   async function refresh() {
@@ -56,8 +73,9 @@ export function useBootstrap() {
   useEffect(() => {
     let cancelled = false;
 
-    if (cachedBootstrap) {
-      setData(cachedBootstrap);
+    const safeCache = currentCache();
+    if (safeCache) {
+      setData(safeCache);
       setIsLoading(false);
       setError(null);
       return () => {

@@ -8,28 +8,27 @@ import {
 import { getProfileById } from "./userService.js";
 
 function authUserToProfile(authUser, profile) {
-  if (!authUser) {
+  if (!authUser || !profile) {
     return null;
   }
 
   return {
     id: authUser.id,
     name:
-      profile?.name ??
-      authUser.user_metadata?.full_name ??
+      profile.name ??
       authUser.email?.split("@")[0] ??
       "Internal user",
-    email: profile?.email ?? authUser.email ?? "",
-    role: profile?.role ?? authUser.user_metadata?.role ?? "chief",
-    groupId: profile?.groupId ?? authUser.user_metadata?.group_id ?? null,
-    chiefLevel: profile?.chiefLevel ?? authUser.user_metadata?.chief_level ?? "chief",
-    accountStatus: profile?.accountStatus ?? "active",
+    email: profile.email ?? authUser.email ?? "",
+    role: profile.role,
+    groupId: profile.groupId ?? null,
+    chiefLevel: profile.chiefLevel ?? null,
+    accountStatus: profile.accountStatus ?? "missing",
     profilePictureUrl: profile?.profilePictureUrl ?? null,
     pendingName: profile?.pendingName ?? null,
     pendingProfilePictureUrl: profile?.pendingProfilePictureUrl ?? null,
     profileChangeStatus: profile?.profileChangeStatus ?? null,
     profileChangeComment: profile?.profileChangeComment ?? "",
-    permissions: profile?.permissions ?? {
+    permissions: profile.permissions ?? {
       canPublish: false,
       canCreateGroupMeetings: false,
       canEditScouts: false
@@ -52,8 +51,13 @@ export async function getCurrentAuthUser() {
       method: "GET",
       accessToken: session.access_token
     });
-    const profile = await getProfileById(authUser.id).catch(() => null);
-    return authUserToProfile(authUser, profile);
+    const profile = await getProfileById(authUser.id);
+    const currentUser = authUserToProfile(authUser, profile);
+    if (!currentUser || currentUser.accountStatus !== "active") {
+      clearSupabaseSession();
+      return null;
+    }
+    return currentUser;
   } catch {
     clearSupabaseSession();
     return null;
@@ -63,8 +67,18 @@ export async function getCurrentAuthUser() {
 export async function signInWithPassword(email, password) {
   const response = await callSupabaseAuth("token?grant_type=password", { email, password });
   storeSupabaseSession(response);
-  const profile = await getProfileById(response.user.id).catch(() => null);
-  return authUserToProfile(response.user, profile);
+
+  try {
+    const profile = await getProfileById(response.user.id);
+    const currentUser = authUserToProfile(response.user, profile);
+    if (!currentUser || currentUser.accountStatus !== "active") {
+      throw new Error("This dashboard account is not active.");
+    }
+    return currentUser;
+  } catch (error) {
+    clearSupabaseSession();
+    throw error;
+  }
 }
 
 export async function updateCurrentUserPassword(newPassword) {

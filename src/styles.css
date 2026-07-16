@@ -15875,6 +15875,38 @@ span,
   color: inherit;
 }
 
+.authorization-review-heading {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: var(--dashboard-accent-soft, #edf2ff);
+  color: var(--dashboard-text, #172033);
+}
+
+.authorization-review-heading h3,
+.authorization-review-heading p {
+  margin: 0;
+}
+
+.authorization-review-heading p {
+  color: var(--dashboard-muted-text, #677187);
+}
+
+.reports-table-panel td strong,
+.reports-table-panel td small {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .reports-table-panel {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
+}
+
 .archive-layout {
   grid-template-columns: 280px minmax(0, 1fr);
   align-items: start;

@@ -50,7 +50,8 @@ import {
   updateFaq
 } from "../services/publicEngagementService.js";
 import { updateCurrentUserPassword } from "../services/authService.js";
-import { isSupabaseConfigured } from "../services/supabaseClient.js";
+import { getCurrentSupabaseUserId, isSupabaseConfigured } from "../services/supabaseClient.js";
+import { getBootstrapShadowAccess } from "../services/accessControlService.js";
 import {
   createLeader,
   deactivateLeader,
@@ -100,7 +101,9 @@ export const fallbackData = {
   documentCategories: [],
   documents: [],
   archivedYears: [],
-  auditLogs: []
+  auditLogs: [],
+  effectiveAccess: null,
+  authorizationMigrationDifferences: []
 };
 
 export const loadingData = {
@@ -123,7 +126,9 @@ export const loadingData = {
   documentCategories: [],
   documents: [],
   archivedYears: [],
-  auditLogs: []
+  auditLogs: [],
+  effectiveAccess: null,
+  authorizationMigrationDifferences: []
 };
 
 async function request(path, options = {}) {
@@ -160,6 +165,9 @@ export async function getBootstrap() {
     const valueAt = (index, fallback) =>
       results[index]?.status === "fulfilled" ? results[index].value : fallback;
     const users = valueAt(0, []);
+    const currentUserId = getCurrentSupabaseUserId();
+    const currentUser = users.find((user) => user.id === currentUserId);
+    const shadowAccess = await getBootstrapShadowAccess({ isLegacyAdmin: currentUser?.role === "admin" });
     const scoutData = valueAt(1, {
       groups: scoutGroups,
       registeredScouts: [],
@@ -198,6 +206,7 @@ export async function getBootstrap() {
       ...formsData,
       ...settingsWorkspaceData,
       auditLogs: [],
+      ...shadowAccess,
       notifications,
       siteContentRevisions,
       contentSubmissions: [
@@ -304,9 +313,7 @@ export function removeLeader(leaderId) {
 
 export function createCalendarEvent(payload) {
   if (isSupabaseConfigured) {
-    return createSupabaseCalendarEvent(payload).catch(() =>
-      request("/calendar/events", { method: "POST", body: JSON.stringify(payload) })
-    );
+    return createSupabaseCalendarEvent(payload);
   }
 
   return request("/calendar/events", { method: "POST", body: JSON.stringify(payload) });
@@ -314,9 +321,7 @@ export function createCalendarEvent(payload) {
 
 export function deleteCalendarEvent(eventId) {
   if (isSupabaseConfigured) {
-    return deleteSupabaseCalendarEvent(eventId).catch(() =>
-      request(`/calendar/events/${eventId}`, { method: "DELETE" })
-    );
+    return deleteSupabaseCalendarEvent(eventId);
   }
 
   return request(`/calendar/events/${eventId}`, { method: "DELETE" });
@@ -324,9 +329,7 @@ export function deleteCalendarEvent(eventId) {
 
 export function updateCalendarEvent(eventId, payload) {
   if (isSupabaseConfigured) {
-    return updateSupabaseCalendarEvent(eventId, payload).catch(() =>
-      request(`/calendar/events/${eventId}`, { method: "PUT", body: JSON.stringify(payload) })
-    );
+    return updateSupabaseCalendarEvent(eventId, payload);
   }
 
   return request(`/calendar/events/${eventId}`, { method: "PUT", body: JSON.stringify(payload) });
@@ -334,9 +337,7 @@ export function updateCalendarEvent(eventId, payload) {
 
 export function saveScoutAttendance(payload) {
   if (isSupabaseConfigured) {
-    return saveSupabaseScoutAttendance(payload).catch(() =>
-      request("/attendance/scouts", { method: "POST", body: JSON.stringify(payload) })
-    );
+    return saveSupabaseScoutAttendance(payload);
   }
 
   return request("/attendance/scouts", { method: "POST", body: JSON.stringify(payload) });
@@ -421,6 +422,9 @@ export function uploadRegistrationSheet(payload) {
 }
 
 export function moveRegisteredScout(scoutId, payload) {
+  if (isSupabaseConfigured) {
+    return updateScout(scoutId, payload);
+  }
   return request(`/registration/scouts/${scoutId}/group`, {
     method: "PUT",
     body: JSON.stringify(payload)
@@ -429,12 +433,7 @@ export function moveRegisteredScout(scoutId, payload) {
 
 export function updateRegisteredScout(scoutId, payload) {
   if (isSupabaseConfigured) {
-    return updateScout(scoutId, payload).catch(() =>
-      request(`/registration/scouts/${scoutId}`, {
-        method: "PUT",
-        body: JSON.stringify(payload)
-      })
-    );
+    return updateScout(scoutId, payload);
   }
 
   return request(`/registration/scouts/${scoutId}`, {
@@ -445,9 +444,7 @@ export function updateRegisteredScout(scoutId, payload) {
 
 export function addRegisteredScout(payload) {
   if (isSupabaseConfigured) {
-    return createScout(payload).catch(() =>
-      request("/registration/scouts", { method: "POST", body: JSON.stringify(payload) })
-    );
+    return createScout(payload);
   }
 
   return request("/registration/scouts", { method: "POST", body: JSON.stringify(payload) });
@@ -484,9 +481,9 @@ export function changeOwnPassword(newPassword) {
 
   return Promise.resolve();
 }
-export function resetUserPassword(userId, temporaryPassword) {
+export function resetUserPassword(userId) {
   if (isSupabaseConfigured) {
-    return adminResetUserPassword(userId, temporaryPassword);
+    return adminResetUserPassword(userId);
   }
 
   return Promise.resolve();
@@ -526,7 +523,7 @@ export function updateBlog(postId, payload) {
 
 export function deleteBlog(postId) {
   if (isSupabaseConfigured) {
-    return deletePost(postId).catch(() => request(`/blogs/${postId}`, { method: "DELETE" }));
+    return deletePost(postId);
   }
 
   return request(`/blogs/${postId}`, { method: "DELETE" });
@@ -534,9 +531,7 @@ export function deleteBlog(postId) {
 
 export function createAlbum(payload) {
   if (isSupabaseConfigured) {
-    return createGalleryAlbum(payload).catch(() =>
-      request("/albums", { method: "POST", body: JSON.stringify(payload) })
-    );
+    return createGalleryAlbum(payload);
   }
 
   return request("/albums", { method: "POST", body: JSON.stringify(payload) });
@@ -544,9 +539,7 @@ export function createAlbum(payload) {
 
 export function updateAlbum(albumId, payload) {
   if (isSupabaseConfigured) {
-    return updateGalleryAlbum(albumId, payload).catch(() =>
-      request(`/albums/${albumId}`, { method: "PUT", body: JSON.stringify(payload) })
-    );
+    return updateGalleryAlbum(albumId, payload);
   }
 
   return request(`/albums/${albumId}`, { method: "PUT", body: JSON.stringify(payload) });
@@ -570,7 +563,7 @@ export function updatePhotoBatch(batchId, payload) {
 
 export function deleteAlbum(albumId) {
   if (isSupabaseConfigured) {
-    return deleteGalleryAlbum(albumId).catch(() => request(`/albums/${albumId}`, { method: "DELETE" }));
+    return deleteGalleryAlbum(albumId);
   }
 
   return request(`/albums/${albumId}`, { method: "DELETE" });
@@ -578,9 +571,7 @@ export function deleteAlbum(albumId) {
 
 export function addAlbumPhotos(albumId, payload) {
   if (isSupabaseConfigured) {
-    return createGalleryPhotos(albumId, payload.photos ?? [], payload.approvalStatus, payload.onProgress).catch(() =>
-      request(`/albums/${albumId}/photos`, { method: "POST", body: JSON.stringify(payload) })
-    );
+    return createGalleryPhotos(albumId, payload.photos ?? [], payload.approvalStatus, payload.onProgress);
   }
 
   payload.onProgress?.({

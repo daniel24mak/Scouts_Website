@@ -170,7 +170,7 @@ From `AdminDashboardPage.jsx` and feature files, current dashboard areas include
 - Approval Requests.
 - Contact Messages.
 - Settings.
-- Users & Permissions.
+- People & Access (internal section ID remains `usersPermissions` for compatibility).
 - Website Content.
 - Registered Scout Upload.
 - Groups & Sorting Rules.

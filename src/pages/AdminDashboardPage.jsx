@@ -96,6 +96,8 @@ import AttendanceSheetsManager from "../features/attendance/AttendanceSheetsMana
 import ChiefAttendanceManager from "../features/attendance/ChiefAttendanceManager.jsx";
 import CalendarManagement from "../features/calendar/CalendarManagement.jsx";
 import FormsDashboard, { FormPreview } from "../features/forms/FormsDashboard.jsx";
+import PeopleAccessWorkspace from "../features/people-access/PeopleAccessWorkspace.jsx";
+import { normalizePeopleAccessInvitation, normalizePeopleAccessWorkspace, normalizeUserAccessDetails } from "../features/people-access/peopleAccessModel.js";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import { useToast } from "../components/ToastProvider.jsx";
 import AvatarCropModal from "../components/AvatarCropModal.jsx";
@@ -105,6 +107,8 @@ import RichTextEditor from "../components/RichTextEditor.jsx";
 import UserAvatar from "../components/UserAvatar.jsx";
 import WebsiteContentEditor, { getSiteImageCropConfig } from "../components/WebsiteContentEditor.jsx";
 import { logAuditEvent } from "../services/auditService.js";
+import { PERMISSIONS } from "../services/accessControlCatalog.js";
+import { hasEffectivePermission } from "../services/accessControlResolver.js";
 import {
   canCreateGroupMeetings,
   canEditScouts,
@@ -121,6 +125,20 @@ import {
 import { subscribeDashboardRealtime } from "../services/realtimeService.js";
 import { isSupabaseConfigured } from "../services/supabaseClient.js";
 import { isStructuredSiteContentKey } from "../services/siteContentService.js";
+import {
+  decideAccessReview,
+  getPeopleAccessWorkspace,
+  getUserAccessDetails,
+  revokeUserGroupAssignment,
+  revokeUserRoleAssignment,
+  revokeUserTeamMembership,
+  resolveAuthorizationDifference,
+  saveAccessRole,
+  saveAccessTeam,
+  saveUserGroupAssignment,
+  saveUserRoleAssignment,
+  saveUserTeamMembership
+} from "../services/peopleAccessService.js";
 
 const emptyScout = {
   name: "",
@@ -143,7 +161,6 @@ const emptyChief = {
   coordinatorGroupIds: [],
   chiefLevel: "chief",
   accountStatus: "active",
-  temporaryPassword: "",
   profilePictureFile: null,
   profilePictureUrl: "",
   canPublish: false,
@@ -260,7 +277,7 @@ const sections = [
   ["notifications", "Notifications", Bell, "all"],
   ["contactMessages", "Contact Messages", MessageSquare, "admin"],
   ["settings", "Settings", Settings, "admin"],
-  ["usersPermissions", "Users & Permissions", LockKeyhole, "settings"],
+  ["usersPermissions", "People & Access", LockKeyhole, "settings"],
   ["websiteContent", "Website Content", Image, "settings"],
   ["upload", "Registered Scout Upload", Upload, "settings"],
   ["rules", "Groups & Sorting Rules", Settings, "settings"],  ["documents", "Documents", Folder, "settings"],
@@ -269,7 +286,7 @@ const sections = [
 ];
 
 const settingSections = [
-  ["usersPermissions", "Users & Permissions", LockKeyhole, "Manage users, chiefs, roles, chief levels, groups, and permissions."],
+  ["usersPermissions", "People & Access", LockKeyhole, "Manage people, scouting assignments, teams, roles, reviews, and effective access."],
   ["scouts", "Scouts", Users, "Add, edit, and assign scout records."],
   ["upload", "Registered Scout Upload", Upload, "Upload the active scout registration sheet and preserve historical lists."],
   ["rules", "Groups & Sorting Rules", Settings, "Control automatic grouping by school grade, age, and gender rules."],
@@ -452,12 +469,12 @@ function mapDashboardActivityLog(log, actorName) {
   if (log.action === "attendance_updated_after_submission") return makeRow("Attendance", "Attendance record edited after submission", { date: metadata.date, group: metadata.groupId, scope: metadata.scope });
 
   if (table === "user_profiles") {
-    if (operation === "INSERT") return makeRow("Users & Permissions", "User account created", { role: newRole, status: newStatus });
-    if (operation === "DELETE") return makeRow("Users & Permissions", "User permanently deleted", { role: oldRole, status: oldStatus });
+    if (operation === "INSERT") return makeRow("People & Access", "User account created", { role: newRole, status: newStatus });
+    if (operation === "DELETE") return makeRow("People & Access", "User permanently deleted", { role: oldRole, status: oldStatus });
     if (operation === "UPDATE") {
-      if (oldRole && newRole && oldRole !== newRole) return makeRow("Users & Permissions", "Role changed", { before: oldRole, after: newRole });
-      if (oldStatus && newStatus && oldStatus !== newStatus) return makeRow("Users & Permissions", newStatus === "active" ? "User reactivated" : "User deactivated", { before: oldStatus, after: newStatus });
-      if (changedFields.some((field) => ["roles", "assigned_group_ids", "coordinator_group_ids"].includes(field))) return makeRow("Users & Permissions", "Coordinator access changed on user account", { fields: changedFields });
+      if (oldRole && newRole && oldRole !== newRole) return makeRow("People & Access", "Role changed", { before: oldRole, after: newRole });
+      if (oldStatus && newStatus && oldStatus !== newStatus) return makeRow("People & Access", newStatus === "active" ? "User reactivated" : "User deactivated", { before: oldStatus, after: newStatus });
+      if (changedFields.some((field) => ["roles", "assigned_group_ids", "coordinator_group_ids"].includes(field))) return makeRow("People & Access", "Coordinator access changed on user account", { fields: changedFields });
     }
   }
   if (table === "scouts") {
@@ -842,7 +859,6 @@ export default function AdminDashboardPage() {
   const [profileEdit, setProfileEdit] = useState({ name: user?.name ?? "", profilePictureFile: null, profilePicturePreview: "", currentPassword: "", newPassword: "", confirmPassword: "" });
   const [profileMessage, setProfileMessage] = useState("");
   const [passwordResetUser, setPasswordResetUser] = useState(null);
-  const [passwordResetValue, setPasswordResetValue] = useState("");
   const [editingUserId, setEditingUserId] = useState(null);
   const [avatarCropRequest, setAvatarCropRequest] = useState(null);
   const [postEdits, setPostEdits] = useState({});
@@ -871,6 +887,10 @@ export default function AdminDashboardPage() {
   const [websiteEditorVersion, setWebsiteEditorVersion] = useState(0);
   const [requestedFormId, setRequestedFormId] = useState(null);
   const [activeSetting, setActiveSetting] = useState("usersPermissions");
+  const [peopleAccessWorkspace, setPeopleAccessWorkspace] = useState(() => normalizePeopleAccessWorkspace());
+  const [peopleAccessLoading, setPeopleAccessLoading] = useState(false);
+  const [peopleAccessError, setPeopleAccessError] = useState("");
+  const [peopleAccessWarning, setPeopleAccessWarning] = useState("");
   const [lastDashboardSection, setLastDashboardSection] = useState("overview");
   const [sidebarMode, setSidebarMode] = useState(() => window.localStorage.getItem(sidebarModeKey) ?? "expanded");
   const [dashboardTheme, setDashboardTheme] = useState(() => window.localStorage.getItem(dashboardThemeKey) ?? "light");
@@ -921,6 +941,36 @@ export default function AdminDashboardPage() {
 
   const visibleSections = sections.filter((section) => isSectionAllowed(section, user));
   const isAdmin = canManageSystem(user);
+  const canViewPeopleAccess = isAdmin || hasEffectivePermission(data.effectiveAccess, PERMISSIONS.USERS_VIEW);
+  const peopleAccessCapabilities = useMemo(() => {
+    const allowed = (permission) => isAdmin || hasEffectivePermission(data.effectiveAccess, permission);
+    return {
+      users: allowed(PERMISSIONS.USERS_VIEW),
+      roles: allowed(PERMISSIONS.ROLES_VIEW),
+      teams: allowed(PERMISSIONS.USERS_ASSIGN_TEAMS) || allowed(PERMISSIONS.ROLES_VIEW),
+      reviews: allowed(PERMISSIONS.AUDIT_LOGS_VIEW),
+      audit: allowed(PERMISSIONS.AUDIT_LOGS_VIEW),
+      invite: allowed(PERMISSIONS.USERS_INVITE),
+      createRole: allowed(PERMISSIONS.ROLES_CREATE),
+      createTeam: allowed(PERMISSIONS.USERS_ASSIGN_TEAMS),
+      assignRoles: allowed(PERMISSIONS.USERS_ASSIGN_ROLES),
+      assignGroups: allowed(PERMISSIONS.USERS_ASSIGN_GROUPS),
+      assignTeams: allowed(PERMISSIONS.USERS_ASSIGN_TEAMS),
+      deleteUser: allowed(PERMISSIONS.USERS_DELETE),
+      currentUserId: user?.id ?? null,
+      resetPassword: allowed(PERMISSIONS.USERS_RESET_PASSWORD),
+      editUser: allowed(PERMISSIONS.USERS_UPDATE_PROFILE)
+    };
+  }, [data.effectiveAccess, isAdmin, user?.id]);
+  const legacyPeopleAccessFallback = useMemo(() => normalizePeopleAccessWorkspace({
+    users: data.users ?? [],
+    groups: data.groups ?? [],
+    summary: {
+      active_users: (data.users ?? []).filter((profile) => profile.accountStatus === "active").length,
+      invited_users: (data.users ?? []).filter((profile) => profile.accountStatus === "invited").length,
+      disabled_users: (data.users ?? []).filter((profile) => profile.accountStatus === "disabled").length
+    }
+  }), [data.groups, data.users]);
   const assignedGroupIds = isAdmin ? data.groups.map((group) => group.id) : getAssignableGroupIds(user);
   const dashboardGroupId = assignedGroupIds.includes(selectedGroupId) ? selectedGroupId : assignedGroupIds[0] ?? data.groups[0]?.id ?? "";
   const dashboardGroup = data.groups.find((group) => group.id === dashboardGroupId);
@@ -1057,7 +1107,9 @@ export default function AdminDashboardPage() {
   const sectionById = useMemo(() => new Map(sections.map((section) => [section[0], section])), []);
   const sidebarGroups = useMemo(() => {
     const item = (id) => sectionById.get(id);
-    const available = (ids) => ids.map(item).filter(Boolean).filter((section) => canOpenSection(section[0], user));
+    const available = (ids) => ids.map(item).filter(Boolean).filter((section) => (
+      section[0] === "usersPermissions" ? canViewPeopleAccess : canOpenSection(section[0], user)
+    ));
     const groups = [
       { id: "overview", type: "item", item: item("overview") },
       { id: "aiAssistant", type: "item", item: item("aiAssistant") },
@@ -1070,7 +1122,7 @@ export default function AdminDashboardPage() {
 
     if (canOpenSection("approvals", user)) groups.push({ id: "approvals", type: "item", item: item("approvals") });
     if (canOpenSection("contactMessages", user)) groups.push({ id: "contactMessages", type: "item", item: item("contactMessages") });
-    if (isAdmin || canOpenSection("documents", user) || canOpenSection("archives", user)) {
+    if (canViewPeopleAccess || isAdmin || canOpenSection("documents", user) || canOpenSection("archives", user)) {
       groups.push({
         id: "settingsGroup",
         type: "group",
@@ -1081,7 +1133,7 @@ export default function AdminDashboardPage() {
     }
 
     return groups.filter((group) => group.type === "item" ? group.item && canOpenSection(group.item[0], user) : group.children.length);
-  }, [isAdmin, sectionById, user]);
+  }, [canViewPeopleAccess, isAdmin, sectionById, user]);
   const flatSidebarItems = useMemo(
     () => sidebarGroups.flatMap((group) => group.type === "item" ? [group.item] : group.children),
     [sidebarGroups]
@@ -1392,6 +1444,20 @@ export default function AdminDashboardPage() {
       return mapDashboardActivityLog(log, actor?.name ?? "System");
     }).filter(Boolean);
   }, [reportsData.auditLogs, usersById]);
+
+  const reportAuthorizationRows = useMemo(() => (
+    (data.authorizationMigrationDifferences ?? []).map((difference) => ({
+      user: usersById.get(difference.userId)?.name ?? difference.userId ?? "Unknown user",
+      module: difference.module,
+      permissionKey: difference.permissionKey,
+      legacyResult: difference.legacyAllowed ? "Allowed" : "Denied",
+      normalizedResult: difference.normalizedAllowed ? "Allowed" : "Denied",
+      scope: difference.scopeId ? `${difference.scopeType}: ${difference.scopeId}` : difference.scopeType,
+      reason: difference.details?.source ?? "Legacy and normalized access differ",
+      createdAt: formatDubaiDateTime(difference.createdAt),
+      status: difference.resolvedAt ? "Resolved" : "Review required"
+    }))
+  ), [data.authorizationMigrationDifferences, usersById]);
 
   const selectedArchive = (data.archivedYears ?? []).find((archive) => archive.id === selectedArchiveId) ?? (data.archivedYears ?? [])[0] ?? null;
 
@@ -2089,15 +2155,12 @@ export default function AdminDashboardPage() {
       if (!newChief.email.trim()) {
         throw new Error("Enter the user's email address.");
       }
-      if (!newChief.temporaryPassword) {
-        throw new Error("Enter a temporary password for the new user.");
-      }
       const payload = normalizeUserRolePayload(newChief);
       validateUserRolePayload(payload);
 
       await addChief(payload);
       setNewChief({ ...emptyChief, groupId: data.groups[0]?.id ?? "", assignedGroupIds: data.groups[0]?.id ? [data.groups[0].id] : [] });
-      setSaveMessage("User created in Supabase Auth and added to Users & Permissions.");
+      setSaveMessage("Invitation sent and user added to People & Access.");
       await refresh();
     } catch (error) {
       setSaveMessage(`User was not fully created: ${error.message}`);
@@ -2116,6 +2179,149 @@ export default function AdminDashboardPage() {
       setSaveMessage(`User could not be deleted: ${error.message}`);
     }
   };
+  const loadPeopleAccessWorkspace = async () => {
+    setPeopleAccessLoading(true);
+    setPeopleAccessError("");
+    setPeopleAccessWarning("");
+    try {
+      setPeopleAccessWorkspace(await getPeopleAccessWorkspace());
+    } catch (error) {
+      setPeopleAccessWorkspace(legacyPeopleAccessFallback);
+      setPeopleAccessWarning("Normalized access details are temporarily unavailable. The people list remains visible, but role, team, review, and effective-access changes require the People & Access SQL API.");
+      if (!legacyPeopleAccessFallback.users.length) setPeopleAccessError(error.message || "People & Access could not be loaded.");
+    } finally {
+      setPeopleAccessLoading(false);
+    }
+  };
+  const loadPeopleAccessUser = async (userId) => {
+    try {
+      return await getUserAccessDetails(userId);
+    } catch {
+      return normalizeUserAccessDetails({ user: (data.users ?? []).find((profile) => profile.id === userId) });
+    }
+  };
+  const invitePeopleAccessUser = async (draft) => {
+    const invitation = normalizePeopleAccessInvitation(draft);
+    const selectedRoleKeys = invitation.roles.map((assignment) => peopleAccessWorkspace.roles.find((role) => role.id === assignment.roleId)?.key ?? assignment.roleId);
+    const legacyRole = selectedRoleKeys.includes("system_administrator") ? "admin" : "chief";
+    const legacyLevelByPosition = { head_chief: "head", vice_chief: "vice", chief: "chief", coordinator: "chief", equipe_leader: "chief", assistant: "chief" };
+    const primaryGroup = invitation.groups.find((assignment) => assignment.isPrimary) ?? invitation.groups[0];
+    const created = await addChief({
+      name: invitation.name, email: invitation.email, role: legacyRole,
+      groupId: primaryGroup?.groupId ?? "", assignedGroupIds: invitation.assignedGroupIds,
+      coordinatorGroupIds: invitation.assignedGroupIds,
+      chiefLevel: legacyLevelByPosition[primaryGroup?.position] ?? "chief", accountStatus: "invited",
+      profilePictureFile: invitation.profilePictureFile
+    });
+    const createdUserId = created?.user?.id ?? created?.profile?.id ?? created?.id;
+    let assignmentWarning = "";
+    if (createdUserId) {
+      try {
+        const createdAccess = legacyRole === "chief"
+          ? normalizeUserAccessDetails(await getUserAccessDetails(createdUserId))
+          : null;
+        for (const assignment of invitation.groups) {
+          const existingAssignment = createdAccess?.groupAssignments.find((item) =>
+            (item.groupId ?? item.group_id ?? item.key) === assignment.groupId
+          );
+          if (legacyRole === "chief" && !existingAssignment?.id) {
+            throw new Error(`The created account is missing its ${assignment.groupId} group assignment.`);
+          }
+          await saveUserGroupAssignment({
+            id: existingAssignment?.id,
+            userId: createdUserId,
+            ...assignment,
+            reason: assignment.reason || invitation.reason
+          });
+        }
+        for (const assignment of invitation.teams) {
+          await saveUserTeamMembership({ userId: createdUserId, ...assignment, reason: assignment.reason || invitation.reason });
+        }
+        for (const assignment of invitation.roles) {
+          const roleKey = peopleAccessWorkspace.roles.find((role) => role.id === assignment.roleId)?.key ?? assignment.roleId;
+          const autoAssigned = (legacyRole === "admin" && roleKey === "system_administrator") || (legacyRole === "chief" && roleKey === "chief");
+          if (!autoAssigned) await saveUserRoleAssignment({ userId: createdUserId, ...assignment });
+        }
+      } catch (error) {
+        assignmentWarning = ` Invitation sent, but access setup needs attention: ${error.message}`;
+      }
+    }
+    setSaveMessage(assignmentWarning || (createdUserId ? "Secure invitation sent and access assignments saved." : "Secure invitation sent. Open the user to finish normalized access assignments."));
+    await refresh();
+    await loadPeopleAccessWorkspace();
+  };
+  const handlePeopleAccessUserAction = async (action, profile) => {
+    if (action === "passwordReset") {
+      if (!peopleAccessCapabilities.resetPassword) throw new Error("You do not have permission to reset passwords.");
+      await resetUserPassword(profile.id);
+      setSaveMessage("Password recovery email sent.");
+      return;
+    }
+    if (action === "delete") {
+      if (!peopleAccessCapabilities.deleteUser) throw new Error("You do not have permission to delete users.");
+      if (!profile?.id) throw new Error("This user account does not have a valid ID.");
+      const confirmed = window.confirm(`Delete ${profile.name}? This permanently removes the dashboard account and cannot be undone.`);
+      if (!confirmed) return false;
+      await removeDashboardUser(profile.id);
+      setSaveMessage("User deleted.");
+      await refresh();
+      await loadPeopleAccessWorkspace();
+      return true;
+    }
+    if (action === "editProfile") {
+      const legacyProfile = (data.users ?? []).find((item) => item.id === profile.id) ?? profile;
+      startUserEdit(legacyProfile);
+    }
+  };
+  const changePeopleAccessAssignment = async (kind, operation, profile, payload) => {
+    const permissionByKind = { group: peopleAccessCapabilities.assignGroups, team: peopleAccessCapabilities.assignTeams, role: peopleAccessCapabilities.assignRoles };
+    if (!permissionByKind[kind]) throw new Error(`You do not have permission to change ${kind} assignments.`);
+    const reason = payload.reason || "People & Access account update";
+    if (operation === "remove") {
+      if (!payload.id || String(payload.id).startsWith("legacy-")) throw new Error("Run the access-control backfill before removing this legacy assignment.");
+      if (kind === "group") await revokeUserGroupAssignment(payload.id, reason);
+      if (kind === "team") await revokeUserTeamMembership(payload.id, reason);
+      if (kind === "role") await revokeUserRoleAssignment(payload.id, reason);
+    } else {
+      if (kind === "group") await saveUserGroupAssignment({ userId: profile.id, ...payload, reason });
+      if (kind === "team") await saveUserTeamMembership({ userId: profile.id, ...payload, reason });
+      if (kind === "role") await saveUserRoleAssignment({ userId: profile.id, ...payload, reason });
+    }
+    setSaveMessage(`${kind[0].toUpperCase()}${kind.slice(1)} assignment ${operation === "remove" ? "removed" : "saved"}.`);
+    await refresh();
+    await loadPeopleAccessWorkspace();
+    return getUserAccessDetails(profile.id);
+  };
+  const createPeopleAccessRole = async () => {
+    const name = window.prompt("Role name");
+    if (!name?.trim()) return;
+    const key = window.prompt("Stable role key", name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_"));
+    if (!key?.trim()) return;
+    await saveAccessRole({ id: key.trim(), name: name.trim(), description: "", category: "custom", riskLevel: "standard", permissionIds: [], supportedScopes: ["global"], isActive: true });
+    setSaveMessage("Custom role created. Add permissions before assigning it.");
+    await loadPeopleAccessWorkspace();
+  };
+  const createPeopleAccessTeam = async () => {
+    const name = window.prompt("Team name");
+    if (!name?.trim()) return;
+    await saveAccessTeam({ name: name.trim(), key: name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_"), description: "", teamType: "committee", isActive: true });
+    setSaveMessage("Team created.");
+    await loadPeopleAccessWorkspace();
+  };
+  const decidePeopleAccessReview = async (item, decision) => {
+    const notes = window.prompt("Reason for this decision");
+    if (!notes?.trim()) return;
+    if (item.source === "migration") await resolveAuthorizationDifference(item.id, decision, notes.trim());
+    else await decideAccessReview(item.id, decision, notes.trim());
+    setSaveMessage("Access review decision recorded.");
+    await loadPeopleAccessWorkspace();
+  };
+  useEffect(() => {
+    if (activeSection !== "usersPermissions" || !canViewPeopleAccess) return;
+    loadPeopleAccessWorkspace();
+    // The workspace intentionally refreshes when its section is opened; mutations refresh explicitly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSection, canViewPeopleAccess]);
   const submitOwnProfileChange = async (event) => {
     event.preventDefault();
     try {
@@ -2165,16 +2371,10 @@ export default function AdminDashboardPage() {
       setSaveMessage("Choose a user before resetting a password.");
       return;
     }
-    if (passwordResetValue.length < 6) {
-      setSaveMessage("Temporary password must be at least 6 characters.");
-      return;
-    }
-
     try {
-      await resetUserPassword(passwordResetUser.id, passwordResetValue);
+      await resetUserPassword(passwordResetUser.id);
       setPasswordResetUser(null);
-      setPasswordResetValue("");
-      setSaveMessage(`Temporary password reset for ${passwordResetUser.name}.`);
+      setSaveMessage(`Secure password-recovery email sent to ${passwordResetUser.name}.`);
       await refresh();
     } catch (error) {
       setSaveMessage(`Password reset failed: ${error.message}`);
@@ -3562,6 +3762,73 @@ export default function AdminDashboardPage() {
     </div>
   );
 
+  const renderPeopleProfileEditPanel = (profile, edit) => (
+    <div className="user-permission-edit-panel people-profile-editor">
+      <div className="people-profile-editor-avatar">
+        <UserAvatar name={edit.name || profile.name} imageUrl={edit.profilePicturePreview || edit.profilePictureUrl || profile.profilePictureUrl} size={76} />
+        <label className="avatar-replace-control">
+          <span>Replace profile picture</span>
+          <input type="file" accept={acceptedImageTypes} onChange={(event) => openAvatarCrop(event.target.files?.[0] ?? null, { type: "chief", chief: profile })} />
+        </label>
+      </div>
+      <div className="inline-editor-grid compact">
+        <label>
+          Full name
+          <input value={edit.name} onChange={(event) => setChiefEdits((current) => ({ ...current, [profile.id]: { ...edit, name: event.target.value } }))} />
+        </label>
+        <label>
+          Email address
+          <input type="email" value={edit.email} onChange={(event) => setChiefEdits((current) => ({ ...current, [profile.id]: { ...edit, email: event.target.value } }))} />
+        </label>
+        <label>
+          Account status
+          <select value={edit.accountStatus} onChange={(event) => setChiefEdits((current) => ({ ...current, [profile.id]: { ...edit, accountStatus: event.target.value } }))}>
+            <option value="active">Active</option>
+            <option value="invited">Invited</option>
+            <option value="disabled">Disabled</option>
+          </select>
+        </label>
+      </div>
+      <p className="helper-text">Roles, scouting assignments, teams, and access scopes are managed from the corresponding tabs in this user's access record.</p>
+      <div className="action-row compact-actions">
+        <button type="button" className="primary-action" onClick={() => saveChief(profile.id)}>Save profile</button>
+        <button type="button" className="inline-action" onClick={() => setEditingUserId(null)}>Cancel</button>
+      </div>
+    </div>
+  );
+
+  const renderPeopleAccess = () => {
+    const editingProfile = editingUserId ? (data.users ?? []).find((profile) => profile.id === editingUserId) : null;
+    const edit = editingProfile ? (chiefEdits[editingProfile.id] ?? toChiefForm(editingProfile)) : null;
+    return <>
+      <PeopleAccessWorkspace
+        workspace={peopleAccessWorkspace}
+        loading={peopleAccessLoading}
+        error={peopleAccessError}
+        warning={peopleAccessWarning}
+        capabilities={peopleAccessCapabilities}
+        onRefresh={loadPeopleAccessWorkspace}
+        onInvite={invitePeopleAccessUser}
+        onLoadUser={loadPeopleAccessUser}
+        onUserAction={handlePeopleAccessUserAction}
+        onAssignmentChange={changePeopleAccessAssignment}
+        onCreateRole={createPeopleAccessRole}
+        onCreateTeam={createPeopleAccessTeam}
+        onReviewDecision={decidePeopleAccessReview}
+      />
+      {editingProfile && edit && (
+        <div className="profile-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditingUserId(null); }}>
+          <section className="profile-modal people-access-profile-modal" role="dialog" aria-modal="true" aria-labelledby="people-access-profile-title">
+            <button type="button" className="modal-close-button" aria-label="Close account editor" onClick={() => setEditingUserId(null)}><X size={18} aria-hidden="true" /></button>
+            <h2 id="people-access-profile-title">Edit profile & account</h2>
+            <p className="helper-text">Update identity and account details. Access assignments remain separate and auditable.</p>
+            {renderPeopleProfileEditPanel(editingProfile, edit)}
+          </section>
+        </div>
+      )}
+    </>;
+  };
+
   const renderChiefs = () => (
     <div className="cms-panel-stack users-permissions-layout">
       <form className="cms-form user-permissions-form" onSubmit={createChief}>
@@ -3577,10 +3844,6 @@ export default function AdminDashboardPage() {
           <label>
             Email / username
             <input required type="email" placeholder="Email / username" value={newChief.email} onChange={(event) => setNewChief((current) => ({ ...current, email: event.target.value }))} />
-          </label>
-          <label>
-            Temporary password
-            <input required type="password" placeholder="Temporary password" value={newChief.temporaryPassword} onChange={(event) => setNewChief((current) => ({ ...current, temporaryPassword: event.target.value }))} />
           </label>
           <label>
             Role
@@ -3632,7 +3895,7 @@ export default function AdminDashboardPage() {
                 </div>
                 <div className="action-row compact-actions user-row-actions">
                   <button type="button" className="inline-action" onClick={() => startUserEdit(chief)}>Edit user</button>
-                  <button type="button" className="inline-action" onClick={() => { setPasswordResetUser(chief); setPasswordResetValue(""); setEditingUserId(null); }}>Reset password</button>
+                  <button type="button" className="inline-action" onClick={() => { setPasswordResetUser(chief); setEditingUserId(null); }}>Reset password</button>
                   <button type="button" className="danger-action" onClick={() => deleteChiefUser(chief)}>Delete user</button>
                 </div>
               </div>
@@ -3934,13 +4197,19 @@ export default function AdminDashboardPage() {
 
   const renderReports = () => {
     if (!isAdmin) return <AccessDenied message="Reports are admin-only because they include approval and system activity history." />;
-    const rows = reportTab === "approvals" ? reportApprovalRows : reportActivityRows;
+    const rows = reportTab === "approvals"
+      ? reportApprovalRows
+      : reportTab === "activity"
+        ? reportActivityRows
+        : reportAuthorizationRows;
     const visibleRows = filterBySearch(
       rows,
       search,
       reportTab === "approvals"
         ? ["type", "title", "status", "submittedBy", "createdAt", "updatedAt"]
-        : ["action", "entityType", "entityId", "actor", "createdAt", "details"]
+        : reportTab === "activity"
+          ? ["action", "entityType", "entityId", "actor", "createdAt", "details"]
+          : ["user", "module", "permissionKey", "legacyResult", "normalizedResult", "scope", "reason", "createdAt", "status"]
     );
     return (
       <section className="settings-workspace reports-workspace">
@@ -3952,18 +4221,22 @@ export default function AdminDashboardPage() {
           <div className="approval-type-tabs" role="tablist" aria-label="Report tabs">
             <button type="button" className={reportTab === "approvals" ? "active" : ""} onClick={() => setReportTab("approvals")}>Approval History</button>
             <button type="button" className={reportTab === "activity" ? "active" : ""} onClick={() => setReportTab("activity")}>Activity Log</button>
+            <button type="button" className={reportTab === "authorization" ? "active" : ""} onClick={() => setReportTab("authorization")}>Access Migration</button>
           </div>
           {reportsLoading && <UploadLoadingState message="Loading reports..." />}
           {reportsError && <p className="form-error">{reportsError}</p>}
+          {reportTab === "authorization" && <div className="authorization-review-heading"><h3>Authorization migration review</h3><p>Read-only differences between legacy and normalized access. No access changes can be made here.</p></div>}
           <div className="table-panel reports-table-panel">
             <table>
-              <thead>{reportTab === "approvals" ? <tr><th>Type</th><th>Title</th><th>Status</th><th>Submitted by</th><th>Created</th><th>Updated</th></tr> : <tr><th>Action</th><th>Entity</th><th>Actor</th><th>Created</th><th>Details</th></tr>}</thead>
+              <thead>{reportTab === "approvals" ? <tr><th>Type</th><th>Title</th><th>Status</th><th>Submitted by</th><th>Created</th><th>Updated</th></tr> : reportTab === "activity" ? <tr><th>Action</th><th>Entity</th><th>Actor</th><th>Created</th><th>Details</th></tr> : <tr><th>User</th><th>Permission</th><th>Legacy</th><th>Normalized</th><th>Scope</th><th>Reason</th><th>Created</th><th>Status</th></tr>}</thead>
               <tbody>
                 {visibleRows.length ? visibleRows.map((row, index) => reportTab === "approvals" ? (
                   <tr key={`${row.type}-${row.title}-${index}`}><td>{row.type}</td><td>{row.title}</td><td><StatusBadge status={row.status} /></td><td>{row.submittedBy}</td><td>{row.createdAt}</td><td>{row.updatedAt}</td></tr>
-                ) : (
+                ) : reportTab === "activity" ? (
                   <tr key={`${row.action}-${row.entityId}-${index}`}><td>{row.action}</td><td>{row.entityType}<small>{row.entityId}</small></td><td>{row.actor}</td><td>{row.createdAt}</td><td><code>{row.details}</code></td></tr>
-                )) : <tr><td colSpan="6">No report rows match this view.</td></tr>}
+                ) : (
+                  <tr key={`${row.user}-${row.permissionKey}-${index}`}><td>{row.user}</td><td><strong>{row.permissionKey}</strong><small>{row.module}</small></td><td>{row.legacyResult}</td><td>{row.normalizedResult}</td><td>{row.scope}</td><td>{row.reason}</td><td>{row.createdAt}</td><td><StatusBadge status={row.status} /></td></tr>
+                )) : <tr><td colSpan={reportTab === "authorization" ? 8 : 6}>No report rows match this view.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -4032,7 +4305,7 @@ export default function AdminDashboardPage() {
           </button>
         ))}
       </div>
-      {activeSetting === "usersPermissions" && renderChiefs()}
+      {activeSetting === "usersPermissions" && renderPeopleAccess()}
       {activeSetting === "upload" && renderUpload()}
       {activeSetting === "rules" && renderRules()}
       {activeSetting === "websiteContent" && renderWebsiteContent()}
@@ -4264,7 +4537,7 @@ export default function AdminDashboardPage() {
     </section>
   );
   const renderSection = () => {
-    if (!canOpenSection(activeSection, user)) {
+    if (activeSection === "usersPermissions" ? !canViewPeopleAccess : !canOpenSection(activeSection, user)) {
       return <AccessDenied />;
     }
     if (activeSection === "overview") return renderOverview();
@@ -4275,7 +4548,7 @@ export default function AdminDashboardPage() {
     if (activeSection === "rules") return renderRules();
     if (activeSection === "scouts") return renderScouts();
     if (activeSection === "equipes") return renderEquipes();
-    if (activeSection === "usersPermissions") return renderChiefs();
+    if (activeSection === "usersPermissions") return renderPeopleAccess();
     if (activeSection === "posts") return renderPosts();
     if (activeSection === "gallery") return renderGallery();
     if (activeSection === "faqs") return renderFaqs();
@@ -4585,12 +4858,11 @@ export default function AdminDashboardPage() {
             <button type="button" className="modal-close-button" aria-label="Close password reset" onClick={() => setPasswordResetUser(null)}>
               <X size={18} aria-hidden="true" />
             </button>
-            <h2>Reset temporary password</h2>
-            <p className="helper-text">Set a new temporary password for {passwordResetUser.name}. It is sent only to Supabase Auth and is not saved in the users table.</p>
-            <input type="password" autoFocus required minLength="6" placeholder="New temporary password" value={passwordResetValue} onChange={(event) => setPasswordResetValue(event.target.value)} />
+            <h2>Send password recovery</h2>
+            <p className="helper-text">Supabase will email {passwordResetUser.name} a secure link so they can choose their own password. You will never see or set it.</p>
             <div className="action-row">
               <button type="button" className="inline-action" onClick={() => setPasswordResetUser(null)}>Cancel</button>
-              <button type="submit" className="primary-action">Reset password</button>
+              <button type="submit" className="primary-action">Send recovery email</button>
             </div>
           </form>
         </div>
