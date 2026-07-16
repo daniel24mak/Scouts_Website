@@ -5,6 +5,7 @@ import {
   isSupabaseConfigured,
   storeSupabaseSession
 } from "./supabaseClient.js";
+import { normalizeTotpEnrollment } from "../utils/mfaQr.js";
 import { getProfileById } from "./userService.js";
 
 const authCallbackStorageKey = "scouts-supabase-auth-callback";
@@ -126,11 +127,11 @@ export async function updateCurrentUserPassword(newPassword) {
 
 export async function getMfaStatus() {
   const session = requireAuthSession();
-  const response = await callSupabaseAuth("factors", null, {
+  const authUser = await callSupabaseAuth("user", null, {
     method: "GET",
     accessToken: session.access_token
   });
-  const factors = normalizeMfaFactors(response);
+  const factors = normalizeMfaFactors(authUser.factors ?? []);
   const claims = readJwtPayload(session.access_token);
 
   return {
@@ -142,12 +143,17 @@ export async function getMfaStatus() {
 
 export async function enrollTotpMfa() {
   const session = requireAuthSession();
-  return callSupabaseAuth("factors", {
+  const response = await callSupabaseAuth("factors", {
     factor_type: "totp",
     friendly_name: "St. Mary's Scouts Dashboard"
   }, {
     accessToken: session.access_token
   });
+  const enrollment = normalizeTotpEnrollment(response);
+  if (!enrollment.id || (!enrollment.totp.qr_code && !enrollment.totp.secret)) {
+    throw new Error("Supabase did not return an authenticator QR code or manual secret.");
+  }
+  return enrollment;
 }
 
 export async function challengeAndVerifyMfa(factorId, code) {
