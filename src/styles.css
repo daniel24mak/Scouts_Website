@@ -8611,6 +8611,138 @@ textarea:focus-visible {
   color: #4055a6;
 }
 
+.mfa-security-panel {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  border-top: 1px solid var(--dashboard-line, rgb(64 85 166 / 0.12));
+  padding-top: 18px;
+}
+
+.mfa-security-heading,
+.mfa-security-state,
+.mfa-security-success,
+.mfa-security-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mfa-security-heading h3,
+.mfa-security-heading p,
+.mfa-security-state strong,
+.mfa-security-state span {
+  margin: 0;
+}
+
+.mfa-security-heading p,
+.mfa-security-state span {
+  color: var(--dashboard-muted, #5f6677);
+  font-size: 0.9rem;
+}
+
+.mfa-security-icon {
+  display: grid;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgb(64 85 166 / 0.1);
+  color: var(--dashboard-accent, #4055a6);
+}
+
+.mfa-security-state {
+  flex-wrap: wrap;
+  border-radius: 8px;
+  padding: 14px;
+  background: var(--dashboard-surface-2, #f5f7fb);
+}
+
+.mfa-security-state > div {
+  display: grid;
+  flex: 1 1 220px;
+  gap: 3px;
+}
+
+.mfa-security-state.success,
+.mfa-security-success {
+  color: #147a52;
+}
+
+.mfa-security-error {
+  margin: 0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgb(185 55 67 / 0.1);
+  color: #a52f3b;
+}
+
+.mfa-security-success {
+  margin: 0;
+}
+
+.mfa-enrollment-flow,
+.mfa-code-form,
+.mfa-steps {
+  display: grid;
+  gap: 12px;
+}
+
+.mfa-steps {
+  margin: 0;
+  padding-left: 22px;
+}
+
+.mfa-steps li span {
+  display: block;
+  color: var(--dashboard-muted, #5f6677);
+  font-size: 0.88rem;
+}
+
+.mfa-qr-wrap {
+  justify-self: center;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff;
+}
+
+.mfa-qr-wrap img {
+  display: block;
+  width: min(220px, 62vw);
+  height: auto;
+}
+
+.mfa-manual-secret {
+  display: grid;
+  gap: 6px;
+}
+
+.mfa-manual-secret code {
+  overflow-wrap: anywhere;
+  border-radius: 6px;
+  padding: 10px;
+  background: var(--dashboard-surface-2, #f5f7fb);
+  font-size: 0.85rem;
+}
+
+.mfa-code-form input {
+  width: min(100%, 240px);
+  font-size: 1.15rem;
+  letter-spacing: 0.18em;
+}
+
+.mfa-code-form label {
+  font-weight: 700;
+}
+
+@media (max-width: 520px) {
+  .mfa-security-state .primary-action,
+  .mfa-code-form .primary-action {
+    width: 100%;
+  }
+}
+
 .profile-change-preview {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

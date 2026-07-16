@@ -104,6 +104,7 @@ import AvatarCropModal from "../components/AvatarCropModal.jsx";
 import BlogPostPreview from "../components/BlogPostPreview.jsx";
 import FormattedText from "../components/FormattedText.jsx";
 import RichTextEditor from "../components/RichTextEditor.jsx";
+import MfaSecurityPanel from "../components/MfaSecurityPanel.jsx";
 import UserAvatar from "../components/UserAvatar.jsx";
 import WebsiteContentEditor, { getSiteImageCropConfig } from "../components/WebsiteContentEditor.jsx";
 import { logAuditEvent } from "../services/auditService.js";
@@ -4831,6 +4832,7 @@ export default function AdminDashboardPage() {
               </label>
               <button type="submit" className="primary-action">Submit profile update</button>
             </form>
+            <MfaSecurityPanel onSessionUpgraded={() => setProfileMessage("MFA verified. Retry the protected People & Access action.")} />
             <form className="profile-settings-form" onSubmit={changePassword}>
               <h3>Change password</h3>
               <input type="password" placeholder="Current password" value={profileEdit.currentPassword} onChange={(event) => setProfileEdit((current) => ({ ...current, currentPassword: event.target.value }))} />
