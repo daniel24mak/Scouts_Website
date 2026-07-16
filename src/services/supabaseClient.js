@@ -1,7 +1,8 @@
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const environment = import.meta.env ?? {};
+const supabaseUrl = environment.VITE_SUPABASE_URL;
 const supabasePublishableKey =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
-const storageBucket = import.meta.env.VITE_SUPABASE_STORAGE_BUCKET ?? "scouts-files";
+  environment.VITE_SUPABASE_PUBLISHABLE_KEY ?? environment.VITE_SUPABASE_ANON_KEY;
+const storageBucket = environment.VITE_SUPABASE_STORAGE_BUCKET ?? "scouts-files";
 const sessionStorageKey = "scouts-supabase-session";
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabasePublishableKey);
@@ -180,7 +181,31 @@ export async function uploadSupabaseFile(path, file, bucket = storageBucket, opt
     throw new Error((await response.text()) || `Supabase storage upload failed: ${response.status}`);
   }
 
+  if (options.isPublic === false) {
+    return null;
+  }
   return `${supabaseUrl}/storage/v1/object/public/${bucket}/${encodedPath}`;
+}
+
+export async function createSupabaseSignedFileUrl(path, bucket = storageBucket, expiresIn = 900) {
+  if (!path || !isSupabaseConfigured) return null;
+  const accessToken = getStoredSupabaseSession()?.access_token;
+  if (!accessToken) throw new Error("You must be logged in to open this file.");
+  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+  const response = await fetch(`${supabaseUrl}/storage/v1/object/sign/${bucket}/${encodedPath}`, {
+    method: "POST",
+    headers: {
+      apikey: supabasePublishableKey,
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ expiresIn })
+  });
+  if (!response.ok) throw new Error("This private file could not be opened.");
+  const payload = await response.json();
+  const signedPath = payload.signedURL ?? payload.signedUrl ?? null;
+  if (!signedPath) throw new Error("Supabase did not return a signed file URL.");
+  return /^https?:\/\//i.test(signedPath) ? signedPath : `${supabaseUrl}/storage/v1${signedPath}`;
 }
 
 export async function deleteSupabaseFiles(paths, bucket = storageBucket) {

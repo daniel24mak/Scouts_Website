@@ -1,5 +1,23 @@
 import { getSupabasePublicFileUrl } from "./supabaseClient.js";
 
+export function normalizeAuthorizationMigrationDifference(row = {}) {
+  return {
+    id: row.id ?? null,
+    userId: row.user_id ?? row.userId ?? null,
+    module: row.module ?? "unknown",
+    permissionKey: row.permission_key ?? row.permissionKey ?? "unknown",
+    scopeType: row.scope_type ?? row.scopeType ?? "global",
+    scopeId: row.scope_id ?? row.scopeId ?? null,
+    resourceType: row.resource_type ?? row.resourceType ?? null,
+    resourceId: row.resource_id ?? row.resourceId ?? null,
+    legacyAllowed: Boolean(row.legacy_allowed ?? row.legacyAllowed),
+    normalizedAllowed: Boolean(row.normalized_allowed ?? row.normalizedAllowed),
+    details: row.details && typeof row.details === "object" ? { ...row.details } : {},
+    createdAt: row.created_at ?? row.createdAt ?? null,
+    resolvedAt: row.resolved_at ?? row.resolvedAt ?? null
+  };
+}
+
 export function normalizeProfile(profile) {
   const role = profile.role ?? profile.role_id ?? "chief";
   const chiefLevel = profile.chief_level ?? profile.chiefLevel ?? null;

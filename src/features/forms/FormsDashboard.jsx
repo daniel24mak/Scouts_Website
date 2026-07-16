@@ -889,6 +889,16 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
   const canManageTemplates = isAdmin || Boolean(user?.permissions?.manageFormTemplates);
   const canPostForms = isAdmin || Boolean(user?.permissions?.postForms);
   const canViewAllForms = isAdmin || Boolean(user?.permissions?.viewAllForms);
+  const canManagePostedForms = isAdmin || canPostForms;
+  useEffect(() => {
+    if (mode !== "manageForms") return;
+    if (["formsCreate", "formTemplates"].includes(view) && !canManageTemplates && !canPostForms) setView("formResponses");
+    if (view === "postedForms" && !canManagePostedForms) setView("formResponses");
+  }, [mode, view, canManageTemplates, canPostForms, canManagePostedForms]);
+  const isUnauthorizedManageView = mode === "manageForms" && (
+    (["formsCreate", "formTemplates"].includes(view) && !canManageTemplates && !canPostForms)
+    || (view === "postedForms" && !canManagePostedForms)
+  );
   const templates = (data.formTemplates ?? []).filter((template) => matchesSearch(template, searchQuery, ["title", "description", "status", (item) => JSON.stringify(item.schemaJson ?? {})]));
   const postedForms = data.postedForms ?? [];
   const searchedPostedForms = postedForms.filter((form) => matchesSearch(form, searchQuery, ["title", "description", "approvalStatus", "targetType", "dueDate", (item) => JSON.stringify(item.schemaJson ?? {})]));
@@ -1008,6 +1018,10 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
   };
   if (builderTemplate || builderPostedForm || view === "formsCreate") {
     return <FormBuilder data={data} user={user} isAdmin={isAdmin} canManageTemplates={canManageTemplates} canPostForms={canPostForms} template={builderTemplate} postedForm={builderPostedForm} onDone={closeBuilder} setSaveMessage={setSaveMessage} />;
+  }
+
+  if (isUnauthorizedManageView) {
+    return <EmptyFormsState title="Opening permitted forms view" text="Checking your form-management permissions." />;
   }
 
   if (activeForm) {

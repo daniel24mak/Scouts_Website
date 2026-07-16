@@ -10,7 +10,6 @@ import {
 import { IMAGE_CACHE_CONTROL, optimizedImagePath, optimizeImageForUpload } from "./imageOptimizationService.js";
 
 const profileSelect = "select=id,full_name,email,role,chief_level,group_id,is_coordinator,coordinator_group_ids,account_status,profile_picture_url,pending_name,pending_profile_picture_url,profile_change_status,profile_change_comment,profile_change_submitted_at,must_change_password,created_at,updated_at,last_login,can_publish,can_create_group_meetings,can_edit_scouts,manage_form_templates,view_all_forms,post_forms";
-const legacyProfileSelect = "select=id,display_name,username,role_id,group_id,account_status,created_at,updated_at,last_login";
 const maxProfilePictureSize = 8 * 1024 * 1024;
 
 function getAssignedGroupIds(profile) {
@@ -73,7 +72,7 @@ export async function getProfiles() {
     if (isMissingProfileColumns(error)) {
       return getSupabaseRows("user_profiles", `${profileSelect.replace(/,profile_picture_url.*?,created_at/, ",created_at")}&order=role.asc,full_name.asc`);
     }
-    return getSupabaseRows("profiles", `${legacyProfileSelect}&order=role_id.asc,display_name.asc`);
+    throw error;
   });
   return rows.map(normalizeProfile);
 }
@@ -86,7 +85,7 @@ export async function getProfileById(userId) {
     if (isMissingProfileColumns(error)) {
       return getSupabaseRows("user_profiles", `${profileSelect.replace(/,profile_picture_url.*?,created_at/, ",created_at")}&id=eq.${encodeURIComponent(userId)}&limit=1`);
     }
-    return getSupabaseRows("profiles", `${legacyProfileSelect}&id=eq.${encodeURIComponent(userId)}&limit=1`);
+    throw error;
   });
 
   return rows[0] ? normalizeProfile(rows[0]) : null;
@@ -157,10 +156,6 @@ export async function updateProfile(userId, profile) {
 }
 
 export async function createDashboardUser(profile) {
-  if (!profile?.temporaryPassword) {
-    throw new Error("Enter a temporary password for the new user.");
-  }
-
   const profilePictureUrl = profile.profilePictureFile instanceof File
     ? await uploadProfilePicture(profile.profilePictureFile, `pending-${Date.now()}`)
     : profile.profilePictureUrl || null;
@@ -168,7 +163,6 @@ export async function createDashboardUser(profile) {
   return invokeSupabaseFunction("create-dashboard-user", {
     full_name: profile.name,
     email: profile.email,
-    temporary_password: profile.temporaryPassword,
     role: profile.role ?? "chief",
     group_id: getPrimaryGroupId(profile),
     is_coordinator: getAssignedGroupIds(profile).length > 1,
@@ -193,10 +187,9 @@ export function deleteDashboardUser(userId) {
   });
 }
 
-export function adminResetUserPassword(userId, temporaryPassword) {
+export function adminResetUserPassword(userId) {
   return invokeSupabaseFunction("admin-reset-user-password", {
-    user_id: userId,
-    temporary_password: temporaryPassword
+    user_id: userId
   });
 }
 

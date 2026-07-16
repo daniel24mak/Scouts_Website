@@ -1,147 +1,93 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-function json(body: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
+import { AuthorizationError, requireDashboardPermission, requireSystemAdministrator, writeSecurityAudit } from "../_shared/dashboardAuthorization.ts";
+import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
-
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-  if (!supabaseUrl || !anonKey || !serviceRoleKey) {
-    return json({ error: "Server configuration error" }, 500);
-  }
-
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader) return json({ error: "Missing Authorization header" }, 401);
-
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
-  const adminClient = createClient(supabaseUrl, serviceRoleKey);
-
-  const { data: authData, error: authError } = await userClient.auth.getUser();
-  if (authError || !authData.user) return json({ error: "Unauthorized" }, 401);
-
-  const { data: requesterProfile, error: requesterError } = await adminClient
-    .from("user_profiles")
-    .select("id,role,account_status")
-    .eq("id", authData.user.id)
-    .single();
-
-  if (requesterError || !requesterProfile || requesterProfile.role !== "admin" || requesterProfile.account_status !== "active") {
-    return json({ error: "Only active admins can create dashboard users" }, 403);
-  }
-
-  let body;
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(req) });
+  if (req.method !== "POST") return jsonResponse(req, { error: "Method not allowed" }, 405);
   try {
-    body = await req.json();
-  } catch {
-    return json({ error: "Invalid request body" }, 400);
-  }
+    const context = await requireDashboardPermission(req, "users.invite");
+    const body = await req.json().catch(() => { throw new AuthorizationError("Invalid request body", 400); });
+    const fullName = String(body.full_name ?? "").trim();
+    const email = String(body.email ?? "").trim().toLowerCase();
+    const role = String(body.role ?? "chief");
+    const chiefLevel = String(body.chief_level ?? "chief");
+    const groupIds = [...new Set([
+      body.group_id ? String(body.group_id) : "",
+      ...(Array.isArray(body.coordinator_group_ids) ? body.coordinator_group_ids.map(String) : [])
+    ].filter(Boolean))];
+    const permissions = (
+      body.permissions && typeof body.permissions === "object" ? body.permissions : {}
+    ) as Record<string, unknown>;
 
-  const fullName = String(body.full_name ?? "").trim();
-  const email = String(body.email ?? "").trim().toLowerCase();
-  const temporaryPassword = String(body.temporary_password ?? "");
-  const role = String(body.role ?? "chief");
-  const chiefLevel = body.chief_level ? String(body.chief_level) : null;
-  const groupId = body.group_id ? String(body.group_id) : null;
-  const isCoordinator = Boolean(body.is_coordinator);
-  const coordinatorGroupIds = Array.isArray(body.coordinator_group_ids)
-    ? body.coordinator_group_ids.map((groupId: unknown) => String(groupId)).filter(Boolean)
-    : [];
-  const accountStatus = String(body.account_status ?? "active");
-  const permissions = body.permissions ?? {};
+    if (!fullName || fullName.length > 160) throw new AuthorizationError("Enter a valid full name", 400);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) throw new AuthorizationError("Enter a valid email address", 400);
+    if (!new Set(["chief", "admin"]).has(role)) throw new AuthorizationError("Role is invalid", 400);
+    if (!new Set(["chief", "vice", "head"]).has(chiefLevel)) throw new AuthorizationError("Chief level is invalid", 400);
+    if (groupIds.length > 20) throw new AuthorizationError("Too many group assignments", 400);
+    if (role === "chief" && !groupIds.length) throw new AuthorizationError("Select at least one group", 400);
+    if (role === "admin") await requireSystemAdministrator(context);
 
-  if (!fullName || !email || !temporaryPassword || !role) {
-    return json({ error: "Full name, email, temporary password, and role are required" }, 400);
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: "Enter a valid email address" }, 400);
-  if (temporaryPassword.length < 6) return json({ error: "Temporary password is too weak" }, 400);
-  if (role === "chief" && !isCoordinator && !groupId) return json({ error: "Group is required for chief users" }, 400);
-  if (isCoordinator && !coordinatorGroupIds.length) return json({ error: "Select at least one assigned group" }, 400);
-  const { data: createdAuth, error: createAuthError } = await adminClient.auth.admin.createUser({
-    email,
-    password: temporaryPassword,
-    email_confirm: true,
-    user_metadata: {
-      full_name: fullName,
-      role,
-      group_id: groupId,
-      chief_level: chiefLevel,
-      is_coordinator: isCoordinator,
-      coordinator_group_ids: coordinatorGroupIds,
-    },
-  });
-
-  if (createAuthError || !createdAuth.user) {
-    return json({ error: createAuthError?.message || "Failed to create auth user" }, 400);
-  }
-
-  const authUserId = createdAuth.user.id;
-  const profileRow = {
-    id: authUserId,
-    full_name: fullName,
-    email,
-    role,
-    chief_level: chiefLevel,
-    group_id: groupId,
-    is_coordinator: isCoordinator,
-    coordinator_group_ids: coordinatorGroupIds,
-    account_status: accountStatus,
-    profile_picture_url: body.profile_picture_url || null,
-    can_publish: Boolean(permissions.can_publish),
-    can_create_group_meetings: Boolean(permissions.can_create_group_meetings),
-    can_edit_scouts: Boolean(permissions.can_edit_scouts),
-    manage_form_templates: Boolean(permissions.manage_form_templates),
-    view_all_forms: Boolean(permissions.view_all_forms),
-    post_forms: Boolean(permissions.post_forms),
-    must_change_password: true,
-  };
-  let insertResult = await adminClient.from("user_profiles").insert(profileRow).select().single();
-  if (insertResult.error) {
-    const message = String(insertResult.error.message ?? "").toLowerCase();
-    const shouldUseFallback = [
-      "must_change_password",
-      "is_coordinator",
-      "coordinator_group_ids",
-      "manage_form_templates",
-      "view_all_forms",
-      "post_forms",
-    ].some((column) => message.includes(column));
-
-    if (shouldUseFallback) {
-      const {
-        must_change_password: _mustChangePassword,
-        is_coordinator: _isCoordinator,
-        coordinator_group_ids: _coordinatorGroupIds,
-        manage_form_templates: _manageFormTemplates,
-        view_all_forms: _viewAllForms,
-        post_forms: _postForms,
-        ...fallbackRow
-      } = profileRow;
-      insertResult = await adminClient.from("user_profiles").insert(fallbackRow).select().single();
+    if (groupIds.length) {
+      const { data: groups, error } = await context.adminClient.from("groups").select("id").in("id", groupIds);
+      if (error || groups?.length !== groupIds.length) throw new AuthorizationError("One or more groups are invalid", 400);
     }
-  }
 
-  if (insertResult.error) {
-    await adminClient.auth.admin.deleteUser(authUserId);
-    return json({ error: insertResult.error.message }, 400);
-  }
+    const { data: invitation, error: inviteError } = await context.adminClient.auth.admin.inviteUserByEmail(email, {
+      data: { full_name: fullName }
+    });
+    if (inviteError || !invitation.user) throw new AuthorizationError("The invitation could not be sent", 400);
+    const userId = invitation.user.id;
 
-  return json({ user: insertResult.data });
+    const { error: profileError } = await context.adminClient.from("user_profiles").insert({
+      id: userId, full_name: fullName, email, role,
+      chief_level: role === "chief" ? chiefLevel : null,
+      group_id: groupIds[0] ?? null,
+      is_coordinator: groupIds.length > 1,
+      coordinator_group_ids: groupIds,
+      account_status: "active",
+      profile_picture_url: body.profile_picture_url || null,
+      can_publish: Boolean(permissions.can_publish),
+      can_create_group_meetings: Boolean(permissions.can_create_group_meetings),
+      can_edit_scouts: Boolean(permissions.can_edit_scouts),
+      manage_form_templates: Boolean(permissions.manage_form_templates),
+      view_all_forms: Boolean(permissions.view_all_forms),
+      post_forms: Boolean(permissions.post_forms),
+      must_change_password: false
+    });
+    if (profileError) {
+      await context.adminClient.auth.admin.deleteUser(userId);
+      throw new AuthorizationError("The user profile could not be created", 400);
+    }
+
+    if (role === "admin") {
+      const { error } = await context.adminClient.from("user_role_assignments").insert({
+        user_id: userId, role_id: "system_administrator", scope_type: "global", scope_id: null,
+        assigned_by: context.callerId, assignment_reason: "Created through People & Access"
+      });
+      if (error) {
+        await context.adminClient.auth.admin.deleteUser(userId);
+        throw new AuthorizationError("The administrator role could not be assigned", 400);
+      }
+    } else {
+      const position = chiefLevel === "head" ? "head_chief" : chiefLevel === "vice" ? "vice_chief" : "chief";
+      const { error: groupError } = await context.adminClient.from("user_group_assignments").insert(groupIds.map((groupId, index) => ({
+        user_id: userId, group_id: groupId, position, is_primary: index === 0, assigned_by: context.callerId
+      })));
+      const { error: roleError } = await context.adminClient.from("user_role_assignments").insert(groupIds.map((groupId) => ({
+        user_id: userId, role_id: "chief", scope_type: "group", scope_id: groupId,
+        assigned_by: context.callerId, assignment_reason: "Created through People & Access"
+      })));
+      if (groupError || roleError) {
+        await context.adminClient.auth.admin.deleteUser(userId);
+        throw new AuthorizationError("The group access could not be assigned", 400);
+      }
+    }
+
+    await writeSecurityAudit(context, "user.invited", userId, "success", { role, group_ids: groupIds });
+    return jsonResponse(req, { user: { id: userId, full_name: fullName, email, role, account_status: "active" } });
+  } catch (error) {
+    const status = error instanceof AuthorizationError ? error.status : 500;
+    return jsonResponse(req, { error: error instanceof AuthorizationError ? error.message : "User invitation failed" }, status);
+  }
 });

@@ -37,8 +37,8 @@ export default function ProtectedRoute({ allowedRoles, children, requirePublishe
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (user.accountStatus === "disabled") {
-    console.debug("[auth] route guard disabled account", { userId: user.id });
+  if (user.accountStatus !== "active") {
+    console.debug("[auth] route guard inactive account", { userId: user.id, accountStatus: user.accountStatus });
     return <Navigate to="/" replace />;
   }
 

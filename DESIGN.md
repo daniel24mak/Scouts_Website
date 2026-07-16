@@ -452,7 +452,7 @@ Settings and permissions screens should be structured and calm.
 
 Sections may include:
 
-- Users & Permissions.
+- People & Access.
 - Website Content.
 - Registered Scout Upload.
 - Groups & Sorting Rules.
@@ -460,7 +460,7 @@ Sections may include:
 - Reports.
 - Archived Years.
 
-Users & Permissions:
+People & Access:
 
 - List users with avatar, name, email, role, groups, level, and status.
 - Side actions: edit user, reset password, delete user.

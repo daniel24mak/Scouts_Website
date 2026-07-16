@@ -1,65 +1,35 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-function json(body: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
+import { AuthorizationError, parseUuid, requireDashboardPermission, writeSecurityAudit } from "../_shared/dashboardAuthorization.ts";
+import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
-
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-  if (!supabaseUrl || !anonKey || !serviceRoleKey) {
-    return json({ error: "Server configuration error" }, 500);
-  }
-
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader) return json({ error: "Missing Authorization header" }, 401);
-
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
-  const adminClient = createClient(supabaseUrl, serviceRoleKey);
-
-  const { data: authData, error: authError } = await userClient.auth.getUser();
-  if (authError || !authData.user) return json({ error: "Unauthorized" }, 401);
-
-  const { data: requesterProfile, error: requesterError } = await adminClient
-    .from("user_profiles")
-    .select("id,role,account_status")
-    .eq("id", authData.user.id)
-    .single();
-
-  if (requesterError || !requesterProfile || requesterProfile.role !== "admin" || requesterProfile.account_status !== "active") {
-    return json({ error: "Only active admins can delete dashboard users" }, 403);
-  }
-
-  let body;
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(req) });
+  if (req.method !== "POST") return jsonResponse(req, { error: "Method not allowed" }, 405);
   try {
-    body = await req.json();
-  } catch {
-    return json({ error: "Invalid request body" }, 400);
+    const context = await requireDashboardPermission(req, "users.delete");
+    const body = await req.json().catch(() => { throw new AuthorizationError("Invalid request body", 400); });
+    const userId = parseUuid(body.user_id);
+    if (userId === context.callerId) throw new AuthorizationError("You cannot delete your own account", 400);
+    const { data: target } = await context.adminClient.from("user_profiles").select("id").eq("id", userId).maybeSingle();
+    if (!target) throw new AuthorizationError("User not found", 404);
+
+    const { data: targetIsSystemAdmin } = await context.adminClient.rpc("is_system_administrator", { target_user_id: userId });
+    if (targetIsSystemAdmin === true) {
+      const now = new Date().toISOString();
+      const { count } = await context.adminClient.from("user_role_assignments")
+        .select("id,user_profiles!inner(account_status)", { count: "exact", head: true })
+        .eq("role_id", "system_administrator").eq("scope_type", "global").is("scope_id", null)
+        .eq("user_profiles.account_status", "active")
+        .neq("user_id", userId).lte("starts_at", now).or(`expires_at.is.null,expires_at.gt.${now}`);
+      if (!count) throw new AuthorizationError("The final active System Administrator cannot be deleted", 409);
+    }
+
+    const { error: deleteError } = await context.adminClient.auth.admin.deleteUser(userId);
+    if (deleteError) throw new AuthorizationError("The user could not be deleted", 400);
+    await writeSecurityAudit(context, "user.deleted", null, "success", { target_user_id: userId });
+    return jsonResponse(req, { success: true });
+  } catch (error) {
+    const status = error instanceof AuthorizationError ? error.status : 500;
+    return jsonResponse(req, { error: error instanceof AuthorizationError ? error.message : "User deletion failed" }, status);
   }
-
-  const userId = String(body.user_id ?? "").trim();
-  if (!userId) return json({ error: "User is required" }, 400);
-  if (userId === authData.user.id) return json({ error: "You cannot delete your own account from here" }, 400);
-
-  const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(userId);
-  if (deleteAuthError) return json({ error: deleteAuthError.message }, 400);
-
-  return json({ success: true });
 });
