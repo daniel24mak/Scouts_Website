@@ -10,6 +10,7 @@ export function createPeopleAccessService({ callRpc = callSupabaseRpc } = {}) {
     revokeRoleAssignment: (assignmentId, reason) => mutate("revoke_user_role_assignment", { target_assignment_id: assignmentId, reason }),
     saveGroupAssignment: (payload) => mutate("save_user_group_assignment", { payload }),
     revokeGroupAssignment: (assignmentId, reason) => mutate("revoke_user_group_assignment", { target_assignment_id: assignmentId, reason }),
+    revokeLegacyGroupAssignment: (userId, groupId, reason) => mutate("revoke_legacy_user_group_assignment", { target_user_id: userId, target_group_id: groupId, reason }),
     saveTeamMembership: (payload) => mutate("save_user_team_membership", { payload }),
     revokeTeamMembership: (membershipId, reason) => mutate("revoke_user_team_membership", { target_membership_id: membershipId, reason }),
     savePermissionOverride: (payload) => mutate("save_user_permission_override", { payload }),
@@ -18,6 +19,7 @@ export function createPeopleAccessService({ callRpc = callSupabaseRpc } = {}) {
     deleteRole: (roleId, reason) => mutate("delete_access_role", { target_role_id: roleId, reason }),
     saveTeam: (payload) => mutate("save_access_team", { payload }),
     disableTeam: (teamId, reason) => mutate("disable_access_team", { target_team_id: teamId, reason }),
+    deleteTeam: (teamId, reason) => mutate("delete_access_team", { target_team_id: teamId, reason }),
     decideReview: (reviewId, decision, notes = "") => mutate("decide_access_review", { target_review_id: reviewId, decision, notes }),
     resolveMigrationDifference: (differenceId, resolution, notes = "") => mutate("resolve_authorization_difference", { target_difference_id: differenceId, resolution, notes })
   };
@@ -30,6 +32,7 @@ export const saveUserRoleAssignment = service.saveRoleAssignment;
 export const revokeUserRoleAssignment = service.revokeRoleAssignment;
 export const saveUserGroupAssignment = service.saveGroupAssignment;
 export const revokeUserGroupAssignment = service.revokeGroupAssignment;
+export const revokeLegacyUserGroupAssignment = service.revokeLegacyGroupAssignment;
 export const saveUserTeamMembership = service.saveTeamMembership;
 export const revokeUserTeamMembership = service.revokeTeamMembership;
 export const saveUserPermissionOverride = service.savePermissionOverride;
@@ -38,5 +41,6 @@ export const saveAccessRole = service.saveRole;
 export const deleteAccessRole = service.deleteRole;
 export const saveAccessTeam = service.saveTeam;
 export const disableAccessTeam = service.disableTeam;
+export const deleteAccessTeam = service.deleteTeam;
 export const decideAccessReview = service.decideReview;
 export const resolveAuthorizationDifference = service.resolveMigrationDifference;

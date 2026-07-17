@@ -11,6 +11,16 @@ test("People and Access API exposes aggregated reads without opening normalized 
   assert.doesNotMatch(sql, /GRANT\s+(?:INSERT|UPDATE|DELETE|ALL)\s+ON\s+(?:TABLE\s+)?public\.(?:user_role_assignments|user_group_assignments|user_team_memberships|user_permission_overrides)/i);
 });
 
+test("user activity lookup qualifies the audit target column", () => {
+  assert.match(sql, /FROM public\.audit_logs\s+activity_log\s+WHERE activity_log\.target_user_id = p\.id/i);
+  assert.doesNotMatch(sql, /FROM public\.audit_logs\s+WHERE target_user_id = p\.id/i);
+});
+
+test("workspace and user details expose legacy coordinator groups during migration", () => {
+  const occurrences = sql.match(/'coordinator_group_ids',\s*COALESCE\(p\.coordinator_group_ids,\s*ARRAY\[\]::text\[\]\)/gi) ?? [];
+  assert.equal(occurrences.length, 2);
+});
+
 test("every normalized mutation is permission checked, audited, and security definer scoped", () => {
   for (const [name, permission] of [
     ["save_user_role_assignment", "users.assign_roles"], ["save_user_group_assignment", "users.assign_groups"],
@@ -49,4 +59,44 @@ test("composite rows are never mixed with scalar INTO targets", () => {
     /SELECT\s+to_jsonb\([^)]*\)\s*,\s*\w+\s+INTO\s+previous\s*,\s*saved/i,
     "PL/pgSQL rejects a composite saved row when it is mixed with a scalar INTO target"
   );
+  assert.doesNotMatch(
+    sql,
+    /SELECT\s+(?:x|r)\s+INTO\s+saved\s+FROM/i,
+    "typed row variables must receive expanded columns, not a single composite value"
+  );
+});
+
+test("custom roles and teams can be deleted while built-in catalogs remain protected", () => {
+  assert.match(sql, /FUNCTION public\.delete_access_role\(target_role_id text, reason text\)/i);
+  assert.match(sql, /FUNCTION public\.delete_access_team\(target_team_id uuid, reason text\)/i);
+  assert.match(sql, /saved\.is_system_role[\s\S]*Protected system roles cannot be deleted/i);
+  assert.match(sql, /saved\.key\s*=\s*ANY\s*\(ARRAY\['media','forms','events','website','finance','storage'\]/i);
+  assert.match(sql, /GRANT EXECUTE ON FUNCTION public\.delete_access_team\(uuid,text\) TO authenticated/i);
+});
+
+test("removing a user assignment deletes the membership while preserving audit history", () => {
+  for (const [functionName, table] of [
+    ["revoke_user_role_assignment", "user_role_assignments"],
+    ["revoke_user_group_assignment", "user_group_assignments"],
+    ["revoke_user_team_membership", "user_team_memberships"]
+  ]) {
+    const start = sql.search(new RegExp(`FUNCTION public\\.${functionName}\\(`, "i"));
+    const body = sql.slice(start, start + 2600);
+    assert.match(body, new RegExp(`DELETE FROM public\\.${table}`, "i"));
+    assert.match(body, /write_people_access_audit/i);
+  }
+});
+
+test("retiring an account revokes access without deleting contribution attribution", () => {
+  const start = sql.search(/FUNCTION public\.retire_dashboard_user\(target_user_id uuid, reason text\)/i);
+  assert.ok(start >= 0, "retire_dashboard_user must exist");
+  const body = sql.slice(start, start + 7000);
+  assert.match(body, /require_people_access_permission\('users\.delete'\)/i);
+  assert.match(body, /DELETE FROM public\.user_role_assignments WHERE user_id=target_user_id/i);
+  assert.match(body, /DELETE FROM public\.user_group_assignments WHERE user_id=target_user_id/i);
+  assert.match(body, /DELETE FROM public\.user_team_memberships WHERE user_id=target_user_id/i);
+  assert.match(body, /account_status\s*=\s*'archived'/i);
+  assert.doesNotMatch(body, /DELETE FROM public\.user_profiles/i);
+  assert.match(body, /write_people_access_audit\(\s*'user_retired'/i);
+  assert.match(sql, /GRANT EXECUTE ON FUNCTION public\.retire_dashboard_user\(uuid,text\) TO authenticated/i);
 });

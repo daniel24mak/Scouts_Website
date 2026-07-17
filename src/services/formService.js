@@ -81,6 +81,8 @@ export function normalizeTemplateVersion(version) {
 }
 
 export function normalizePostedForm(form) {
+  const schemaJson = jsonValue(form.schema_json ?? form.schemaJson, blankFormSchema());
+  const behavior = schemaJson?.settings?.behavior ?? {};
   return {
     id: form.id,
     templateId: form.template_id ?? form.templateId ?? null,
@@ -88,7 +90,7 @@ export function normalizePostedForm(form) {
     title: form.title ?? "Untitled posted form",
     description: form.description ?? "",
     instructions: form.instructions ?? "",
-    schemaJson: jsonValue(form.schema_json ?? form.schemaJson, blankFormSchema()),
+    schemaJson,
     approvalStatus: form.status ?? form.approvalStatus ?? "draft",
     targetType: form.target_type ?? form.targetType ?? "all_chiefs",
     targetGroupIds: jsonValue(form.target_group_ids ?? form.targetGroupIds, []),
@@ -97,6 +99,12 @@ export function normalizePostedForm(form) {
     dueDate: form.due_date ?? form.dueDate ?? null,
     allowEdits: Boolean(form.allow_edits ?? form.allowEdits ?? true),
     generateAiSummary: Boolean(form.generate_ai_summary ?? form.generateAiSummary ?? false),
+    formKind: form.form_kind ?? form.formKind ?? behavior.formKind ?? "standard",
+    allowMultipleSubmissions: Boolean(form.allow_multiple_submissions ?? form.allowMultipleSubmissions ?? behavior.allowMultipleSubmissions ?? false),
+    maxSubmissions: form.max_submissions ?? form.maxSubmissions ?? behavior.maxSubmissions ?? null,
+    availableFrom: form.available_from ?? form.availableFrom ?? behavior.availableFrom ?? null,
+    availableUntil: form.available_until ?? form.availableUntil ?? behavior.availableUntil ?? null,
+    receiptRequired: Boolean(form.receipt_required ?? form.receiptRequired ?? behavior.receiptRequired ?? false),
     createdBy: form.created_by ?? form.createdBy ?? null,
     submittedBy: form.created_by ?? form.createdBy ?? form.submitted_by ?? form.submittedBy ?? null,
     approvedBy: form.approved_by ?? form.approvedBy ?? null,
@@ -128,6 +136,21 @@ export function normalizeFormSubmission(submission) {
   };
 }
 
+export function normalizeReimbursement(reimbursement) {
+  return {
+    id: reimbursement.id,
+    referenceNumber: reimbursement.reference_number ?? reimbursement.referenceNumber ?? "Pending",
+    postedFormId: reimbursement.posted_form_id ?? reimbursement.postedFormId ?? null,
+    formSubmissionId: reimbursement.form_submission_id ?? reimbursement.formSubmissionId ?? null,
+    amount: Number(reimbursement.amount ?? 0),
+    expenseDate: reimbursement.expense_date ?? reimbursement.expenseDate ?? null,
+    status: reimbursement.status ?? "draft",
+    paymentStatus: reimbursement.payment_status ?? reimbursement.paymentStatus ?? "not_scheduled",
+    createdAt: reimbursement.created_at ?? reimbursement.createdAt ?? null,
+    updatedAt: reimbursement.updated_at ?? reimbursement.updatedAt ?? null
+  };
+}
+
 export function normalizeFormAiSummary(summary) {
   return {
     id: summary.id,
@@ -140,12 +163,13 @@ export function normalizeFormAiSummary(summary) {
 }
 
 export async function getFormsData() {
-  const [templates, versions, postedForms, submissions, aiSummaries] = await Promise.all([
+  const [templates, versions, postedForms, submissions, aiSummaries, reimbursements] = await Promise.all([
     getSupabaseRows("form_templates", "select=*&order=updated_at.desc"),
     getSupabaseRows("form_template_versions", "select=*&order=created_at.desc"),
     getSupabaseRows("posted_forms", "select=*,creator:user_profiles!posted_forms_created_by_fkey(full_name,profile_picture_url)&order=updated_at.desc").catch(() => getSupabaseRows("posted_forms", "select=*&order=updated_at.desc")),
     getSupabaseRows("form_submissions", "select=*&order=updated_at.desc"),
-    getSupabaseRows("form_ai_summaries", "select=*&order=updated_at.desc")
+    getSupabaseRows("form_ai_summaries", "select=*&order=updated_at.desc"),
+    getSupabaseRows("finance_reimbursements", "select=*&order=updated_at.desc").catch(() => [])
   ]);
 
   return {
@@ -153,7 +177,8 @@ export async function getFormsData() {
     formTemplateVersions: versions.map(normalizeTemplateVersion),
     postedForms: postedForms.map(normalizePostedForm),
     formSubmissions: submissions.map(normalizeFormSubmission),
-    formAiSummaries: aiSummaries.map(normalizeFormAiSummary)
+    formAiSummaries: aiSummaries.map(normalizeFormAiSummary),
+    reimbursements: reimbursements.map(normalizeReimbursement)
   };
 }
 
@@ -227,6 +252,15 @@ export async function savePostedForm(payload) {
     reviewer_comment: payload.reviewerComment ?? "",
     updated_at: new Date().toISOString()
   };
+
+  if (payload.formKind === "reimbursement") {
+    row.form_kind = "reimbursement";
+    row.allow_multiple_submissions = payload.allowMultipleSubmissions ?? true;
+    row.max_submissions = payload.maxSubmissions || null;
+    row.available_from = payload.availableFrom || null;
+    row.available_until = payload.availableUntil || null;
+    row.receipt_required = payload.receiptRequired ?? false;
+  }
 
   if (row.status === "open" && !payload.postedAt) {
     row.posted_at = new Date().toISOString();
@@ -325,4 +359,22 @@ export async function saveFormSubmission(payload) {
 
   const [submission] = await insertSupabaseRow("form_submissions", row);
   return normalizeFormSubmission(submission);
+}
+
+export async function submitReimbursementForm(payload) {
+  const saved = await callSupabaseRpc("submit_reimbursement_form", {
+    target_form_id: payload.postedFormId,
+    submitted_answers: payload.answersJson ?? {},
+    claimant_group_id: payload.groupId || null
+  });
+  return saved;
+}
+
+export async function saveReimbursementFormDraft(payload) {
+  const saved = await callSupabaseRpc("save_reimbursement_form_draft", {
+    target_form_id: payload.postedFormId,
+    submitted_answers: payload.answersJson ?? {},
+    claimant_group_id: payload.groupId || null
+  });
+  return normalizeFormSubmission(saved);
 }

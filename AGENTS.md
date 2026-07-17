@@ -361,3 +361,10 @@ At the end of future tasks, report:
 - Any risks, manual checks, SQL steps, or deployment steps left.
 
 Keep final reports concise but specific.
+# Finance and Storage workspace notes
+
+- Keep the public website shell separate from authenticated `/dashboard/*`, `/admin*`, and `/chiefs*` routes.
+- Workspace switchers are navigation only; effective permissions, RLS, and trusted database functions are authoritative.
+- Do not add Finance or Storage data to the global dashboard bootstrap. Load it only inside the selected workspace.
+- Preserve immutable posted Finance journals, movement-derived Storage availability, workflow history, self-approval prevention, and private attachment access.
+- New operational workspaces should follow `docs/workspaces.md` and reuse the shared workflow and My Work contracts.

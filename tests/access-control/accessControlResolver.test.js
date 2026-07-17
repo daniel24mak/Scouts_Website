@@ -306,7 +306,7 @@ test("catalogue exposes independent Finance and Storage families", () => {
 
   const financeKeys = Object.values(PERMISSIONS).filter((key) => key.startsWith("finance."));
   const storageKeys = Object.values(PERMISSIONS).filter((key) => key.startsWith("storage."));
-  assert.deepEqual(financeKeys.sort(), [
+  const legacyFinanceKeys = [
     "finance.approve_transaction",
     "finance.create_transaction",
     "finance.edit_all_transactions",
@@ -316,8 +316,8 @@ test("catalogue exposes independent Finance and Storage families", () => {
     "finance.manage_settings",
     "finance.upload_receipt",
     "finance.view"
-  ]);
-  assert.deepEqual(storageKeys.sort(), [
+  ];
+  const legacyStorageKeys = [
     "storage.adjust_quantity",
     "storage.audit",
     "storage.create_item",
@@ -328,7 +328,11 @@ test("catalogue exposes independent Finance and Storage families", () => {
     "storage.update_item",
     "storage.view",
     "storage.write_off"
-  ]);
+  ];
+  assert.equal(legacyFinanceKeys.every((key) => financeKeys.includes(key)), true);
+  assert.equal(legacyStorageKeys.every((key) => storageKeys.includes(key)), true);
+  assert.equal(financeKeys.includes("finance.workspace.access"), true);
+  assert.equal(storageKeys.includes("storage.workspace.access"), true);
   assert.equal(financeKeys.some((key) => key.startsWith("storage.")), false);
   assert.equal(storageKeys.some((key) => key.startsWith("finance.")), false);
 });

@@ -1,0 +1,23 @@
+.my-work-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+.my-work-heading span, .my-work-meta, .my-work-card small { color: var(--workspace-muted); }
+.my-work-heading h1 { margin: 4px 0 6px; font-size: clamp(1.8rem, 3vw, 2.5rem); }
+.my-work-heading p { margin: 0; color: var(--workspace-muted); }
+.my-work-heading > strong { display: grid; place-items: center; min-width: 52px; min-height: 52px; border-radius: 50%; background: var(--workspace-accent-soft); color: var(--workspace-accent); font-size: 1.25rem; }
+.my-work-list { display: grid; gap: 12px; }
+.my-work-card { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 18px; border: 1px solid var(--workspace-line); border-radius: 8px; background: var(--workspace-surface); box-shadow: var(--workspace-shadow); }
+.my-work-task-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 8px; color: var(--workspace-accent); background: var(--workspace-accent-soft); }
+.my-work-task-icon svg { width: 22px; }
+.my-work-card h2 { margin: 5px 0; font-size: 1.02rem; }
+.my-work-card p { margin: 0 0 5px; color: var(--workspace-muted); }
+.my-work-meta { display: flex; gap: 8px; font-size: .76rem; text-transform: capitalize; }
+.my-work-card > button, .my-work-state button { min-height: 44px; padding: 0 18px; border: 0; border-radius: 8px; background: var(--workspace-accent); color: white; font-weight: 700; cursor: pointer; }
+.my-work-card.urgency-overdue { border-left: 4px solid #c94b4b; }
+.my-work-card.urgency-due-soon { border-left: 4px solid #d49b18; }
+.my-work-state { min-height: 320px; display: grid; place-items: center; align-content: center; gap: 8px; padding: 36px; text-align: center; border: 1px solid var(--workspace-line); border-radius: 8px; background: var(--workspace-surface); }
+.my-work-state h2, .my-work-state p { margin: 0; }
+.my-work-state p { color: var(--workspace-muted); }
+.my-work-loading { width: min(300px, 70vw); height: 4px; margin-top: 12px; overflow: hidden; border-radius: 4px; background: var(--workspace-accent-soft); }
+.my-work-loading::after { content: ""; display: block; width: 40%; height: 100%; background: var(--workspace-accent); animation: my-work-loading 1s ease-in-out infinite alternate; }
+@keyframes my-work-loading { to { transform: translateX(150%); } }
+@media (max-width: 640px) { .my-work-card { grid-template-columns: 44px minmax(0, 1fr); } .my-work-card > button { grid-column: 1 / -1; width: 100%; } .my-work-heading { align-items: start; } }
+@media (prefers-reduced-motion: reduce) { .my-work-loading::after { animation: none; width: 100%; } }

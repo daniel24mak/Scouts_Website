@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import scoutLogo from "../assets/smscouts_logo.png";
+import { isDashboardPath } from "./layoutModel.js";
 
 const navItems = [
   { to: "/", label: "Home", icon: Home },
@@ -21,10 +22,7 @@ export default function Layout() {
   const [isHeaderHidden, setIsHeaderHidden] = useState(false);
   const lastScrollY = useRef(0);
   const isHomePage = location.pathname === "/";
-  const isDashboardPage =
-    location.pathname === "/dashboard" ||
-    location.pathname.startsWith("/admin") ||
-    location.pathname.startsWith("/chiefs");
+  const isDashboardPage = isDashboardPath(location.pathname);
 
   useEffect(() => {
     const updateHeader = () => {
@@ -160,5 +158,3 @@ export default function Layout() {
     </div>
   );
 }
-
-

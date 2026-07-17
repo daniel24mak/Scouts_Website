@@ -104,9 +104,9 @@ WITH expected_tables(table_name) AS (
   VALUES
     ('finance_transactions'),
     ('finance_categories'),
-    ('storage_items'),
+    ('storage_inventory_items'),
     ('storage_categories'),
-    ('storage_movements'),
+    ('storage_stock_movements'),
     ('teams'),
     ('user_team_memberships')
 )

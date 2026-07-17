@@ -7,6 +7,8 @@ import {
   deleteDashboardPostedForm,
   reopenDashboardPostedForm,
   saveDashboardFormSubmission,
+  saveDashboardReimbursementDraft,
+  submitDashboardReimbursement,
   saveDashboardFormTemplate,
   saveDashboardPostedForm
 } from "../../api/client.js";
@@ -46,7 +48,16 @@ const defaultFormSettings = {
   behavior: {
     requiredNotice: true,
     progressDisplay: "bar",
-    hiddenAnswerMode: "preserve"
+    hiddenAnswerMode: "preserve",
+    formKind: "standard",
+    allowMultipleSubmissions: false,
+    maxSubmissions: "",
+    availableFrom: "",
+    availableUntil: "",
+    receiptRequired: false,
+    amountQuestionId: "",
+    expenseDateQuestionId: "",
+    descriptionQuestionId: ""
   }
 };
 
@@ -688,7 +699,16 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
     const order = getQuestionsForPage(schema, pageId).length;
     return safeSchema({ ...schema, questions: [...schema.questions, makeQuestion(addQuestionType, pageId, order)] });
   });
-  const payload = () => ({ title, description, instructions, schemaJson: safeSchema(schemaJson), targetType, targetGroupIds, targetUserIds: postedForm?.targetUserIds ?? [], dueDate, linkedEventId, allowEdits, generateAiSummary });
+  const payload = () => ({
+    title, description, instructions, schemaJson: safeSchema(schemaJson), targetType, targetGroupIds,
+    targetUserIds: postedForm?.targetUserIds ?? [], dueDate, linkedEventId, allowEdits, generateAiSummary,
+    formKind: formSettings.behavior.formKind,
+    allowMultipleSubmissions: formSettings.behavior.allowMultipleSubmissions,
+    maxSubmissions: formSettings.behavior.maxSubmissions,
+    availableFrom: formSettings.behavior.availableFrom,
+    availableUntil: formSettings.behavior.availableUntil,
+    receiptRequired: formSettings.behavior.receiptRequired
+  });
   const jumpToBuilderIssue = (issue) => {
     setStep(issue.step);
     if (issue.step === 1) setQuestionMode("edit");
@@ -781,6 +801,14 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
 
             <section className="forms-builder-settings-card">
               <div className="forms-section-heading compact"><div><p className="eyebrow">Behavior</p><h3>Progress and hidden answers</h3></div></div>
+              <label>Form purpose<select value={formSettings.behavior.formKind} onChange={(event) => updateBehavior({ formKind: event.target.value })}><option value="standard">Standard form</option><option value="reimbursement">Reimbursement claim</option></select></label>
+              {formSettings.behavior.formKind === "reimbursement" && <div className="forms-reimbursement-settings">
+                <label className="toggle-row"><input type="checkbox" checked={formSettings.behavior.allowMultipleSubmissions} onChange={(event) => updateBehavior({ allowMultipleSubmissions: event.target.checked })} />Allow the same user to submit more than once</label>
+                <label>Maximum claims per user<input type="number" min="1" value={formSettings.behavior.maxSubmissions} onChange={(event) => updateBehavior({ maxSubmissions: event.target.value })} placeholder="Unlimited" /></label>
+                <div className="inline-editor-grid"><label>Available from<input type="datetime-local" value={formSettings.behavior.availableFrom} onChange={(event) => updateBehavior({ availableFrom: event.target.value })} /></label><label>Available until<input type="datetime-local" value={formSettings.behavior.availableUntil} onChange={(event) => updateBehavior({ availableUntil: event.target.value })} /></label></div>
+                <label className="toggle-row"><input type="checkbox" checked={formSettings.behavior.receiptRequired} onChange={(event) => updateBehavior({ receiptRequired: event.target.checked })} />Receipt is required</label>
+                <p className="helper-text">Add one Number question for the amount, one Date question for the purchase date, and a text question for the expense description. The first matching question of each type is used to create the Finance record.</p>
+              </div>}
               <label className="toggle-row"><input type="checkbox" checked={formSettings.behavior.requiredNotice} onChange={(event) => updateBehavior({ requiredNotice: event.target.checked })} />Show required-question notice</label>
               <label>Progress display<select value={formSettings.behavior.progressDisplay} onChange={(event) => updateBehavior({ progressDisplay: event.target.value })}><option value="bar">Progress bar</option><option value="dots">Dots for short forms</option><option value="minimal">Minimal page count</option></select></label>
               <label>Hidden conditional answers<select value={formSettings.behavior.hiddenAnswerMode} onChange={(event) => updateBehavior({ hiddenAnswerMode: event.target.value })}><option value="preserve">Preserve answers when hidden</option><option value="clear">Clear answers when hidden later</option></select></label>
@@ -879,7 +907,7 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
     }
 
     if (mode === "myForms") {
-      setView((current) => ["myForms", "myFormDrafts", "mySubmittedForms"].includes(current) ? current : "myForms");
+      setView((current) => ["myForms", "myFormDrafts", "mySubmittedForms", "reimbursements"].includes(current) ? current : "myForms");
       return;
     }
 
@@ -905,6 +933,8 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
   const submissions = data.formSubmissions ?? [];
   const visiblePostedForms = canViewAllForms || canPostForms ? searchedPostedForms : searchedPostedForms.filter((form) => form.approvalStatus === "open" && isTargetedToUser(form, user));
   const mySubmissions = submissions.filter((submission) => submission.submittedBy === user?.id);
+  const reimbursementForms = searchedPostedForms.filter((form) => form.formKind === "reimbursement" && isTargetedToUser(form, user));
+  const reimbursementDrafts = reimbursementForms.filter((form) => mySubmissions.some((submission) => submission.postedFormId === form.id && submission.approvalStatus === "draft"));
   const activeForm = postedForms.find((form) => form.id === activeFormId);
   useEffect(() => {
     if (!initialFormId) {
@@ -956,9 +986,11 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
     await onRefresh();
   };
 
-  const openForm = (form) => {
-    const existing = submissions.find((submission) => submission.postedFormId === form.id && submission.submittedBy === user?.id);
-    setAnswers(existing?.answersJson ?? {});
+  const openForm = (form, options = {}) => {
+    const draft = submissions.find((submission) => submission.postedFormId === form.id && submission.submittedBy === user?.id && submission.approvalStatus === "draft");
+    const existing = draft ?? submissions.find((submission) => submission.postedFormId === form.id && submission.submittedBy === user?.id);
+    const startNew = Boolean(options.newSubmission) && !draft;
+    setAnswers(startNew ? {} : existing?.answersJson ?? {});
     setRequiredErrors([]);
     setIsReviewingForm(false);
     setIsFormStarted(false);
@@ -996,7 +1028,13 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
         setSubmitProgress({ percent: 48, label: "Saving answers securely..." });
         setSaveMessage("Saving answers securely...");
       }
-      await saveDashboardFormSubmission({ postedFormId: activeForm.id, submittedBy: user.id, groupId: user.groupId, answersJson: answers, status });
+      if (status === "draft" && activeForm.formKind === "reimbursement") {
+        await saveDashboardReimbursementDraft({ postedFormId: activeForm.id, submittedBy: user.id, groupId: user.groupId, answersJson: answers });
+      } else if (status === "submitted" && activeForm.formKind === "reimbursement") {
+        await submitDashboardReimbursement({ postedFormId: activeForm.id, submittedBy: user.id, groupId: user.groupId, answersJson: answers });
+      } else {
+        await saveDashboardFormSubmission({ postedFormId: activeForm.id, submittedBy: user.id, groupId: user.groupId, answersJson: answers, status });
+      }
       if (!quiet) {
         setSubmitProgress({ percent: 82, label: "Refreshing..." });
         setSaveMessage("Refreshing...");
@@ -1025,7 +1063,8 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
   }
 
   if (activeForm) {
-    const existing = submissions.find((submission) => submission.postedFormId === activeForm.id && submission.submittedBy === user?.id);
+    const existing = submissions.find((submission) => submission.postedFormId === activeForm.id && submission.submittedBy === user?.id && submission.approvalStatus === "draft")
+      ?? submissions.find((submission) => submission.postedFormId === activeForm.id && submission.submittedBy === user?.id);
     const locked = activeForm.approvalStatus === "closed" || Boolean(existing?.lockedAt) || (existing?.approvalStatus === "submitted" && !activeForm.allowEdits);
     const stats = getFormStats(activeForm, answers);
     const assignedBy = getUserName(data.users ?? [], activeForm.createdBy ?? activeForm.submittedBy);
@@ -1076,7 +1115,7 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
     ...(canManageTemplates || canPostForms ? [["formsCreate", "Create Form"], ["formTemplates", "Templates"], ["postedForms", "Posted Forms"]] : []),
     ...(canViewAllForms || canPostForms ? [["formResponses", "Submissions"]] : [])
   ];
-  const myTabs = [["myForms", "My Forms"], ["myFormDrafts", "My Drafts"], ["mySubmittedForms", "My Submissions"]];
+  const myTabs = [["myForms", "My Forms"], ["myFormDrafts", "My Drafts"], ["mySubmittedForms", "My Submissions"], ["reimbursements", "Reimbursements"]];
   const tabs = mode === "manageForms" ? manageTabs : mode === "myForms" ? myTabs : [...manageTabs, ...myTabs];
 
   return (
@@ -1088,8 +1127,17 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
       {view === "myForms" && <FormsList forms={searchedPostedForms.filter((form) => form.approvalStatus === "open" && isTargetedToUser(form, user) && !mySubmissions.some((submission) => submission.postedFormId === form.id && submission.approvalStatus === "submitted"))} submissions={mySubmissions} type="pending" onOpen={openForm} empty="No pending forms match this search." />}
       {view === "myFormDrafts" && <FormsList forms={searchedPostedForms.filter((form) => mySubmissions.some((submission) => submission.postedFormId === form.id && submission.approvalStatus === "draft"))} submissions={mySubmissions} type="draft" onOpen={openForm} empty="No saved form drafts match this search." />}
       {view === "mySubmittedForms" && <FormsList forms={searchedPostedForms.filter((form) => mySubmissions.some((submission) => submission.postedFormId === form.id && submission.approvalStatus === "submitted"))} submissions={mySubmissions} type="submitted" onOpen={openForm} empty="No submitted forms match this search." />}
+      {view === "reimbursements" && <ReimbursementsView forms={reimbursementForms.filter((form) => form.approvalStatus === "open")} drafts={reimbursementDrafts} submissions={mySubmissions} reimbursements={data.reimbursements ?? []} onOpen={openForm} />}
     </div>
   );
+}
+function ReimbursementsView({ forms, drafts, submissions, reimbursements, onOpen }) {
+  const money = (value) => new Intl.NumberFormat("en-AE", { style: "currency", currency: "AED" }).format(Number(value ?? 0));
+  return <div className="forms-reimbursements-page">
+    <section><div className="forms-section-heading"><div><p className="eyebrow">Available</p><h2>Reimbursement forms</h2></div></div><div className="forms-management-grid">{forms.length ? forms.map((form) => <article className="forms-management-card" key={form.id}><div><span className="forms-status-pill open">Open</span><h3>{form.title}</h3><FormattedText text={form.description} fallback="Submit an expense for Finance review." /><p className="helper-text">{form.receiptRequired ? "Receipt required" : "Receipt optional"}{form.availableUntil ? ` · Available until ${formatDate(form.availableUntil)}` : ""}</p></div><button type="button" className="primary-action" onClick={() => onOpen(form, { newSubmission: true })}>Start reimbursement</button></article>) : <EmptyFormsState title="No reimbursement forms available" text="Finance-created reimbursement forms you can use will appear here." />}</div></section>
+    <section><div className="forms-section-heading"><div><p className="eyebrow">Continue</p><h2>Reimbursement drafts</h2></div></div><FormsList forms={drafts} submissions={submissions} type="draft" onOpen={onOpen} empty="No saved reimbursement drafts." /></section>
+    <section><div className="forms-section-heading"><div><p className="eyebrow">Tracking</p><h2>My reimbursements</h2></div></div><div className="forms-personal-list">{reimbursements.length ? reimbursements.map((item) => <article className="forms-personal-card" key={item.id}><div><span className={`forms-status-pill ${item.status}`}>{String(item.status).replaceAll("_", " ")}</span><h3>{item.referenceNumber}</h3><p>{money(item.amount)} · Purchase date {formatDate(item.expenseDate)}</p></div><div className="forms-personal-meta"><span>Payment: {String(item.paymentStatus).replaceAll("_", " ")}</span><span>Updated {formatDate(item.updatedAt)}</span></div></article>) : <EmptyFormsState title="No reimbursements yet" text="Submitted claims and their Finance status will appear here." />}</div></section>
+  </div>;
 }
 function FormsList({ forms, submissions, type, onOpen, empty }) {
   if (!forms.length) return <EmptyFormsState title={empty} text="Forms posted to you will appear here." />;

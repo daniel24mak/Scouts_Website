@@ -78,8 +78,16 @@ export function getSupabaseTable(table, query = "select=*") {
   return supabaseRequest(`/rest/v1/${table}?${query}`);
 }
 
-export function getSupabaseRows(table, query = "select=*") {
-  return getSupabaseTable(table, query);
+export function normalizeSupabaseRows(value, table = "Supabase query") {
+  if (Array.isArray(value)) return value;
+  if (value == null) return [];
+
+  throw new TypeError(`${table} returned an invalid row collection.`);
+}
+
+export async function getSupabaseRows(table, query = "select=*") {
+  const value = await getSupabaseTable(table, query);
+  return normalizeSupabaseRows(value, table);
 }
 
 export function callSupabaseRpc(functionName, payload = {}) {

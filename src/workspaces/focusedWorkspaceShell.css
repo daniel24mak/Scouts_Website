@@ -1,0 +1,87 @@
+.focused-workspace-shell {
+  --workspace-bg: #f5f7fb;
+  --workspace-surface: rgba(255, 255, 255, 0.92);
+  --workspace-surface-solid: #fff;
+  --workspace-text: #172033;
+  --workspace-muted: #687287;
+  --workspace-line: #dce2ee;
+  --workspace-accent: #4055a6;
+  --workspace-shadow: 0 12px 32px rgba(21, 31, 55, 0.08);
+  min-height: 100dvh;
+  color: var(--workspace-text);
+  background: var(--workspace-bg);
+}
+.focused-workspace-shell.dashboard-theme-dark {
+  --workspace-bg: #111724;
+  --workspace-surface: rgba(24, 32, 48, 0.9);
+  --workspace-surface-solid: #182030;
+  --workspace-text: #f3f6fb;
+  --workspace-muted: #aeb8ca;
+  --workspace-line: #303a50;
+  --workspace-accent: #8fa4ff;
+  --workspace-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+}
+.focused-workspace-topbar {
+  position: fixed; inset: 10px 12px auto; z-index: 40; min-height: 64px;
+  display: grid; grid-template-columns: 42px 34px minmax(110px, auto) auto 1fr auto; align-items: center; gap: 10px;
+  padding: 8px 12px; border: 1px solid var(--workspace-line); border-radius: 12px;
+  background: var(--workspace-surface); box-shadow: var(--workspace-shadow); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+}
+.focused-workspace-brand { display: flex; align-items: center; gap: 8px; color: var(--workspace-accent); white-space: nowrap; }
+.focused-workspace-brand strong { color: var(--workspace-text); font-size: .98rem; }
+.focused-workspace-logo { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; }
+.focused-workspace-logo img { width: 30px; height: 30px; object-fit: contain; }
+.focused-workspace-spacer { min-width: 0; }
+.focused-workspace-actions { justify-self: end; display: flex; align-items: center; gap: 6px; }
+.focused-workspace-actions .icon-button { width: 42px; height: 42px; border: 0; border-radius: 8px; color: var(--workspace-muted); background: transparent; cursor: pointer; }
+.focused-workspace-actions .icon-button:hover { color: var(--workspace-text); background: color-mix(in srgb, var(--workspace-accent) 10%, transparent); }
+.focused-workspace-profile-menu { position: relative; }
+.focused-workspace-profile { min-height: 42px; display: inline-flex; align-items: center; gap: 8px; padding: 4px 8px 4px 4px; border: 0; border-radius: 8px; color: var(--workspace-text); background: transparent; cursor: pointer; }
+.focused-workspace-profile:hover { background: color-mix(in srgb, var(--workspace-accent) 10%, transparent); }
+.focused-workspace-profile-dropdown { position: absolute; top: calc(100% + 8px); right: 0; min-width: 180px; display: grid; gap: 4px; padding: 7px; border: 1px solid var(--workspace-line); border-radius: 9px; background: var(--workspace-surface-solid); box-shadow: var(--workspace-shadow); }
+.focused-workspace-profile-dropdown button { min-height: 42px; display: flex; align-items: center; gap: 9px; padding: 0 10px; border: 0; border-radius: 7px; color: var(--workspace-text); background: transparent; cursor: pointer; }
+.focused-workspace-profile-dropdown button:hover { background: color-mix(in srgb, var(--workspace-accent) 10%, transparent); }
+.focused-workspace-profile-dropdown button.danger { color: #bd3d4b; }
+.focused-workspace-sidebar {
+  position: fixed; z-index: 30; top: 86px; bottom: 12px; left: 12px; width: 230px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 4px; padding: 10px; border: 1px solid var(--workspace-line); border-radius: 12px;
+  background: var(--workspace-surface); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+}
+.focused-workspace-sidebar button { min-height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border: 0; border-radius: 7px; color: var(--workspace-muted); background: transparent; cursor: pointer; text-align: left; transition: color .18s ease, background-color .18s ease, transform .18s ease; }
+.focused-workspace-sidebar button:hover { color: var(--workspace-text); background: color-mix(in srgb, var(--workspace-accent) 9%, transparent); }
+.focused-workspace-sidebar button.active { color: #fff; background: #4055a6; }
+.focused-workspace-sidebar button:active { transform: scale(.985); }
+.focused-workspace-main { min-width: 0; min-height: 100dvh; padding: 86px 16px 28px 258px; }
+.focused-workspace-shell.sidebar-collapsed .focused-workspace-sidebar { width: 66px; }
+.focused-workspace-shell.sidebar-collapsed .focused-workspace-sidebar button { justify-content: center; padding: 0; }
+.focused-workspace-shell.sidebar-collapsed .focused-workspace-sidebar button span { display: none; }
+.focused-workspace-shell.sidebar-collapsed .focused-workspace-main { padding-left: 94px; }
+.focused-workspace-mobile-nav, .focused-workspace-mobile-sheet { display: none; }
+.focused-workspace-shell .workspace-switcher select { color: var(--workspace-text); border-color: var(--workspace-line); }
+@media (max-width: 768px) {
+  .focused-workspace-topbar { grid-template-columns: 34px minmax(80px, 1fr) auto; min-height: 58px; }
+  .focused-workspace-collapse, .focused-workspace-brand svg, .focused-workspace-topbar > .workspace-switcher, .focused-workspace-spacer, .focused-workspace-profile b, .focused-workspace-profile > svg { display: none; }
+  .focused-workspace-brand { overflow: hidden; }
+  .focused-workspace-brand strong { overflow: hidden; text-overflow: ellipsis; }
+  .focused-workspace-actions { gap: 2px; }
+  .focused-workspace-actions .icon-button { width: 40px; height: 40px; }
+  .focused-workspace-profile { padding: 4px; }
+  .focused-workspace-sidebar { display: none; }
+  .focused-workspace-main { padding: 80px 10px calc(88px + env(safe-area-inset-bottom)); }
+  .focused-workspace-shell.sidebar-collapsed .focused-workspace-main { padding-left: 10px; }
+  .focused-workspace-mobile-nav {
+    position: fixed; z-index: 50; left: 10px; right: 10px; bottom: max(8px, env(safe-area-inset-bottom));
+    min-height: 62px; display: grid; grid-template-columns: repeat(5, 1fr); padding: 5px;
+    border: 1px solid var(--workspace-line); border-radius: 14px; background: var(--workspace-surface); box-shadow: 0 12px 30px rgba(10, 18, 38, .2); backdrop-filter: blur(18px);
+  }
+  .focused-workspace-mobile-nav button { min-width: 0; min-height: 50px; display: grid; place-items: center; align-content: center; gap: 2px; border: 0; border-radius: 9px; color: var(--workspace-muted); background: transparent; cursor: pointer; }
+  .focused-workspace-mobile-nav button span { max-width: 100%; overflow: hidden; font-size: .62rem; text-overflow: ellipsis; white-space: nowrap; }
+  .focused-workspace-mobile-nav button.active { color: var(--workspace-accent); background: color-mix(in srgb, var(--workspace-accent) 12%, transparent); }
+  .focused-workspace-mobile-sheet { position: fixed; inset: 0; z-index: 60; display: block; }
+  .focused-workspace-sheet-backdrop { position: absolute; inset: 0; width: 100%; border: 0; background: rgba(6, 11, 23, .5); }
+  .focused-workspace-sheet-panel { position: absolute; left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); max-height: min(70dvh, 620px); overflow-y: auto; display: grid; gap: 4px; padding: 12px; border: 1px solid var(--workspace-line); border-radius: 14px; background: var(--workspace-surface-solid); }
+  .focused-workspace-sheet-panel > div { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px 10px; }
+  .focused-workspace-sheet-panel button { min-height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border: 0; border-radius: 8px; color: var(--workspace-text); background: transparent; }
+  .focused-workspace-sheet-panel button.active { color: #fff; background: #4055a6; }
+}
+@media (prefers-reduced-motion: reduce) { .focused-workspace-shell * { scroll-behavior: auto !important; transition-duration: .01ms !important; } }

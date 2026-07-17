@@ -1,6 +1,7 @@
 import {
   Archive,
   Bell,
+  Boxes,
   CalendarDays,
   CheckCircle2,
   ChevronDown,
@@ -12,6 +13,7 @@ import {
   Image,
   LayoutDashboard,
   LockKeyhole,
+  ListTodo,
   MessageSquare,
   MoreHorizontal,
   Menu,
@@ -96,6 +98,8 @@ import AttendanceSheetsManager from "../features/attendance/AttendanceSheetsMana
 import ChiefAttendanceManager from "../features/attendance/ChiefAttendanceManager.jsx";
 import CalendarManagement from "../features/calendar/CalendarManagement.jsx";
 import FormsDashboard, { FormPreview } from "../features/forms/FormsDashboard.jsx";
+import ScoutingBudgetSummary from "../features/finance/ScoutingBudgetSummary.jsx";
+import ScoutingStoragePanel from "../features/storage/ScoutingStoragePanel.jsx";
 import PeopleAccessWorkspace from "../features/people-access/PeopleAccessWorkspace.jsx";
 import { normalizePeopleAccessInvitation, normalizePeopleAccessWorkspace, normalizeUserAccessDetails } from "../features/people-access/peopleAccessModel.js";
 import { useAuth } from "../auth/AuthProvider.jsx";
@@ -106,6 +110,9 @@ import FormattedText from "../components/FormattedText.jsx";
 import RichTextEditor from "../components/RichTextEditor.jsx";
 import MfaSecurityPanel from "../components/MfaSecurityPanel.jsx";
 import UserAvatar from "../components/UserAvatar.jsx";
+import WorkspaceSwitcher from "../workspaces/WorkspaceSwitcher.jsx";
+import { getWorkspaceNavigationIds } from "../workspaces/workspaceNavigation.js";
+import { getMyWorkTasks } from "../workspaces/myWorkService.js";
 import WebsiteContentEditor, { getSiteImageCropConfig } from "../components/WebsiteContentEditor.jsx";
 import { logAuditEvent } from "../services/auditService.js";
 import { PERMISSIONS } from "../services/accessControlCatalog.js";
@@ -128,9 +135,12 @@ import { isSupabaseConfigured } from "../services/supabaseClient.js";
 import { isStructuredSiteContentKey } from "../services/siteContentService.js";
 import {
   decideAccessReview,
+  deleteAccessRole,
+  deleteAccessTeam,
   getPeopleAccessWorkspace,
   getUserAccessDetails,
   revokeUserGroupAssignment,
+  revokeLegacyUserGroupAssignment,
   revokeUserRoleAssignment,
   revokeUserTeamMembership,
   resolveAuthorizationDifference,
@@ -274,6 +284,8 @@ const sections = [
   ["myForms", "My Forms", FileText, "forms"],
   ["myFormDrafts", "My Form Drafts", FileText, "forms"],
   ["mySubmittedForms", "Submitted Forms", FileText, "forms"],
+  ["scoutingStorage", "Storage", Boxes, "all"],
+  ["myWork", "My Work", ListTodo, "all"],
   ["approvals", "Approval Requests", CheckCircle2, "admin"],
   ["notifications", "Notifications", Bell, "all"],
   ["contactMessages", "Contact Messages", MessageSquare, "admin"],
@@ -655,8 +667,11 @@ function canOpenSection(sectionId, user) {
     if (!section) {
     return false;
   }
-    if (["documents", "archives"].includes(sectionId)) {
+    if (["documents", "reports"].includes(sectionId)) {
     return canManageSystem(user) || hasChiefAccess(user);
+  }
+    if (sectionId === "archives") {
+    return canManageSystem(user);
   }
     if (section[3] === "settings") {
     return canManageSystem(user);
@@ -823,11 +838,17 @@ function PendingWorkList({ items, getSubmitterName, getSubmitterPicture, onOpen 
   );
 }
 
-export default function AdminDashboardPage() {
+export default function AdminDashboardPage({
+  initialSection = "overview",
+  workspaceKey = "scouting",
+  availableWorkspaces = [],
+  onWorkspaceChange,
+  onSectionChange
+}) {
   const { user, logout, loginWithPassword, refreshUsers } = useAuth();
   const { showToast } = useToast();
   const { data, isLoading: isDashboardLoading, error: dashboardError, refresh } = useBootstrap();
-  const [activeSection, setActiveSection] = useState("overview");
+  const [activeSection, setActiveSection] = useState(initialSection);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState(data.registrationImportSettings.sortBy);
@@ -928,6 +949,19 @@ export default function AdminDashboardPage() {
   const [registrationTargetMode, setRegistrationTargetMode] = useState("existing");
   const [registrationYearId, setRegistrationYearId] = useState(data.activeScoutYearId ?? data.scoutYears?.[0]?.id ?? "");
   const [newScoutYearName, setNewScoutYearName] = useState("");
+  const [myWorkTasks, setMyWorkTasks] = useState([]);
+  const [myWorkLoading, setMyWorkLoading] = useState(true);
+  const [myWorkError, setMyWorkError] = useState("");
+
+  useEffect(() => {
+    const openProfile = () => setIsProfileModalOpen(true);
+    if (window.sessionStorage.getItem("scouts-open-profile") === "true") {
+      window.sessionStorage.removeItem("scouts-open-profile");
+      openProfile();
+    }
+    window.addEventListener("scouts:open-profile", openProfile);
+    return () => window.removeEventListener("scouts:open-profile", openProfile);
+  }, []);
 
   useEffect(() => {
     if (!saveMessage) {
@@ -954,6 +988,8 @@ export default function AdminDashboardPage() {
       invite: allowed(PERMISSIONS.USERS_INVITE),
       createRole: allowed(PERMISSIONS.ROLES_CREATE),
       createTeam: allowed(PERMISSIONS.USERS_ASSIGN_TEAMS),
+      deleteRole: allowed(PERMISSIONS.ROLES_DELETE),
+      deleteTeam: allowed(PERMISSIONS.USERS_ASSIGN_TEAMS),
       assignRoles: allowed(PERMISSIONS.USERS_ASSIGN_ROLES),
       assignGroups: allowed(PERMISSIONS.USERS_ASSIGN_GROUPS),
       assignTeams: allowed(PERMISSIONS.USERS_ASSIGN_TEAMS),
@@ -1111,30 +1147,29 @@ export default function AdminDashboardPage() {
     const available = (ids) => ids.map(item).filter(Boolean).filter((section) => (
       section[0] === "usersPermissions" ? canViewPeopleAccess : canOpenSection(section[0], user)
     ));
+    if (workspaceKey === "scouting" || workspaceKey === "media") {
+      return getWorkspaceNavigationIds(workspaceKey)
+        .map((id) => ({ id, type: "item", item: item(id) }))
+        .filter((group) => group.item && canOpenSection(group.item[0], user));
+    }
+
     const groups = [
       { id: "overview", type: "item", item: item("overview") },
       { id: "aiAssistant", type: "item", item: item("aiAssistant") },
-      { id: "notifications", type: "item", item: item("notifications") },
-      { id: "myGroupGroup", type: "group", label: "My Group", Icon: Users, children: available(["myGroup", "equipes"]) },
-      { id: "attendanceGroup", type: "group", label: "Attendance", Icon: CheckCircle2, children: available(["scoutAttendance", "attendanceSheets", "chiefAttendance"]) },
-      { id: "contentGroup", type: "group", label: "Content", Icon: FileText, children: available(["calendar", "posts", "gallery"]) },
-      { id: "formsGroup", type: "group", label: "Forms", Icon: FileText, children: isAdmin || canManageFormTemplates(user) || canPostForms(user) || canViewAllForms(user) ? available(["manageForms", "myForms"]) : available(["myForms"]) }
+      { id: "people", type: "item", item: item("usersPermissions") },
+      { id: "approvals", type: "item", item: item("approvals") },
+      { id: "formsGroup", type: "group", label: "Forms", Icon: FileText, children: available(["manageForms"]) },
+      { id: "websiteGroup", type: "group", label: "Website Management", Icon: MonitorSmartphone, children: available(["websiteContent", "posts", "gallery", "calendar", "contactMessages"]) },
+      { id: "scoutingStructureGroup", type: "group", label: "Scouting Structure", Icon: Users, children: available(["scouts", "upload", "rules"]) },
+      { id: "documents", type: "item", item: item("documents") },
+      { id: "reports", type: "item", item: item("reports") },
+      { id: "systemGroup", type: "group", label: "System", Icon: Settings, children: available(["archives"]) },
+      { id: "myWork", type: "item", item: item("myWork") },
+      { id: "notifications", type: "item", item: item("notifications") }
     ];
 
-    if (canOpenSection("approvals", user)) groups.push({ id: "approvals", type: "item", item: item("approvals") });
-    if (canOpenSection("contactMessages", user)) groups.push({ id: "contactMessages", type: "item", item: item("contactMessages") });
-    if (canViewPeopleAccess || isAdmin || canOpenSection("documents", user) || canOpenSection("archives", user)) {
-      groups.push({
-        id: "settingsGroup",
-        type: "group",
-        label: "Settings",
-        Icon: Settings,
-        children: available(["usersPermissions", "scouts", "upload", "rules", "websiteContent", "documents", "reports", "archives"])
-      });
-    }
-
     return groups.filter((group) => group.type === "item" ? group.item && canOpenSection(group.item[0], user) : group.children.length);
-  }, [canViewPeopleAccess, isAdmin, sectionById, user]);
+  }, [canViewPeopleAccess, isAdmin, sectionById, user, workspaceKey]);
   const flatSidebarItems = useMemo(
     () => sidebarGroups.flatMap((group) => group.type === "item" ? [group.item] : group.children),
     [sidebarGroups]
@@ -1156,6 +1191,22 @@ export default function AdminDashboardPage() {
       profilePicturePreview: ""
     }));
   }, [user?.id, user?.name, user?.profilePictureUrl]);
+  useEffect(() => {
+    let cancelled = false;
+    setMyWorkLoading(true);
+    setMyWorkError("");
+    getMyWorkTasks({ userId: user?.id })
+      .then((tasks) => {
+        if (!cancelled) setMyWorkTasks(Array.isArray(tasks) ? tasks : []);
+      })
+      .catch((error) => {
+        if (!cancelled) setMyWorkError(error?.message ?? "My Work could not be loaded.");
+      })
+      .finally(() => {
+        if (!cancelled) setMyWorkLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [user?.id, data.notifications, data.formSubmissions, data.postedForms]);
 
   useEffect(() => {
     const previews = Object.fromEntries(
@@ -1179,6 +1230,12 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     setStatusFilter("all");
   }, [activeSection]);
+  useEffect(() => {
+    if (initialSection && initialSection !== activeSection) setActiveSection(initialSection);
+  }, [initialSection]);
+  useEffect(() => {
+    onSectionChange?.(activeSection);
+  }, [activeSection, onSectionChange]);
   useEffect(() => {
     window.localStorage.setItem(sidebarModeKey, sidebarMode);
   }, [sidebarMode]);
@@ -2195,11 +2252,7 @@ export default function AdminDashboardPage() {
     }
   };
   const loadPeopleAccessUser = async (userId) => {
-    try {
-      return await getUserAccessDetails(userId);
-    } catch {
-      return normalizeUserAccessDetails({ user: (data.users ?? []).find((profile) => profile.id === userId) });
-    }
+    return getUserAccessDetails(userId);
   };
   const invitePeopleAccessUser = async (draft) => {
     const invitation = normalizePeopleAccessInvitation(draft);
@@ -2261,10 +2314,10 @@ export default function AdminDashboardPage() {
     if (action === "delete") {
       if (!peopleAccessCapabilities.deleteUser) throw new Error("You do not have permission to delete users.");
       if (!profile?.id) throw new Error("This user account does not have a valid ID.");
-      const confirmed = window.confirm(`Delete ${profile.name}? This permanently removes the dashboard account and cannot be undone.`);
+      const confirmed = window.confirm(`Remove ${profile.name}'s dashboard access? Their historical contributions will be retained for audit and reporting.`);
       if (!confirmed) return false;
       await removeDashboardUser(profile.id);
-      setSaveMessage("User deleted.");
+      setSaveMessage("User access removed. Historical contributions were retained.");
       await refresh();
       await loadPeopleAccessWorkspace();
       return true;
@@ -2279,8 +2332,15 @@ export default function AdminDashboardPage() {
     if (!permissionByKind[kind]) throw new Error(`You do not have permission to change ${kind} assignments.`);
     const reason = payload.reason || "People & Access account update";
     if (operation === "remove") {
-      if (!payload.id || String(payload.id).startsWith("legacy-")) throw new Error("Run the access-control backfill before removing this legacy assignment.");
-      if (kind === "group") await revokeUserGroupAssignment(payload.id, reason);
+      if (!payload.id) throw new Error("The assignment could not be identified.");
+      const isLegacyAssignment = String(payload.id).startsWith("legacy-");
+      if (kind === "group" && isLegacyAssignment) {
+        const groupId = payload.groupId ?? payload.group_id ?? payload.key ?? payload.scopeId ?? payload.scope_id;
+        if (!groupId) throw new Error("The legacy scouting group could not be identified.");
+        await revokeLegacyUserGroupAssignment(profile.id, groupId, reason);
+      } else if (isLegacyAssignment) {
+        throw new Error("This compatibility assignment must be migrated before it can be removed.");
+      } else if (kind === "group") await revokeUserGroupAssignment(payload.id, reason);
       if (kind === "team") await revokeUserTeamMembership(payload.id, reason);
       if (kind === "role") await revokeUserRoleAssignment(payload.id, reason);
     } else {
@@ -2307,6 +2367,16 @@ export default function AdminDashboardPage() {
     if (!name?.trim()) return;
     await saveAccessTeam({ name: name.trim(), key: name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_"), description: "", teamType: "committee", isActive: true });
     setSaveMessage("Team created.");
+    await loadPeopleAccessWorkspace();
+  };
+  const deletePeopleAccessRole = async (role, reason) => {
+    await deleteAccessRole(role.id, reason);
+    setSaveMessage("Custom role deleted.");
+    await loadPeopleAccessWorkspace();
+  };
+  const deletePeopleAccessTeam = async (team, reason) => {
+    await deleteAccessTeam(team.id, reason);
+    setSaveMessage("Custom team deleted.");
     await loadPeopleAccessWorkspace();
   };
   const decidePeopleAccessReview = async (item, decision) => {
@@ -3164,29 +3234,27 @@ export default function AdminDashboardPage() {
       .filter((event) => (event.dateTo ?? event.dateFrom ?? event.date) >= new Date().toISOString().slice(0, 10))
       .sort((a, b) => String(a.dateFrom ?? a.date).localeCompare(String(b.dateFrom ?? b.date))), search, ["title", "description", "location", "visibility", "approvalStatus"])
       .slice(0, 5);
-    const visiblePendingWorkItems = filterBySearch(pendingWorkItems, search, ["title", "contentType", "approvalStatus", "name", "pendingName", "message"]);
-
-    const ownSubmissions = [
-      ...allPosts,
-      ...allAlbums,
-      ...data.plannedEvents
-    ].filter((item) => item.submittedBy === user?.id);
     const overviewGroupIds = isAdmin ? data.groups.map((group) => group.id) : assignedGroupIds;
     const groupScouts = data.registeredScouts.filter((scout) => overviewGroupIds.includes(scout.groupId));
     const groupAttendance = data.attendanceMeetings.filter((meeting) => overviewGroupIds.includes(meeting.groupId));
-    const stats = isAdmin
-      ? [
-          ["Active scouts", data.registeredScouts.length],
-          ["Chiefs", chiefs.length],
-          ["Attendance days", data.attendanceMeetings.length],
-          ["Pending approvals", pendingItems.length]
-        ]
-      : [
-          ["Assigned group", dashboardGroup?.name ?? "Unassigned"],
-          ["Scouts", groupScouts.length],
-          ["Attendance days", groupAttendance.length],
-          ["My submissions", ownSubmissions.length]
-        ];
+    const stats = workspaceKey === "admin" || (workspaceKey === "scouting" && isAdmin) ? [
+      ["Total active scouts", data.registeredScouts.length],
+      ["Total groups", data.groups.length],
+      ["Upcoming events", visibleUpcomingEvents.length],
+      ["Open forms", openAssignedForms.length],
+      ["My Work", myWorkTasks.length]
+    ] : workspaceKey === "media" ? [
+      ["Posts", allPosts.length],
+      ["Albums", allAlbums.length],
+      ["Upcoming events", visibleUpcomingEvents.length],
+      ["My Work", myWorkTasks.length]
+    ] : [
+      ["Active scouts", groupScouts.length],
+      ["Upcoming meetings", visibleUpcomingEvents.length],
+      ["Open forms", openAssignedForms.length],
+      ["My Work", myWorkTasks.length],
+      ...(hasChiefAccess(user) ? [["Attendance days", groupAttendance.length]] : [])
+    ];
 
     return (
       <>
@@ -3199,12 +3267,14 @@ export default function AdminDashboardPage() {
           ))}
         </div>
         <div className="dashboard-overview-stack">
-          <PendingWorkList
-            items={visiblePendingWorkItems}
-            getSubmitterName={isAdmin ? getSubmitterName : () => user.name}
-            getSubmitterPicture={isAdmin ? getSubmitterPicture : () => user.profilePictureUrl}
-            onOpen={openPendingWorkItem}
-          />
+          {workspaceKey === "scouting" && (isAdmin || ["head", "vice"].includes(user?.chiefLevel) || hasEffectivePermission(data.effectiveAccess, PERMISSIONS.FINANCE_GROUP_BUDGET_VIEW)) ? <ScoutingBudgetSummary onOpenReports={() => openDashboardSection("reports")} /> : null}
+          <article className="admin-panel scouting-my-work-preview">
+            <div className="panel-heading compact-heading"><div><h2>My Work</h2><p>Forms and assigned actions that need your attention.</p></div><span>{myWorkTasks.length}</span></div>
+            {myWorkLoading ? <div className="dashboard-inline-loader" aria-label="Loading My Work" /> : myWorkTasks.length ? (
+              <div className="mini-list">{myWorkTasks.slice(0, 4).map((task) => <Link to={task.href || "/dashboard/my-work"} key={`${task.workspaceKey}-${task.type}-${task.id}`}><strong>{task.title}</strong><span>{task.relatedLabel || task.type}</span></Link>)}</div>
+            ) : <p className="empty-state">No assigned work right now.</p>}
+            <button type="button" className="inline-action" onClick={() => openDashboardSection("myWork")}>View all</button>
+          </article>
           <article className="admin-panel dashboard-upcoming-events-panel">
             <div className="panel-heading compact-heading">
               <div>
@@ -3217,16 +3287,27 @@ export default function AdminDashboardPage() {
               {visibleUpcomingEvents.length ? visibleUpcomingEvents.map((event) => (
                 <button type="button" key={event.id} onClick={() => setActiveSection("calendar")}>
                   <strong>{event.title}</strong>
-                  <span>{event.dateFrom ?? event.date}</span>
+                  <span>{[
+                    event.dateFrom ?? event.date,
+                    data.groups.find((group) => group.id === event.groupId)?.name,
+                    event.location,
+                    event.approvalStatus
+                  ].filter(Boolean).join(" | ")}</span>
                 </button>
               )) : <span>No upcoming events visible right now.</span>}
             </div>
           </article>
           <div className="quick-shortcuts-row">
-            {canTakeAttendance(user) && <button type="button" onClick={() => setActiveSection("scoutAttendance")}><CheckCircle2 size={17} aria-hidden="true" />Take Attendance</button>}
-            {canPublishContent(user) && <button type="button" onClick={() => setActiveSection("posts")}><FileText size={17} aria-hidden="true" />New Blog Post</button>}
-            {canCreateGroupMeetings(user) && <button type="button" onClick={() => setActiveSection("calendar")}><CalendarDays size={17} aria-hidden="true" />New Event</button>}
-            {canPublishContent(user) && <button type="button" onClick={() => setActiveSection("gallery")}><GalleryHorizontal size={17} aria-hidden="true" />Upload Photos/Album</button>}
+            {workspaceKey === "media" ? <>
+              {canPublishContent(user) && <button type="button" onClick={() => setActiveSection("posts")}><FileText size={17} aria-hidden="true" />New Blog Post</button>}
+              {canCreateGroupMeetings(user) && <button type="button" onClick={() => setActiveSection("calendar")}><CalendarDays size={17} aria-hidden="true" />New Event</button>}
+              {canPublishContent(user) && <button type="button" onClick={() => setActiveSection("gallery")}><GalleryHorizontal size={17} aria-hidden="true" />Upload Photos/Album</button>}
+            </> : workspaceKey === "scouting" ? <>
+              {canTakeAttendance(user) && <button type="button" onClick={() => setActiveSection("scoutAttendance")}><CheckCircle2 size={17} aria-hidden="true" />Take Attendance</button>}
+              {canUseForms(user) && <button type="button" onClick={() => setActiveSection("myForms")}><FileText size={17} aria-hidden="true" />Open Forms</button>}
+              <button type="button" onClick={() => setActiveSection("scoutingStorage")}><Boxes size={17} aria-hidden="true" />Storage</button>
+              <button type="button" onClick={() => setActiveSection("calendar")}><CalendarDays size={17} aria-hidden="true" />Calendar</button>
+            </> : null}
           </div>
         </div>
       </>
@@ -3815,6 +3896,8 @@ export default function AdminDashboardPage() {
         onAssignmentChange={changePeopleAccessAssignment}
         onCreateRole={createPeopleAccessRole}
         onCreateTeam={createPeopleAccessTeam}
+        onDeleteRole={deletePeopleAccessRole}
+        onDeleteTeam={deletePeopleAccessTeam}
         onReviewDecision={decidePeopleAccessReview}
       />
       {editingProfile && edit && (
@@ -4537,13 +4620,36 @@ export default function AdminDashboardPage() {
       </article>
     </section>
   );
+  const renderMyWork = () => (
+    <section className="scouting-service-page" aria-labelledby="my-work-title">
+      <article className="admin-panel scouting-my-work-panel">
+        <div className="panel-heading compact">
+          <div><p className="eyebrow">One focused queue</p><h2 id="my-work-title">My Work</h2></div>
+          <strong className="overview-count-badge">{myWorkTasks.length}</strong>
+        </div>
+        {myWorkLoading ? <div className="dashboard-inline-loader" aria-label="Loading My Work" /> : null}
+        {!myWorkLoading && myWorkError ? <div className="dashboard-error-banner" role="alert"><strong>My Work could not be loaded.</strong><span>{myWorkError}</span></div> : null}
+        {!myWorkLoading && !myWorkError && (myWorkTasks.length ? (
+          <div className="scouting-my-work-list">
+            {myWorkTasks.map((task) => (
+              <Link className="scouting-my-work-row" to={task.href || "/dashboard/my-work"} key={`${task.workspaceKey}-${task.type}-${task.id}`}>
+                <span>{task.workspaceKey || "Scouting"}</span><strong>{task.title}</strong><small>{task.relatedLabel || task.type}</small>
+              </Link>
+            ))}
+          </div>
+        ) : <div className="empty-state"><CheckCircle2 size={24} aria-hidden="true" /><p>You are all caught up.</p></div>)}
+      </article>
+    </section>
+  );
   const renderSection = () => {
     if (activeSection === "usersPermissions" ? !canViewPeopleAccess : !canOpenSection(activeSection, user)) {
       return <AccessDenied />;
     }
     if (activeSection === "overview") return renderOverview();
     if (activeSection === "aiAssistant") return renderAiAssistant();
+    if (activeSection === "myWork") return renderMyWork();
     if (activeSection === "myGroup") return renderMyGroup();
+    if (activeSection === "scoutingStorage") return <ScoutingStoragePanel canRequest={isAdmin || hasEffectivePermission(data.effectiveAccess, PERMISSIONS.STORAGE_REQUESTS_SUBMIT) || hasEffectivePermission(data.effectiveAccess, PERMISSIONS.STORAGE_REQUESTS_CREATE)} setSaveMessage={setSaveMessage} />;
     if (activeSection === "websiteContent") return renderWebsiteContent();
     if (activeSection === "upload") return renderUpload();
     if (activeSection === "rules") return renderRules();
@@ -4601,6 +4707,7 @@ export default function AdminDashboardPage() {
       </div>
       <div className="dashboard-topbar-title-group">
         <strong className="dashboard-topbar-title">{activeTitle}</strong>
+        <WorkspaceSwitcher workspaces={availableWorkspaces} value={workspaceKey} onChange={onWorkspaceChange} />
       </div>
       <button type="button" className="dashboard-mobile-search-toggle" aria-label="Search current section" aria-expanded={isMobileSearchOpen} onClick={() => setIsMobileSearchOpen((current) => !current)}><Search size={18} aria-hidden="true" /></button>
       <div className={`dashboard-topbar-search ${isMobileSearchOpen ? "open" : ""}`}>
@@ -4621,9 +4728,7 @@ export default function AdminDashboardPage() {
         )}
       </div>
       <div className="dashboard-topbar-actions">
-        <button type="button" className="dashboard-theme-toggle" onClick={() => setDashboardTheme((current) => current === "dark" ? "light" : "dark")} title={dashboardTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"} aria-label={dashboardTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"} aria-pressed={dashboardTheme === "dark"}>
-          {dashboardTheme === "dark" ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
-        </button>
+        <button type="button" className="dashboard-my-work-button" onClick={() => openDashboardSection("myWork")} title="My Work" aria-label="Open My Work"><ListTodo size={18} aria-hidden="true" /><span>My Work</span>{myWorkTasks.length > 0 && <small>{myWorkTasks.length}</small>}</button>
         <div className="dashboard-notification-menu">
           <button type="button" className="dashboard-notification-button" onClick={() => { setIsNotificationsOpen((current) => !current); setIsProfileMenuOpen(false); }} title={canOpenSection("approvals", user) ? "Pending approvals" : "My pending work"} aria-expanded={isNotificationsOpen} aria-haspopup="menu">
             <Bell size={18} aria-hidden="true" />
@@ -4647,6 +4752,9 @@ export default function AdminDashboardPage() {
             </div>
           )}
         </div>
+        <button type="button" className="dashboard-theme-toggle" onClick={() => setDashboardTheme((current) => current === "dark" ? "light" : "dark")} title={dashboardTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"} aria-label={dashboardTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"} aria-pressed={dashboardTheme === "dark"}>
+          {dashboardTheme === "dark" ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
+        </button>
         <div className="dashboard-profile-menu">
           <button type="button" className="dashboard-profile-button" onClick={() => { setIsProfileMenuOpen((current) => !current); setIsNotificationsOpen(false); }} aria-expanded={isProfileMenuOpen}>
             <UserAvatar user={user} size={36} />
