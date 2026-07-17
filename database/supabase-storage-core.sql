@@ -246,8 +246,8 @@ BEGIN
     WHERE id = target_asset_id;
   END IF;
 
-  INSERT INTO public.audit_logs (actor_id, action, module, resource_type, resource_id, outcome, metadata)
-  VALUES (auth.uid(), 'storage.movement.recorded', 'storage', 'storage_stock_movement', movement_id::text, 'success',
+  INSERT INTO public.audit_logs (actor_id, action, entity_type, entity_id, module, resource_type, resource_id, outcome, metadata)
+  VALUES (auth.uid(), 'storage.movement.recorded', 'storage_stock_movement', movement_id::text, 'storage', 'storage_stock_movement', movement_id::text, 'success',
           jsonb_build_object('reference', official_reference, 'itemId', target_item_id, 'quantity', requested_quantity, 'type', requested_movement_type));
   RETURN movement_id;
 END;

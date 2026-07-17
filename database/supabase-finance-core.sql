@@ -283,8 +283,8 @@ BEGIN
       posted_at = now(), updated_at = now()
   WHERE id = target_entry_id;
 
-  INSERT INTO public.audit_logs (actor_id, action, module, resource_type, resource_id, outcome, reason, metadata)
-  VALUES (auth.uid(), 'finance.transaction.posted', 'finance', 'finance_journal_entry', target_entry_id::text, 'success', reason,
+  INSERT INTO public.audit_logs (actor_id, action, entity_type, entity_id, module, resource_type, resource_id, outcome, reason, metadata)
+  VALUES (auth.uid(), 'finance.transaction.posted', 'finance_journal_entry', target_entry_id::text, 'finance', 'finance_journal_entry', target_entry_id::text, 'success', reason,
           jsonb_build_object('reference', official_reference, 'debits', debit_total, 'credits', credit_total));
   RETURN official_reference;
 END;
@@ -335,8 +335,8 @@ BEGIN
   SET status = 'reversed', reversal_entry_id = reversal_id, updated_at = now()
   WHERE id = original.id;
 
-  INSERT INTO public.audit_logs (actor_id, action, module, resource_type, resource_id, outcome, reason, metadata)
-  VALUES (auth.uid(), 'finance.transaction.reversed', 'finance', 'finance_journal_entry', original.id::text, 'success', reason,
+  INSERT INTO public.audit_logs (actor_id, action, entity_type, entity_id, module, resource_type, resource_id, outcome, reason, metadata)
+  VALUES (auth.uid(), 'finance.transaction.reversed', 'finance_journal_entry', original.id::text, 'finance', 'finance_journal_entry', original.id::text, 'success', reason,
           jsonb_build_object('reversalEntryId', reversal_id));
   RETURN reversal_id;
 END;
