@@ -11,19 +11,29 @@ export const WORKSPACE_NAVIGATION = Object.freeze({
     "documents", "reports", "system", "archives",
     ...COMMON_END
   ]),
-  finance: Object.freeze([...COMMON_START, "transactions", "accounts", "funds", "budgets", "purchase-requests", "reimbursements", "collections", "reconciliation", "periods", "reports", "settings", ...COMMON_END]),
-  storage: Object.freeze([...COMMON_START, "inventory", "assets", "kits", "requests", "loans", "locations", "movements", "restocking", "suppliers", "maintenance", "audits", "reports", "settings", ...COMMON_END]),
+  finance: Object.freeze([...COMMON_START, "transactions", "purchase-requests", "reimbursements", "collections", "accounts-funds", "budgets", "reconciliation-periods", "reports", "settings", ...COMMON_END]),
+  storage: Object.freeze([...COMMON_START, "inventory", "requests", "loans", "locations-movements", "procurement", "maintenance", "audits", "reports", "settings", ...COMMON_END]),
   media: Object.freeze([...COMMON_START, "posts", "gallery", "calendar", ...COMMON_END])
 });
+
+const SECTION_ALIASES = Object.freeze({
+  finance: Object.freeze({ accounts: "accounts-funds", funds: "accounts-funds", reconciliation: "reconciliation-periods", periods: "reconciliation-periods" }),
+  storage: Object.freeze({ assets: "inventory", kits: "inventory", locations: "locations-movements", movements: "locations-movements", restocking: "procurement", suppliers: "procurement", deliveries: "procurement" })
+});
+
+export function getCanonicalWorkspaceSection(workspaceKey, sectionKey) {
+  return SECTION_ALIASES[workspaceKey]?.[sectionKey] ?? sectionKey;
+}
 
 export function getWorkspaceNavigationIds(workspaceKey) {
   return WORKSPACE_NAVIGATION[workspaceKey] ?? WORKSPACE_NAVIGATION.scouting;
 }
 
 export function isWorkspaceSectionAllowed(workspaceKey, sectionKey) {
-  return getWorkspaceNavigationIds(workspaceKey).includes(sectionKey);
+  return getWorkspaceNavigationIds(workspaceKey).includes(getCanonicalWorkspaceSection(workspaceKey, sectionKey));
 }
 
 export function getSafeWorkspaceSection(workspaceKey, sectionKey) {
-  return isWorkspaceSectionAllowed(workspaceKey, sectionKey) ? sectionKey : "overview";
+  const canonical = getCanonicalWorkspaceSection(workspaceKey, sectionKey);
+  return isWorkspaceSectionAllowed(workspaceKey, canonical) ? canonical : "overview";
 }

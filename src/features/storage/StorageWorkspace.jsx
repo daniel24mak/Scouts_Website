@@ -1,13 +1,16 @@
-import { Archive, Boxes, ClipboardCheck, ClipboardList, FileBarChart2, Forklift, History, LayoutDashboard, MapPin, PackageCheck, PackageOpen, RefreshCcw, Settings2, ShieldCheck, Truck, Wrench } from "lucide-react";
+import { Archive, Boxes, ClipboardCheck, ClipboardList, FileBarChart2, Forklift, History, LayoutDashboard, MapPin, PackageCheck, PackageOpen, RefreshCcw, Settings2, ShieldCheck, Sparkles, Truck, Wrench } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import FocusedWorkspaceShell from "../../workspaces/FocusedWorkspaceShell.jsx";
+import WorkspaceAssistant from "../../workspaces/WorkspaceAssistant.jsx";
+import WorkspaceRecordManager from "../../workspaces/WorkspaceRecordManager.jsx";
+import WorkspaceTabs from "../../workspaces/WorkspaceTabs.jsx";
 import { asArray } from "../../utils/collections.js";
-import { getStorageOverview, getStorageSectionData } from "./inventoryService.js";
-import { getStoragePermissionKeys, getVisibleStorageNavigation, STORAGE_NAVIGATION } from "./storageModel.js";
+import { getStorageOverview, getStorageSectionData, manageStorageRecord } from "./inventoryService.js";
+import { getStoragePermissionKeys, getVisibleStorageNavigation, STORAGE_NAVIGATION, STORAGE_SECTION_TABS } from "./storageModel.js";
 import StorageWorkflowPanel from "./StorageWorkflowPanel.jsx";
 import "./storageWorkspace.css";
 
-const icons = { overview: LayoutDashboard, inventory: Boxes, assets: Archive, kits: PackageCheck, requests: ClipboardList, loans: PackageOpen, locations: MapPin, movements: History, restocking: RefreshCcw, suppliers: Truck, maintenance: Wrench, audits: ClipboardCheck, reports: FileBarChart2, settings: Settings2 };
+const icons = { overview: LayoutDashboard, aiAssistant: Sparkles, inventory: Boxes, requests: ClipboardList, loans: PackageOpen, "locations-movements": MapPin, procurement: Truck, maintenance: Wrench, audits: ClipboardCheck, reports: FileBarChart2, settings: Settings2 };
 const humanize = (value) => String(value ?? "").replaceAll("_", " ");
 
 function StorageState({ title, children, action }) { return <section className="storage-state"><Forklift size={29} aria-hidden="true" /><h2>{title}</h2>{children}{action}</section>; }
@@ -16,20 +19,53 @@ function MovementTable({ rows }) { return <div className="storage-table-wrap"><t
 
 function Overview({ data }) {
   const overview = data && typeof data === "object" ? data : {};
+  if (!overview.itemCount) {
+    return <section className="storage-panel workspace-setup-panel"><header><div><span>Storage setup</span><h2>Prepare the Storage workspace</h2></div><Boxes size={20} /></header><p className="storage-empty-copy">Create the catalogue foundations once. Stock totals will then come from approved movements.</p><ol className="workspace-setup-list"><li>Create the first location</li><li>Add inventory items</li><li>Create a request template</li><li>Assign Storage users</li></ol></section>;
+  }
   const recentMovements = asArray(overview.recentMovements);
   const actionItems = asArray(overview.actionItems);
-  const cards = [["Inventory items", overview.itemCount ?? 0], ["Tracked assets", overview.assetCount ?? 0], ["Below reorder level", overview.lowStockCount ?? 0], ["Unsafe assets", overview.unsafeAssetCount ?? 0]];
+  const cards = [["Available units", overview.availableUnits ?? 0], ["Currently issued", overview.issuedUnits ?? 0], ["Low-stock items", overview.lowStockCount ?? 0], ["Overdue or unsafe", (overview.overdueLoanCount ?? 0) + (overview.unsafeAssetCount ?? 0)]];
   return <><div className="storage-summary-grid">{cards.map(([label, value]) => <article key={label}><span>{label}</span><strong>{value}</strong></article>)}</div><div className="storage-overview-grid"><section className="storage-panel"><header><div><span>Traceability</span><h2>Recent stock movements</h2></div><History size={20} /></header>{recentMovements.length ? <MovementTable rows={recentMovements} /> : <p className="storage-empty-copy">Receipts, issues, transfers, and returns will appear here.</p>}</section><section className="storage-panel"><header><div><span>Attention</span><h2>Storage actions</h2></div><ShieldCheck size={20} /></header>{actionItems.length ? actionItems.map((item) => <button type="button" key={item.id}>{item.title}</button>) : <p className="storage-empty-copy">No urgent Storage actions right now.</p>}</section></div></>;
 }
 
-function SectionData({ section, rows }) {
-  const safeRows = asArray(rows);
-  if (section === "movements") return <section className="storage-panel"><h2>Stock movements</h2>{safeRows.length ? <MovementTable rows={safeRows} /> : <p className="storage-empty-copy">No movements have been recorded.</p>}</section>;
-  if (section === "inventory") return <div className="storage-record-grid">{safeRows.map((item) => <article className="storage-panel" key={item.id}><Boxes size={21} /><div><span>{item.sku} · {humanize(item.item_kind)}</span><h2>{item.name}</h2><p>{Number(item.available_quantity).toLocaleString("en-AE")} {item.unit_name} available</p></div><Status value={item.below_reorder_level ? "reorder" : item.safety_status} /></article>)}</div>;
-  if (section === "assets") return <div className="storage-record-grid">{safeRows.map((asset) => <article className="storage-panel" key={asset.id}><Archive size={21} /><div><span>{asset.asset_tag}</span><h2>{asset.serial_number || "Tracked asset"}</h2></div><Status value={asset.condition} /><small>{humanize(asset.status)}</small></article>)}</div>;
-  if (section === "kits") return <div className="storage-record-grid">{safeRows.map((kit) => <article className="storage-panel" key={kit.id}><PackageCheck size={21} /><div><span>{kit.code}</span><h2>{kit.name}</h2><p>{kit.description || "No description"}</p></div></article>)}</div>;
-  if (section === "locations") return <div className="storage-record-grid">{safeRows.map((location) => <article className="storage-panel" key={location.id}><MapPin size={21} /><div><span>{location.code} · {humanize(location.location_type)}</span><h2>{location.name}</h2></div><small>{location.is_restricted ? "Restricted" : "Standard access"}</small></article>)}</div>;
-  return <StorageWorkflowPanel section={section} rows={safeRows} canCreate={["requests", "suppliers", "maintenance", "audits"].includes(section)} onCreated={() => window.location.reload()} />;
+const storageFields = {
+  inventory: [
+    { key: "sku", label: "SKU", required: true }, { key: "name", label: "Item name", required: true },
+    { key: "item_kind", label: "Item kind", type: "select", required: true, options: ["consumable", "bulk", "asset"] },
+    { key: "unit_name", label: "Unit", defaultValue: "piece", required: true },
+    { key: "reorder_level", label: "Reorder level", type: "number", defaultValue: 0 },
+    { key: "safety_status", label: "Safety status", type: "select", defaultValue: "clear", options: ["clear", "inspection_due", "blocked", "retired"] }, { key: "description", label: "Description" }
+  ],
+  assets: [
+    { key: "item_id", label: "Inventory item ID", required: true }, { key: "asset_tag", label: "Asset tag", required: true },
+    { key: "serial_number", label: "Serial number" },
+    { key: "status", label: "Status", type: "select", required: true, options: ["available", "reserved", "issued", "maintenance", "damaged", "missing", "retired"] },
+    { key: "condition", label: "Condition", type: "select", required: true, options: ["new", "good", "fair", "poor", "damaged", "unsafe"] },
+    { key: "notes", label: "Notes" }
+  ],
+  kits: [{ key: "code", label: "Code", required: true }, { key: "name", label: "Kit name", required: true }, { key: "description", label: "Description" }],
+  locations: [
+    { key: "code", label: "Code", required: true }, { key: "name", label: "Location name", required: true },
+    { key: "location_type", label: "Location type", type: "select", required: true, options: ["site", "room", "cabinet", "shelf", "bin", "vehicle", "temporary"] },
+    { key: "is_restricted", label: "Restricted location", type: "checkbox" }, { key: "description", label: "Description" }
+  ],
+  categories: [{ key: "name", label: "Category name", required: true }, { key: "description", label: "Description" }]
+};
+
+function SectionData({ section, rows, canManage, onRefresh }) {
+  const tabs = STORAGE_SECTION_TABS[section];
+  const [activeTab, setActiveTab] = useState(tabs?.[0]?.key ?? section);
+  useEffect(() => setActiveTab(STORAGE_SECTION_TABS[section]?.[0]?.key ?? section), [section]);
+  const safeRows = asArray(tabs ? rows?.[activeTab] : rows);
+  const leafSection = section === "inventory" ? (activeTab === "items" ? "inventory" : activeTab) : section === "locations-movements" ? activeTab : section === "procurement" ? activeTab : section;
+  let content;
+  if (leafSection === "movements") content = <section className="storage-panel"><h2>Movement history</h2>{safeRows.length ? <MovementTable rows={safeRows} /> : <p className="storage-empty-copy">Workflow-generated receipts, issues, returns, transfers, and adjustments will appear here.</p>}</section>;
+  else if (["inventory", "assets", "kits", "locations", "categories"].includes(leafSection)) {
+    const entity = { inventory: "item", assets: "asset", kits: "kit", locations: "location", categories: "category" }[leafSection];
+    content = <WorkspaceRecordManager title={{ inventory: "All items", assets: "Assets", kits: "Kits", locations: "Locations", categories: "Categories" }[leafSection]} noun={entity} rows={safeRows} fields={storageFields[leafSection]} canManage={canManage} onMutate={async (action, id, payload) => { await manageStorageRecord(entity, action, id, payload); await onRefresh(); }} renderRecord={(record) => <><div>{leafSection === "inventory" ? <Boxes size={21} /> : leafSection === "assets" ? <Archive size={21} /> : leafSection === "kits" ? <PackageCheck size={21} /> : <MapPin size={21} />}</div><div><small>{record.sku || record.asset_tag || record.code || humanize(record.location_type)}</small><h3>{record.name || record.serial_number || "Tracked asset"}</h3><p>{record.description || record.notes || (leafSection === "inventory" ? `${Number(record.available_quantity ?? 0).toLocaleString("en-AE")} ${record.unit_name ?? "units"} available` : "No description")}</p></div>{leafSection === "assets" ? <Status value={record.condition} /> : null}</>} />;
+  }
+  else content = <StorageWorkflowPanel section={leafSection} rows={safeRows} canCreate={["requests", "suppliers", "maintenance", "audits"].includes(leafSection)} onCreated={onRefresh} />;
+  return <>{tabs ? <WorkspaceTabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} label={`${section} views`} /> : null}{content}</>;
 }
 
 export default function StorageWorkspace({ section = "overview", effectiveAccess, availableWorkspaces, onWorkspaceChange, onSectionChange }) {
@@ -37,7 +73,10 @@ export default function StorageWorkspace({ section = "overview", effectiveAccess
   const navigation = useMemo(() => getVisibleStorageNavigation(permissionKeys).map((item) => ({ ...item, Icon: icons[item.key] })), [permissionKeys]);
   const activeSection = navigation.some((item) => item.key === section) ? section : "overview";
   const [state, setState] = useState({ loading: true, error: "", data: null });
-  useEffect(() => { let cancelled = false; setState({ loading: true, error: "", data: null }); const request = activeSection === "overview" ? getStorageOverview() : getStorageSectionData(activeSection); request.then((data) => { if (!cancelled) setState({ loading: false, error: "", data }); }).catch((error) => { if (!cancelled) setState({ loading: false, error: error.message, data: null }); }); return () => { cancelled = true; }; }, [activeSection]);
+  const [reloadToken, setReloadToken] = useState(0);
+  const refreshSection = async () => setReloadToken((value) => value + 1);
+  useEffect(() => { let cancelled = false; setState({ loading: true, error: "", data: null }); const request = activeSection === "overview" ? getStorageOverview() : getStorageSectionData(activeSection); request.then((data) => { if (!cancelled) setState({ loading: false, error: "", data }); }).catch((error) => { if (!cancelled) setState({ loading: false, error: error.message, data: null }); }); return () => { cancelled = true; }; }, [activeSection, reloadToken]);
   const label = navigation.find((item) => item.key === activeSection)?.label ?? "Overview";
-  return <FocusedWorkspaceShell workspaceKey="storage" workspaceLabel="Storage" workspaceIcon={Boxes} workspaces={availableWorkspaces} onWorkspaceChange={onWorkspaceChange} navigation={navigation} activeSection={activeSection} onSectionChange={onSectionChange}><div className="storage-page-heading"><div><span>Storage workspace</span><h1>{label}</h1><p>Traceable inventory, equipment custody, stock control, and safety.</p></div></div>{state.loading ? <StorageState title="Loading Storage data"><p>Retrieving only the inventory records you are permitted to view.</p><div className="storage-loading-bar" /></StorageState> : null}{!state.loading && state.error ? <StorageState title="Storage data could not be loaded" action={<button type="button" onClick={() => window.location.reload()}>Reload workspace</button>}><p>{state.error.includes("PGRST") || state.error.includes("schema cache") ? "Apply the Storage migration in Supabase, then reload this workspace." : state.error}</p></StorageState> : null}{!state.loading && !state.error && activeSection === "overview" ? <Overview data={state.data} /> : null}{!state.loading && !state.error && activeSection !== "overview" ? <SectionData section={activeSection} rows={state.data ?? []} /> : null}</FocusedWorkspaceShell>;
+  const canManageCatalog = permissionKeys.includes("storage.settings.manage");
+  return <FocusedWorkspaceShell workspaceKey="storage" workspaceLabel="Storage" workspaceIcon={Boxes} workspaces={availableWorkspaces} onWorkspaceChange={onWorkspaceChange} navigation={navigation} activeSection={activeSection} onSectionChange={onSectionChange}><div className="storage-page-heading"><div><span>Storage workspace</span><h1>{label}</h1><p>Traceable inventory, equipment custody, stock control, and safety.</p></div></div>{state.loading ? <StorageState title="Loading Storage data"><p>Retrieving only the inventory records you are permitted to view.</p><div className="storage-loading-bar" /></StorageState> : null}{!state.loading && state.error ? <StorageState title="Storage data could not be loaded" action={<button type="button" onClick={() => window.location.reload()}>Reload workspace</button>}><p>{state.error.includes("PGRST") || state.error.includes("schema cache") ? "Apply the Storage migration in Supabase, then reload this workspace." : state.error}</p></StorageState> : null}{!state.loading && !state.error && activeSection === "overview" ? <Overview data={state.data} /> : null}{!state.loading && !state.error && activeSection === "aiAssistant" ? <WorkspaceAssistant workspaceLabel="Storage" /> : null}{!state.loading && !state.error && !["overview", "aiAssistant"].includes(activeSection) ? <SectionData section={activeSection} rows={state.data ?? []} canManage={canManageCatalog} onRefresh={refreshSection} /> : null}</FocusedWorkspaceShell>;
 }

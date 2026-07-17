@@ -160,7 +160,8 @@ BEGIN
   ELSE
     UPDATE public.finance_reconciliations SET status=target_status, reviewed_by=auth.uid(), reviewed_at=now(), notes=CASE WHEN reason IS NULL THEN notes ELSE notes || E'\n' || btrim(reason) END, updated_at=now() WHERE id=target_id RETURNING to_jsonb(finance_reconciliations.*) INTO saved;
   END IF;
-  INSERT INTO public.audit_logs(actor_id,action,module,resource_type,resource_id,outcome,reason,metadata) VALUES(auth.uid(),'finance.workflow.transitioned','finance',target_type,target_id::text,'success',reason,jsonb_build_object('from',current_status,'to',target_status));
+  INSERT INTO public.audit_logs(actor_id,action,entity_type,entity_id,module,resource_type,resource_id,outcome,reason,metadata)
+  VALUES(auth.uid(),'finance.workflow.transitioned',target_type,target_id::text,'finance',target_type,target_id::text,'success',reason,jsonb_build_object('from',current_status,'to',target_status));
   RETURN saved;
 END;
 $$;

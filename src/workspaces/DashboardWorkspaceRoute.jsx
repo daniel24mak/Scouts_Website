@@ -5,7 +5,7 @@ import BrandedLoader from "../components/BrandedLoader.jsx";
 import { getMyEffectiveAccess } from "../services/accessControlService.js";
 import { getAvailableWorkspaces, resolveWorkspaceDestination } from "./workspaceAccess.js";
 import { buildWorkspaceSectionPath, getWorkspaceSectionFromPath } from "./workspaceRouting.js";
-import { getSafeWorkspaceSection } from "./workspaceNavigation.js";
+import { getCanonicalWorkspaceSection, getSafeWorkspaceSection } from "./workspaceNavigation.js";
 
 const LAST_WORKSPACE_KEY = "scouts-dashboard-last-workspace";
 const LAST_ROUTES_KEY = "scouts-dashboard-workspace-routes";
@@ -76,7 +76,10 @@ export default function DashboardWorkspaceRoute({ DashboardComponent }) {
   }
 
   const workspace = availableWorkspaces.find(({ key }) => key === destination.workspaceKey);
-  const section = getSafeWorkspaceSection(workspace.key, getWorkspaceSectionFromPath(location.pathname, workspace.key) ?? "overview");
+  const requestedSection = getWorkspaceSectionFromPath(location.pathname, workspace.key) ?? "overview";
+  const section = getSafeWorkspaceSection(workspace.key, requestedSection);
+  const canonicalSection = getCanonicalWorkspaceSection(workspace.key, requestedSection);
+  if (requestedSection !== canonicalSection) return <Navigate to={buildWorkspaceSectionPath(workspace.key, canonicalSection)} replace />;
   const switchWorkspace = (nextWorkspace) => {
     const next = resolveWorkspaceDestination({
       user,
@@ -94,6 +97,7 @@ export default function DashboardWorkspaceRoute({ DashboardComponent }) {
   if (["scouting", "admin", "media"].includes(workspace.key)) {
     return (
       <DashboardComponent
+        key={workspace.key}
         initialSection={section}
         workspaceKey={workspace.key}
         availableWorkspaces={availableWorkspaces}
@@ -107,6 +111,7 @@ export default function DashboardWorkspaceRoute({ DashboardComponent }) {
     return (
       <Suspense fallback={<BrandedLoader label="Opening Finance workspace" />}>
         <FinanceWorkspace
+          key={workspace.key}
           section={section}
           effectiveAccess={effectiveAccess}
           availableWorkspaces={availableWorkspaces}
@@ -120,7 +125,7 @@ export default function DashboardWorkspaceRoute({ DashboardComponent }) {
   if (workspace.key === "storage") {
     return (
       <Suspense fallback={<BrandedLoader label="Opening Storage workspace" />}>
-        <StorageWorkspace section={section} effectiveAccess={effectiveAccess} availableWorkspaces={availableWorkspaces} onWorkspaceChange={switchWorkspace} onSectionChange={changeSection} />
+        <StorageWorkspace key={workspace.key} section={section} effectiveAccess={effectiveAccess} availableWorkspaces={availableWorkspaces} onWorkspaceChange={switchWorkspace} onSectionChange={changeSection} />
       </Suspense>
     );
   }

@@ -1,5 +1,5 @@
 import { Bell, ChevronDown, ListTodo, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Sun, UserRound } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import scoutLogo from "../assets/smscouts_logo.png";
@@ -8,6 +8,7 @@ import WorkspaceSwitcher from "./WorkspaceSwitcher.jsx";
 import "./focusedWorkspaceShell.css";
 
 const themeKey = "scouts-dashboard-theme";
+const sidebarKey = "scouts-dashboard-sidebar-mode";
 
 export default function FocusedWorkspaceShell({
   workspaceKey,
@@ -24,7 +25,7 @@ export default function FocusedWorkspaceShell({
   const navigate = useNavigate();
   const [theme, setTheme] = useState(() => window.localStorage.getItem(themeKey) ?? "light");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(() => window.localStorage.getItem("scouts-focused-sidebar") === "collapsed");
+  const [collapsed, setCollapsed] = useState(() => window.localStorage.getItem(sidebarKey) === "collapsed");
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef(null);
 
@@ -32,7 +33,7 @@ export default function FocusedWorkspaceShell({
     window.localStorage.setItem(themeKey, theme);
   }, [theme]);
   useEffect(() => {
-    window.localStorage.setItem("scouts-focused-sidebar", collapsed ? "collapsed" : "expanded");
+    window.localStorage.setItem(sidebarKey, collapsed ? "collapsed" : "expanded");
   }, [collapsed]);
   useEffect(() => {
     const close = (event) => { if (!profileRef.current?.contains(event.target)) setProfileOpen(false); };
@@ -69,11 +70,10 @@ export default function FocusedWorkspaceShell({
       </header>
 
       <aside className="focused-workspace-sidebar" aria-label={`${workspaceLabel} navigation`}>
-        {navigation.map(({ key, label, Icon }) => (
-          <button type="button" key={key} className={activeSection === key ? "active" : ""} onClick={() => selectSection(key)}>
-            {Icon ? <Icon size={18} aria-hidden="true" /> : null}<span>{label}</span>
-          </button>
-        ))}
+        {navigation.map(({ key, label, Icon, group }, index) => <Fragment key={key}>
+          {group && group !== navigation[index - 1]?.group ? <span className="focused-workspace-nav-group">{group}</span> : null}
+          <button type="button" className={activeSection === key ? "active" : ""} onClick={() => selectSection(key)}>{Icon ? <Icon size={18} aria-hidden="true" /> : null}<span>{label}</span></button>
+        </Fragment>)}
       </aside>
 
       <main className="focused-workspace-main">{children}</main>
