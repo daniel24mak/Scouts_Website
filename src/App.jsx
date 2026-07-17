@@ -8,6 +8,7 @@ import ScrollToTop from "./components/ScrollToTop.jsx";
 import BrandedLoader from "./components/BrandedLoader.jsx";
 import SiteRecoveryPrompt from "./components/SiteRecoveryPrompt.jsx";
 import { ToastProvider } from "./components/ToastProvider.jsx";
+import DashboardWorkspaceRoute from "./workspaces/DashboardWorkspaceRoute.jsx";
 
 const AboutPage = lazy(() => import("./pages/AboutPage.jsx"));
 const AcceptInvitationPage = lazy(() => import("./pages/AcceptInvitationPage.jsx"));
@@ -23,6 +24,7 @@ const GalleryPage = lazy(() => import("./pages/GalleryPage.jsx"));
 const HomePage = lazy(() => import("./pages/HomePage.jsx"));
 const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage.jsx"));
+const MyWorkPage = lazy(() => import("./workspaces/MyWorkPage.jsx"));
 
 function RouteFallback() {
   return <BrandedLoader label="Preparing page" />;
@@ -81,8 +83,24 @@ export default function App() {
             <Route
               path="dashboard"
               element={
-                <ProtectedRoute allowedRoles={["chief", "admin"]}>
-                  <ErrorBoundary><AdminDashboardPage /></ErrorBoundary>
+                <ProtectedRoute allowAuthenticated>
+                  <ErrorBoundary><DashboardWorkspaceRoute DashboardComponent={AdminDashboardPage} /></ErrorBoundary>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="dashboard/my-work"
+              element={
+                <ProtectedRoute allowAuthenticated>
+                  <ErrorBoundary><MyWorkPage /></ErrorBoundary>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="dashboard/:workspace/*"
+              element={
+                <ProtectedRoute allowAuthenticated>
+                  <ErrorBoundary><DashboardWorkspaceRoute DashboardComponent={AdminDashboardPage} /></ErrorBoundary>
                 </ProtectedRoute>
               }
             />

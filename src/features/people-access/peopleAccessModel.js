@@ -49,10 +49,55 @@ function normalizeAssignment(row = {}, kind) {
   };
 }
 
+function normalizeLegacyAccess(row = {}) {
+  const source = firstDefined(row.legacyAccess, row.legacy_access, {}) ?? {};
+  return {
+    ...source,
+    role: firstDefined(source.role, row.role, null),
+    groupId: firstDefined(source.groupId, source.group_id, row.groupId, row.group_id, null),
+    chiefLevel: firstDefined(source.chiefLevel, source.chief_level, row.chiefLevel, row.chief_level, null),
+    isCoordinator: Boolean(firstDefined(source.isCoordinator, source.is_coordinator, row.isCoordinator, row.is_coordinator, false)),
+    coordinatorGroupIds: asArray(firstDefined(
+      source.coordinatorGroupIds,
+      source.coordinator_group_ids,
+      row.coordinatorGroupIds,
+      row.coordinator_group_ids
+    )).filter(Boolean)
+  };
+}
+
+function mergeLegacyGroups(groups, legacyAccess, scoutingPosition) {
+  const normalized = asArray(groups);
+  const knownGroupIds = new Set(normalized.map((group) => String(firstDefined(group.groupId, group.group_id, group.key, group.id, ""))));
+  const legacyGroupIds = [legacyAccess.groupId, ...legacyAccess.coordinatorGroupIds].filter(Boolean);
+  const additions = legacyGroupIds.flatMap((groupId) => {
+    const key = String(groupId);
+    if (knownGroupIds.has(key)) return [];
+    knownGroupIds.add(key);
+    const isPrimary = key === String(legacyAccess.groupId ?? "");
+    return [{
+      id: `legacy-group-${key}`,
+      key,
+      name: key,
+      group_id: key,
+      position: isPrimary ? legacyAccess.chiefLevel || scoutingPosition || "chief" : "coordinator",
+      isPrimary,
+      status: "legacy"
+    }];
+  });
+  return [...normalized, ...additions];
+}
+
 export function normalizePeopleAccessUser(row = {}) {
   const roles = asArray(firstDefined(row.roles, row.role_assignments)).map((item) => normalizeAssignment(item, "role"));
   const teams = asArray(firstDefined(row.teams, row.team_memberships)).map((item) => normalizeAssignment(item, "team"));
-  const groups = asArray(firstDefined(row.groups, row.group_assignments)).map((item) => normalizeAssignment(item, "group"));
+  const legacyAccess = normalizeLegacyAccess(row);
+  const scoutingPosition = firstDefined(row.scoutingPosition, row.scouting_position, row.chief_level, null);
+  const groups = mergeLegacyGroups(
+    asArray(firstDefined(row.groups, row.group_assignments)).map((item) => normalizeAssignment(item, "group")),
+    legacyAccess,
+    scoutingPosition
+  );
   return {
     ...row,
     id: row.id ?? row.user_id ?? null,
@@ -61,7 +106,7 @@ export function normalizePeopleAccessUser(row = {}) {
     profilePictureUrl: firstDefined(row.profilePictureUrl, row.profile_picture_url, null),
     accountStatus: firstDefined(row.accountStatus, row.account_status, "unknown"),
     invitationStatus: firstDefined(row.invitationStatus, row.invitation_status, "unknown"),
-    scoutingPosition: firstDefined(row.scoutingPosition, row.scouting_position, row.chief_level, null),
+    scoutingPosition,
     primaryGroup: firstDefined(row.primaryGroup, row.primary_group, groups.find((group) => group.is_primary)?.name, null),
     roles,
     teams,
@@ -72,11 +117,7 @@ export function normalizePeopleAccessUser(row = {}) {
     hasTemporaryAccess: Boolean(firstDefined(row.hasTemporaryAccess, row.has_temporary_access, false)),
     hasDirectOverrides: Boolean(firstDefined(row.hasDirectOverrides, row.has_direct_overrides, false)),
     hasMigrationDifferences: Boolean(firstDefined(row.hasMigrationDifferences, row.has_migration_differences, false)),
-    legacyAccess: firstDefined(row.legacyAccess, row.legacy_access, {
-      role: row.role ?? null,
-      groupId: firstDefined(row.groupId, row.group_id, null),
-      chiefLevel: firstDefined(row.chiefLevel, row.chief_level, null)
-    })
+    legacyAccess
   };
 }
 
@@ -161,6 +202,55 @@ export function normalizeUserAccessDetails(payload = {}) {
       lastPasswordReset: security.lastPasswordReset ?? security.last_password_reset ?? null,
       activeSessions: security.activeSessions ?? security.active_sessions ?? null
     }
+  };
+}
+
+function assignmentIdentity(item = {}, kind) {
+  if (item.id && !String(item.id).startsWith("legacy-")) return `id:${item.id}`;
+  if (kind === "role") {
+    return ["role", item.key ?? item.role_key ?? item.role_id, item.scopeType ?? item.scope_type ?? "global", item.scopeId ?? item.scope_id ?? ""].join(":");
+  }
+  if (kind === "group") return `group:${item.groupId ?? item.group_id ?? item.key ?? item.id ?? item.name}`;
+  return `team:${item.teamId ?? item.team_id ?? item.key ?? item.id ?? item.name}`;
+}
+
+function mergeAssignments(detailsItems, workspaceItems, kind) {
+  const normalizedDetails = asArray(detailsItems);
+  const normalizedWorkspace = asArray(workspaceItems);
+  const hasNormalizedDetails = normalizedDetails.some((item) => item.status !== "legacy");
+  const preferredDetails = hasNormalizedDetails
+    ? normalizedDetails.filter((item) => item.status !== "legacy")
+    : normalizedWorkspace.length ? [] : normalizedDetails;
+  const candidates = preferredDetails.length ? [...preferredDetails, ...normalizedWorkspace] : normalizedWorkspace;
+  const seen = new Set();
+  return candidates.filter((item) => {
+    const identity = assignmentIdentity(item, kind);
+    if (seen.has(identity)) return false;
+    seen.add(identity);
+    return true;
+  });
+}
+
+export function mergePeopleAccessUserDetails(person = {}, details = null) {
+  const workspaceUser = normalizePeopleAccessUser(person);
+  const normalizedDetails = details ? normalizeUserAccessDetails(details) : normalizeUserAccessDetails({ user: workspaceUser });
+  const user = normalizedDetails.user?.id
+    ? {
+        ...workspaceUser,
+        ...normalizedDetails.user,
+        legacyAccess: { ...(workspaceUser.legacyAccess ?? {}), ...(normalizedDetails.user.legacyAccess ?? {}) }
+      }
+    : workspaceUser;
+  const roleAssignments = mergeAssignments(normalizedDetails.roleAssignments, workspaceUser.roles, "role");
+  const groupAssignments = mergeAssignments(normalizedDetails.groupAssignments, workspaceUser.groups, "group");
+  const teamMemberships = mergeAssignments(normalizedDetails.teamMemberships, workspaceUser.teams, "team");
+
+  return {
+    ...normalizedDetails,
+    user: { ...user, roles: roleAssignments, groups: groupAssignments, teams: teamMemberships },
+    roleAssignments,
+    groupAssignments,
+    teamMemberships
   };
 }
 

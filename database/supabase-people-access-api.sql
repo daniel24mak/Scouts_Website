@@ -89,7 +89,13 @@ BEGIN
         'has_temporary_access', EXISTS (SELECT 1 FROM public.user_role_assignments x WHERE x.user_id = p.id AND x.expires_at > now()),
         'has_direct_overrides', EXISTS (SELECT 1 FROM public.user_permission_overrides x WHERE x.user_id = p.id AND x.starts_at <= now() AND (x.expires_at IS NULL OR x.expires_at > now())),
         'has_migration_differences', EXISTS (SELECT 1 FROM public.authorization_migration_differences x WHERE x.user_id = p.id AND x.resolved_at IS NULL),
-        'legacy_access', jsonb_build_object('role', p.role, 'chief_level', p.chief_level, 'group_id', p.group_id, 'is_coordinator', p.is_coordinator)
+        'legacy_access', jsonb_build_object(
+          'role', p.role,
+          'chief_level', p.chief_level,
+          'group_id', p.group_id,
+          'is_coordinator', p.is_coordinator,
+          'coordinator_group_ids', COALESCE(p.coordinator_group_ids, ARRAY[]::text[])
+        )
       ) ORDER BY p.full_name, p.email)
       FROM public.user_profiles p
       LEFT JOIN public.groups primary_group ON primary_group.id = p.group_id
@@ -111,6 +117,7 @@ BEGIN
       SELECT jsonb_agg(jsonb_build_object(
         'id', t.id, 'key', t.key, 'name', t.name, 'description', t.description,
         'team_type', t.team_type, 'is_active', t.is_active,
+        'is_system', t.key = ANY (ARRAY['media','forms','events','website','finance','storage']),
         'member_count', (SELECT count(*) FROM public.user_team_memberships utm WHERE utm.team_id = t.id AND utm.starts_at <= now() AND (utm.expires_at IS NULL OR utm.expires_at > now()))
       ) ORDER BY t.name) FROM public.teams t
     ), '[]'::jsonb) ELSE '[]'::jsonb END,
@@ -162,6 +169,7 @@ BEGIN
       'group_id', p.group_id,
       'chief_level', p.chief_level,
       'is_coordinator', p.is_coordinator,
+      'coordinator_group_ids', COALESCE(p.coordinator_group_ids, ARRAY[]::text[]),
       'created_at', p.created_at,
       'updated_at', p.updated_at
     ),
@@ -174,7 +182,7 @@ BEGIN
       'permissions', COALESCE((SELECT jsonb_agg(jsonb_build_object('key', rp.permission_id, 'scopeType', ura.scope_type, 'scopeId', ura.scope_id, 'source', r.name, 'expiresAt', ura.expires_at, 'requiresMfa', pm.requires_mfa) ORDER BY rp.permission_id) FROM public.user_role_assignments ura JOIN public.roles r ON r.id = ura.role_id AND r.is_active JOIN public.role_permissions rp ON rp.role_id = ura.role_id JOIN public.permissions pm ON pm.id = rp.permission_id AND pm.is_active WHERE ura.user_id = p.id AND ura.starts_at <= now() AND (ura.expires_at IS NULL OR ura.expires_at > now()) AND NOT EXISTS (SELECT 1 FROM public.user_permission_overrides denied WHERE denied.user_id = p.id AND denied.permission_id = rp.permission_id AND denied.effect = 'deny' AND denied.starts_at <= now() AND (denied.expires_at IS NULL OR denied.expires_at > now()) AND (denied.scope_type = 'global' OR (denied.scope_type = ura.scope_type AND denied.scope_id IS NOT DISTINCT FROM ura.scope_id)))), '[]'::jsonb)
     ),
     'migration_differences', COALESCE((SELECT jsonb_agg(to_jsonb(d) ORDER BY d.created_at DESC) FROM public.authorization_migration_differences d WHERE d.user_id = p.id AND d.resolved_at IS NULL), '[]'::jsonb),
-    'activity', CASE WHEN public.has_permission('audit_logs.view') THEN COALESCE((SELECT jsonb_agg(to_jsonb(a) || jsonb_build_object('actor_name', actor.full_name) ORDER BY a.created_at DESC) FROM (SELECT * FROM public.audit_logs WHERE target_user_id = p.id OR entity_id = p.id::text ORDER BY created_at DESC LIMIT 100) a LEFT JOIN public.user_profiles actor ON actor.id = a.actor_id), '[]'::jsonb) ELSE '[]'::jsonb END,
+    'activity', CASE WHEN public.has_permission('audit_logs.view') THEN COALESCE((SELECT jsonb_agg(to_jsonb(a) || jsonb_build_object('actor_name', actor.full_name) ORDER BY a.created_at DESC) FROM (SELECT activity_log.* FROM public.audit_logs activity_log WHERE activity_log.target_user_id = p.id OR activity_log.entity_id = p.id::text ORDER BY activity_log.created_at DESC LIMIT 100) a LEFT JOIN public.user_profiles actor ON actor.id = a.actor_id), '[]'::jsonb) ELSE '[]'::jsonb END,
     'security', jsonb_build_object('mfa_status', 'unavailable', 'mfa_required', NULL, 'assurance_level', NULL, 'last_sign_in', NULL, 'last_password_reset', NULL, 'active_sessions', NULL)
   ) INTO result FROM public.user_profiles p WHERE p.id = target_user_id;
   RETURN result;
@@ -209,15 +217,15 @@ DECLARE saved public.user_role_assignments; previous jsonb; active_admins bigint
 BEGIN
   PERFORM public.require_people_access_permission('users.assign_roles');
   IF length(btrim(COALESCE(reason,''))) < 8 THEN RAISE EXCEPTION 'A revocation reason of at least 8 characters is required.' USING ERRCODE='22023'; END IF;
-  SELECT x INTO saved FROM public.user_role_assignments x WHERE id=target_assignment_id FOR UPDATE;
+  SELECT x.* INTO saved FROM public.user_role_assignments x WHERE id=target_assignment_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'The role assignment no longer exists.' USING ERRCODE='P0002'; END IF;
   previous := to_jsonb(saved);
   IF saved.role_id='system_administrator' AND saved.starts_at<=now() AND (saved.expires_at IS NULL OR saved.expires_at>now()) THEN
     SELECT count(*) INTO active_admins FROM public.user_role_assignments x JOIN public.user_profiles p ON p.id=x.user_id WHERE x.role_id='system_administrator' AND p.account_status='active' AND x.starts_at<=now() AND (x.expires_at IS NULL OR x.expires_at>now());
     IF active_admins<=1 THEN RAISE EXCEPTION 'The final active System Administrator cannot be removed.' USING ERRCODE='P0001'; END IF;
   END IF;
-  UPDATE public.user_role_assignments SET expires_at=now(),updated_at=now(),assignment_reason=btrim(reason) WHERE id=target_assignment_id RETURNING * INTO saved;
-  PERFORM public.write_people_access_audit('role_assignment_revoked','User role assignment',saved.id::text,saved.user_id,previous,to_jsonb(saved),reason);
+  DELETE FROM public.user_role_assignments WHERE id=target_assignment_id RETURNING * INTO saved;
+  PERFORM public.write_people_access_audit('role_assignment_revoked','User role assignment',saved.id::text,saved.user_id,previous,NULL,reason);
   RETURN to_jsonb(saved);
 END; $$;
 
@@ -235,7 +243,29 @@ END; $$;
 CREATE OR REPLACE FUNCTION public.revoke_user_group_assignment(target_assignment_id uuid, reason text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
 DECLARE saved public.user_group_assignments; previous jsonb;
-BEGIN PERFORM public.require_people_access_permission('users.assign_groups'); SELECT x INTO saved FROM public.user_group_assignments x WHERE id=target_assignment_id FOR UPDATE; IF NOT FOUND THEN RAISE EXCEPTION 'The group assignment no longer exists.' USING ERRCODE='P0002'; END IF; previous:=to_jsonb(saved); UPDATE public.user_group_assignments SET expires_at=now(),updated_at=now() WHERE id=target_assignment_id RETURNING * INTO saved; PERFORM public.write_people_access_audit('group_assignment_revoked','User group assignment',saved.id::text,saved.user_id,previous,to_jsonb(saved),reason); RETURN to_jsonb(saved); END; $$;
+BEGIN PERFORM public.require_people_access_permission('users.assign_groups'); SELECT x.* INTO saved FROM public.user_group_assignments x WHERE id=target_assignment_id FOR UPDATE; IF NOT FOUND THEN RAISE EXCEPTION 'The group assignment no longer exists.' USING ERRCODE='P0002'; END IF; previous:=to_jsonb(saved); DELETE FROM public.user_group_assignments WHERE id=target_assignment_id RETURNING * INTO saved; PERFORM public.write_people_access_audit('group_assignment_revoked','User group assignment',saved.id::text,saved.user_id,previous,NULL,reason); RETURN to_jsonb(saved); END; $$;
+
+CREATE OR REPLACE FUNCTION public.revoke_legacy_user_group_assignment(target_user_id uuid, target_group_id text, reason text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE previous jsonb; saved jsonb;
+BEGIN
+  PERFORM public.require_people_access_permission('users.assign_groups');
+  SELECT to_jsonb(p) INTO previous FROM public.user_profiles p WHERE p.id=target_user_id FOR UPDATE;
+  IF previous IS NULL THEN RAISE EXCEPTION 'The user no longer exists.' USING ERRCODE='P0002'; END IF;
+
+  DELETE FROM public.user_group_assignments WHERE user_id=target_user_id AND group_id=target_group_id;
+  UPDATE public.user_profiles AS profile
+  SET group_id = CASE WHEN group_id=target_group_id THEN NULL ELSE group_id END,
+      chief_level = CASE WHEN group_id=target_group_id THEN NULL ELSE chief_level END,
+      coordinator_group_ids = array_remove(COALESCE(coordinator_group_ids, ARRAY[]::text[]), target_group_id),
+      is_coordinator = cardinality(array_remove(COALESCE(coordinator_group_ids, ARRAY[]::text[]), target_group_id)) > 0,
+      updated_at = now()
+  WHERE id=target_user_id
+  RETURNING to_jsonb(profile.*) INTO saved;
+
+  PERFORM public.write_people_access_audit('group_assignment_revoked','Legacy user group assignment',target_user_id::text || ':' || target_group_id,target_user_id,previous,saved,reason);
+  RETURN saved;
+END; $$;
 
 CREATE OR REPLACE FUNCTION public.save_user_team_membership(payload jsonb)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
@@ -245,7 +275,7 @@ BEGIN PERFORM public.require_people_access_permission('users.assign_teams'); IF 
 CREATE OR REPLACE FUNCTION public.revoke_user_team_membership(target_membership_id uuid, reason text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
 DECLARE saved public.user_team_memberships; previous jsonb;
-BEGIN PERFORM public.require_people_access_permission('users.assign_teams'); SELECT x INTO saved FROM public.user_team_memberships x WHERE id=target_membership_id FOR UPDATE; IF NOT FOUND THEN RAISE EXCEPTION 'The team membership no longer exists.' USING ERRCODE='P0002'; END IF; previous:=to_jsonb(saved); UPDATE public.user_team_memberships SET expires_at=now() WHERE id=target_membership_id RETURNING * INTO saved; PERFORM public.write_people_access_audit('team_membership_revoked','User team membership',saved.id::text,saved.user_id,previous,to_jsonb(saved),reason); RETURN to_jsonb(saved); END; $$;
+BEGIN PERFORM public.require_people_access_permission('users.assign_teams'); SELECT x.* INTO saved FROM public.user_team_memberships x WHERE id=target_membership_id FOR UPDATE; IF NOT FOUND THEN RAISE EXCEPTION 'The team membership no longer exists.' USING ERRCODE='P0002'; END IF; previous:=to_jsonb(saved); DELETE FROM public.user_team_memberships WHERE id=target_membership_id RETURNING * INTO saved; PERFORM public.write_people_access_audit('team_membership_revoked','User team membership',saved.id::text,saved.user_id,previous,NULL,reason); RETURN to_jsonb(saved); END; $$;
 
 CREATE OR REPLACE FUNCTION public.save_user_permission_override(payload jsonb)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
@@ -255,7 +285,7 @@ BEGIN PERFORM public.require_people_access_permission('permissions.manage'); IF 
 CREATE OR REPLACE FUNCTION public.revoke_user_permission_override(target_override_id uuid, reason text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
 DECLARE saved public.user_permission_overrides; previous jsonb;
-BEGIN PERFORM public.require_people_access_permission('permissions.manage'); SELECT x INTO saved FROM public.user_permission_overrides x WHERE id=target_override_id FOR UPDATE; IF NOT FOUND THEN RAISE EXCEPTION 'The permission override no longer exists.' USING ERRCODE='P0002'; END IF; previous:=to_jsonb(saved); UPDATE public.user_permission_overrides SET expires_at=now(),reason=COALESCE(NULLIF(btrim(reason),''),reason) WHERE id=target_override_id RETURNING * INTO saved; PERFORM public.write_people_access_audit('permission_override_revoked','User permission override',saved.id::text,saved.user_id,previous,to_jsonb(saved),reason); RETURN to_jsonb(saved); END; $$;
+BEGIN PERFORM public.require_people_access_permission('permissions.manage'); SELECT x.* INTO saved FROM public.user_permission_overrides x WHERE id=target_override_id FOR UPDATE; IF NOT FOUND THEN RAISE EXCEPTION 'The permission override no longer exists.' USING ERRCODE='P0002'; END IF; previous:=to_jsonb(saved); UPDATE public.user_permission_overrides SET expires_at=now(),reason=COALESCE(NULLIF(btrim(reason),''),reason) WHERE id=target_override_id RETURNING * INTO saved; PERFORM public.write_people_access_audit('permission_override_revoked','User permission override',saved.id::text,saved.user_id,previous,to_jsonb(saved),reason); RETURN to_jsonb(saved); END; $$;
 
 CREATE OR REPLACE FUNCTION public.save_access_role(payload jsonb)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
@@ -280,8 +310,21 @@ END; $$;
 
 CREATE OR REPLACE FUNCTION public.delete_access_role(target_role_id text, reason text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
-DECLARE saved public.roles; previous jsonb;
-BEGIN PERFORM public.require_people_access_permission('roles.delete'); SELECT r INTO saved FROM public.roles r WHERE id=target_role_id FOR UPDATE; IF NOT FOUND THEN RAISE EXCEPTION 'The role no longer exists.' USING ERRCODE='P0002'; END IF; previous:=to_jsonb(saved); IF saved.is_system_role THEN RAISE EXCEPTION 'Protected system roles cannot be deleted, renamed, or disabled.' USING ERRCODE='P0001'; END IF; IF EXISTS(SELECT 1 FROM public.user_role_assignments WHERE role_id=target_role_id) THEN RAISE EXCEPTION 'This role has assignment history and must be disabled instead of deleted.' USING ERRCODE='23503'; END IF; DELETE FROM public.role_permissions WHERE role_id=target_role_id; DELETE FROM public.roles WHERE id=target_role_id; PERFORM public.write_people_access_audit('role_deleted','Role',target_role_id,NULL,previous,NULL,reason); RETURN previous; END; $$;
+DECLARE saved public.roles; previous jsonb; removed_assignments bigint;
+BEGIN
+  PERFORM public.require_people_access_permission('roles.delete');
+  IF length(btrim(COALESCE(reason,''))) < 8 THEN RAISE EXCEPTION 'A deletion reason of at least 8 characters is required.' USING ERRCODE='22023'; END IF;
+  SELECT r.* INTO saved FROM public.roles r WHERE id=target_role_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'The role no longer exists.' USING ERRCODE='P0002'; END IF;
+  previous:=to_jsonb(saved);
+  IF saved.is_system_role THEN RAISE EXCEPTION 'Protected system roles cannot be deleted, renamed, or disabled.' USING ERRCODE='P0001'; END IF;
+  SELECT count(*) INTO removed_assignments FROM public.user_role_assignments WHERE role_id=target_role_id;
+  DELETE FROM public.user_role_assignments WHERE role_id=target_role_id;
+  DELETE FROM public.role_permissions WHERE role_id=target_role_id;
+  DELETE FROM public.roles WHERE id=target_role_id;
+  PERFORM public.write_people_access_audit('role_deleted','Role',target_role_id,NULL,previous,jsonb_build_object('deleted',true,'removed_assignments',removed_assignments),reason);
+  RETURN previous;
+END; $$;
 
 CREATE OR REPLACE FUNCTION public.save_access_team(payload jsonb)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
@@ -292,6 +335,80 @@ CREATE OR REPLACE FUNCTION public.disable_access_team(target_team_id uuid, reaso
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
 DECLARE saved public.teams; previous jsonb;
 BEGIN PERFORM public.require_people_access_permission('users.assign_teams'); SELECT to_jsonb(t) INTO previous FROM public.teams t WHERE id=target_team_id FOR UPDATE; UPDATE public.teams SET is_active=false,updated_at=now() WHERE id=target_team_id RETURNING * INTO saved; IF NOT FOUND THEN RAISE EXCEPTION 'The team no longer exists.' USING ERRCODE='P0002'; END IF; PERFORM public.write_people_access_audit('team_disabled','Team',saved.id::text,NULL,previous,to_jsonb(saved),reason); RETURN to_jsonb(saved); END; $$;
+
+CREATE OR REPLACE FUNCTION public.delete_access_team(target_team_id uuid, reason text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE saved public.teams; previous jsonb; removed_memberships bigint;
+BEGIN
+  PERFORM public.require_people_access_permission('users.assign_teams');
+  IF length(btrim(COALESCE(reason,''))) < 8 THEN RAISE EXCEPTION 'A deletion reason of at least 8 characters is required.' USING ERRCODE='22023'; END IF;
+  SELECT t.* INTO saved FROM public.teams t WHERE id=target_team_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'The team no longer exists.' USING ERRCODE='P0002'; END IF;
+  previous:=to_jsonb(saved);
+  IF saved.key = ANY (ARRAY['media','forms','events','website','finance','storage']) THEN RAISE EXCEPTION 'Built-in teams cannot be deleted.' USING ERRCODE='P0001'; END IF;
+  SELECT count(*) INTO removed_memberships FROM public.user_team_memberships WHERE team_id=target_team_id;
+  DELETE FROM public.user_team_memberships WHERE team_id=target_team_id;
+  DELETE FROM public.teams WHERE id=target_team_id;
+  PERFORM public.write_people_access_audit('team_deleted','Team',target_team_id::text,NULL,previous,jsonb_build_object('deleted',true,'removed_memberships',removed_memberships),reason);
+  RETURN previous;
+END; $$;
+
+CREATE OR REPLACE FUNCTION public.retire_dashboard_user(target_user_id uuid, reason text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE
+  previous jsonb;
+  saved jsonb;
+BEGIN
+  PERFORM public.require_people_access_permission('users.delete');
+  IF target_user_id = auth.uid() THEN
+    RAISE EXCEPTION 'You cannot remove the account you are currently using.' USING ERRCODE='22023';
+  END IF;
+  IF length(btrim(COALESCE(reason,''))) < 8 THEN
+    RAISE EXCEPTION 'An account-removal reason of at least 8 characters is required.' USING ERRCODE='22023';
+  END IF;
+
+  SELECT to_jsonb(profile) INTO previous
+  FROM public.user_profiles profile
+  WHERE profile.id=target_user_id
+  FOR UPDATE;
+  IF previous IS NULL THEN
+    RAISE EXCEPTION 'The user no longer exists.' USING ERRCODE='P0002';
+  END IF;
+
+  DELETE FROM public.user_permission_overrides WHERE user_id=target_user_id;
+  DELETE FROM public.user_team_memberships WHERE user_id=target_user_id;
+  DELETE FROM public.user_group_assignments WHERE user_id=target_user_id;
+  DELETE FROM public.user_role_assignments WHERE user_id=target_user_id;
+  DELETE FROM public.user_permissions WHERE user_id=target_user_id;
+  UPDATE public.equipe_leaders SET is_active=false WHERE chief_id=target_user_id AND is_active;
+
+  UPDATE public.user_profiles AS profile
+  SET account_status='archived',
+      group_id=NULL,
+      chief_level=NULL,
+      is_coordinator=false,
+      coordinator_group_ids=ARRAY[]::text[],
+      can_publish=false,
+      can_create_group_meetings=false,
+      can_edit_scouts=false,
+      manage_form_templates=false,
+      view_all_forms=false,
+      post_forms=false,
+      updated_at=now()
+  WHERE profile.id=target_user_id
+  RETURNING to_jsonb(profile.*) INTO saved;
+
+  PERFORM public.write_people_access_audit(
+    'user_retired',
+    'User account',
+    target_user_id::text,
+    target_user_id,
+    previous,
+    saved,
+    reason
+  );
+  RETURN saved;
+END; $$;
 
 CREATE OR REPLACE FUNCTION public.decide_access_review(target_review_id uuid, decision text, notes text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
@@ -311,6 +428,7 @@ REVOKE ALL ON FUNCTION public.save_user_role_assignment(jsonb) FROM PUBLIC, anon
 REVOKE ALL ON FUNCTION public.revoke_user_role_assignment(uuid,text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.save_user_group_assignment(jsonb) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.revoke_user_group_assignment(uuid,text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.revoke_legacy_user_group_assignment(uuid,text,text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.save_user_team_membership(jsonb) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.revoke_user_team_membership(uuid,text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.save_user_permission_override(jsonb) FROM PUBLIC, anon;
@@ -319,6 +437,8 @@ REVOKE ALL ON FUNCTION public.save_access_role(jsonb) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.delete_access_role(text,text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.save_access_team(jsonb) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.disable_access_team(uuid,text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.delete_access_team(uuid,text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.retire_dashboard_user(uuid,text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.decide_access_review(uuid,text,text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.resolve_authorization_difference(uuid,text,text) FROM PUBLIC, anon;
 
@@ -328,6 +448,7 @@ GRANT EXECUTE ON FUNCTION public.save_user_role_assignment(jsonb) TO authenticat
 GRANT EXECUTE ON FUNCTION public.revoke_user_role_assignment(uuid,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.save_user_group_assignment(jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.revoke_user_group_assignment(uuid,text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.revoke_legacy_user_group_assignment(uuid,text,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.save_user_team_membership(jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.revoke_user_team_membership(uuid,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.save_user_permission_override(jsonb) TO authenticated;
@@ -336,6 +457,8 @@ GRANT EXECUTE ON FUNCTION public.save_access_role(jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.delete_access_role(text,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.save_access_team(jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.disable_access_team(uuid,text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.delete_access_team(uuid,text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.retire_dashboard_user(uuid,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.decide_access_review(uuid,text,text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.resolve_authorization_difference(uuid,text,text) TO authenticated;
 

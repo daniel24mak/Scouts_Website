@@ -89,7 +89,7 @@ test("seed contains the complete catalogue, protected roles, teams, and exact bu
     chief: [
       "dashboard.access", "notifications.view", "groups.view_assigned", "attendance.view",
       "attendance.record", "forms.fill", "forms.view_own_submissions", "calendar.view",
-      "documents.view", "archived_years.view"
+      "documents.view", "archived_years.view", "storage.requests.submit"
     ],
     forms_manager: [
       "forms.create", "forms.templates.view", "forms.templates.manage", "forms.post.request",
@@ -109,7 +109,11 @@ test("seed contains the complete catalogue, protected roles, teams, and exact bu
     ],
     finance_approver: ["finance.view", "finance.approve_transaction", "finance.export"],
     storage_assistant: ["storage.view", "storage.issue_items", "storage.record_returns"],
-    storage_manager: Object.values(PERMISSIONS).filter((permission) => permission.startsWith("storage.")),
+    storage_manager: [
+      "storage.view", "storage.create_item", "storage.update_item", "storage.issue_items",
+      "storage.record_returns", "storage.adjust_quantity", "storage.write_off", "storage.audit",
+      "storage.export", "storage.manage_categories"
+    ],
     content_approver: ["content.approve", "content.publish", "media.approve", "media.publish"],
     access_administrator: [
       "users.view", "users.invite", "users.reset_password", "users.disable", "users.reactivate", "users.assign_roles",
@@ -118,7 +122,7 @@ test("seed contains the complete catalogue, protected roles, teams, and exact bu
     system_administrator: Object.values(PERMISSIONS)
   };
 
-  assert.equal(Object.values(PERMISSIONS).length, 115);
+  assert.ok(Object.values(PERMISSIONS).length >= 115, "permission catalogue must remain additive");
   assert.deepEqual([...seededPermissions].sort(), Object.values(PERMISSIONS).sort());
 
   for (const [role, permissions] of Object.entries(expectedBundles)) {

@@ -19234,3 +19234,309 @@ textarea:focus,
   background: rgb(142 162 255 / 0.12) !important;
   background-color: rgb(142 162 255 / 0.12) !important;
 }
+/* Focused Scouting services */
+.scouting-service-page {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.scouting-service-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.scouting-storage-request {
+  display: grid;
+  gap: 16px;
+}
+
+.scouting-storage-request > label,
+.scouting-storage-request .inline-editor-grid label {
+  display: grid;
+  gap: 7px;
+}
+
+.scouting-storage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 14px;
+}
+
+.scouting-storage-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-height: 170px;
+}
+
+.scouting-storage-card-heading,
+.scouting-budget-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.scouting-storage-card-heading > div,
+.scouting-budget-title > div {
+  min-width: 0;
+}
+
+.scouting-storage-card > span,
+.scouting-storage-card > p,
+.scouting-storage-card > small {
+  color: var(--dashboard-muted, #667085);
+}
+
+.scouting-storage-card h3,
+.scouting-storage-card p {
+  margin: 0;
+}
+
+.scouting-storage-metrics,
+.scouting-budget-summary dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.scouting-storage-metrics > div,
+.scouting-budget-summary dl > div {
+  display: grid;
+  gap: 2px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dashboard-surface, #fff) 92%, var(--dashboard-accent, #4055a6) 8%);
+}
+
+.scouting-storage-metrics dt,
+.scouting-budget-summary dt,
+.scouting-budget-amount span {
+  color: var(--dashboard-muted, #667085);
+  font-size: 0.78rem;
+}
+
+.scouting-storage-metrics dd,
+.scouting-budget-summary dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.scouting-storage-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--dashboard-muted, #667085);
+  font-size: 0.84rem;
+}
+
+.scouting-budget-section {
+  display: grid;
+  gap: 12px;
+}
+
+.scouting-budget-section > .panel-heading {
+  padding-inline: 2px;
+}
+
+.scouting-budget-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr));
+  gap: 14px;
+}
+
+.scouting-budget-summary {
+  display: grid;
+  gap: 16px;
+}
+
+.scouting-budget-title h3,
+.scouting-budget-title span,
+.scouting-budget-amount span {
+  margin: 0;
+}
+
+.scouting-budget-title > div > span {
+  color: var(--dashboard-muted, #667085);
+  font-size: 0.8rem;
+}
+
+.scouting-budget-amount {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.scouting-budget-amount strong {
+  font-size: clamp(1.35rem, 3vw, 2rem);
+}
+
+.scouting-budget-progress {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dashboard-muted, #667085) 18%, transparent);
+}
+
+.scouting-budget-progress > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--dashboard-accent, #4055a6);
+}
+
+.scouting-budget-categories {
+  display: grid;
+  gap: 9px;
+}
+
+.scouting-budget-categories > span {
+  color: var(--dashboard-muted, #667085);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.scouting-budget-categories > div,
+.scouting-budget-categories p {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+}
+
+.scouting-budget-categories p {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  font-size: 0.82rem;
+}
+
+.scouting-budget-categories p span {
+  color: var(--dashboard-muted, #667085);
+  white-space: nowrap;
+}
+
+.scouting-budget-categories i {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dashboard-muted, #667085) 15%, transparent);
+}
+
+.scouting-budget-categories b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--dashboard-accent, #4055a6);
+}
+
+@media (max-width: 560px) {
+  .scouting-storage-metrics,
+  .scouting-budget-summary dl {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.scouting-my-work-panel,
+.scouting-my-work-preview {
+  min-height: 0;
+}
+
+.scouting-my-work-list {
+  display: grid;
+  gap: 8px;
+}
+
+.scouting-my-work-row {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.35fr) minmax(180px, 1fr) minmax(100px, 0.4fr);
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 10px;
+  color: inherit;
+  text-decoration: none;
+  background: color-mix(in srgb, var(--dashboard-surface, #fff) 92%, var(--dashboard-accent, #4055a6) 8%);
+  transition: transform 160ms ease, background-color 160ms ease;
+}
+
+.scouting-my-work-row:hover,
+.scouting-my-work-row:focus-visible {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--dashboard-surface, #fff) 86%, var(--dashboard-accent, #4055a6) 14%);
+}
+
+.scouting-my-work-row > span,
+.scouting-my-work-row > small {
+  color: var(--dashboard-muted, #667085);
+}
+
+.dashboard-my-work-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  color: inherit;
+  background: transparent;
+}
+
+.dashboard-my-work-button:hover,
+.dashboard-my-work-button:focus-visible {
+  background: var(--dashboard-hover, rgb(64 85 166 / 0.1));
+}
+
+.dashboard-my-work-button small {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--dashboard-accent, #4055a6);
+}
+
+.forms-reimbursement-settings,
+.forms-reimbursements-page {
+  display: grid;
+  gap: 16px;
+}
+.forms-reimbursement-settings {
+  margin-top: 8px;
+  padding: 14px;
+  border: 1px solid var(--dashboard-line, #dce2ee);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dashboard-accent, #4055a6) 5%, transparent);
+}
+
+@media (max-width: 768px) {
+  .dashboard-my-work-button span {
+    display: none;
+  }
+
+  .dashboard-my-work-button {
+    width: 40px;
+    padding: 0;
+  }
+
+  .dashboard-my-work-button small {
+    position: absolute;
+    top: 1px;
+    right: 0;
+  }
+
+  .scouting-service-actions .primary-action {
+    width: 100%;
+  }
+
+  .scouting-my-work-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}

@@ -45,6 +45,12 @@ test("high-risk user Edge Functions require exact normalized permissions", () =>
   assert.match(create, /inviteUserByEmail/);
   assert.doesNotMatch(create, /temporary_password|createUser\s*\(/i);
   assert.match(remove, /requireDashboardPermission\(req, "users\.delete"\)/);
+  assert.doesNotMatch(remove, /user_profiles!inner/, "administrator deletion must not depend on an embedded PostgREST relationship");
+  assert.match(remove, /adminAssignmentsError/);
+  assert.match(remove, /activeAdminProfilesError/);
+  assert.match(remove, /rpc\("retire_dashboard_user"/);
+  assert.match(remove, /updateUserById\(userId,\s*\{\s*ban_duration:\s*"876000h"\s*\}\)/);
+  assert.doesNotMatch(remove, /auth\.admin\.deleteUser\(userId\)/);
   assert.match(reset, /requireDashboardPermission\(req, "users\.reset_password"\)/);
   assert.match(reset, /\/auth\/v1\/recover/);
   assert.doesNotMatch(reset, /password\s*:/i);
@@ -52,6 +58,19 @@ test("high-risk user Edge Functions require exact normalized permissions", () =>
   assert.match(shared, /rpc\("has_permission"/);
   assert.match(shared, /MFA-verified session/);
   assert.match(shared, /missing the required normalized permission/);
+});
+
+test("legacy scouting assignments can be removed through the audited People and Access API", () => {
+  const sql = read("../../database/supabase-people-access-api.sql");
+  const dashboard = read("../../src/pages/AdminDashboardPage.jsx");
+  const service = read("../../src/services/peopleAccessService.js");
+
+  assert.match(sql, /revoke_legacy_user_group_assignment\(target_user_id uuid, target_group_id text, reason text\)/i);
+  assert.match(sql, /require_people_access_permission\('users\.assign_groups'\)/i);
+  assert.match(sql, /group_id\s*=\s*CASE\s+WHEN\s+group_id=target_group_id\s+THEN\s+NULL/i);
+  assert.match(service, /revokeLegacyGroupAssignment/);
+  assert.match(dashboard, /revokeLegacyUserGroupAssignment/);
+  assert.doesNotMatch(dashboard, /Run the access-control backfill before removing this legacy assignment/);
 });
 
 test("account Edge Functions use request-aware CORS for production and local development", () => {

@@ -2,7 +2,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthProvider.jsx";
 import BrandedLoader from "../components/BrandedLoader.jsx";
 
-export default function ProtectedRoute({ allowedRoles, children, requirePublisher = false }) {
+export default function ProtectedRoute({ allowedRoles = [], allowAuthenticated = false, children, requirePublisher = false }) {
   const { user, isAuthLoading, isProfileLoading, authError } = useAuth();
   const location = useLocation();
 
@@ -14,6 +14,7 @@ export default function ProtectedRoute({ allowedRoles, children, requirePublishe
     role: user?.role ?? null,
     accountStatus: user?.accountStatus ?? null,
     allowedRoles,
+    allowAuthenticated,
     requirePublisher
   });
 
@@ -44,7 +45,7 @@ export default function ProtectedRoute({ allowedRoles, children, requirePublishe
 
   const isAdminChief = user.role === "admin" && allowedRoles.includes("chief") && user.groupId;
 
-  if (!allowedRoles.includes(user.role) && !isAdminChief) {
+  if (!allowAuthenticated && !allowedRoles.includes(user.role) && !isAdminChief) {
     console.debug("[auth] route guard role rejected", { role: user.role, allowedRoles });
     return <Navigate to="/" replace />;
   }

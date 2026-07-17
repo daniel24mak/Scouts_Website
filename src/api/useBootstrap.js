@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getBootstrap, loadingData } from "./client.js";
+import { normalizeBootstrapData } from "./bootstrapData.js";
 import { notifySiteLoadError } from "../services/siteErrorService.js";
 import { getCurrentSupabaseUserId } from "../services/supabaseClient.js";
 
@@ -29,10 +30,11 @@ function loadBootstrap({ force = false } = {}) {
   inFlightBootstrapUserId = userId;
   const request = getBootstrap()
     .then((nextData) => {
-      cachedBootstrap = nextData;
+      const safeData = normalizeBootstrapData(nextData, loadingData);
+      cachedBootstrap = safeData;
       cachedBootstrapUserId = userId;
       console.debug("[dashboard] bootstrap fetch complete");
-      return nextData;
+      return safeData;
     })
     .catch((error) => {
       console.error("[dashboard] bootstrap fetch failed", error);

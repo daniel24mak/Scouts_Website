@@ -61,7 +61,7 @@ import {
   updateLeader
 } from "../services/siteContentService.js";
 import { adminResetUserPassword, createDashboardUser, createProfile, deleteDashboardUser, getProfiles, reviewProfileChangeRequest, submitProfileChangeRequest, updateProfile } from "../services/userService.js";
-import { closePostedForm, deleteFormTemplateCascade, deletePostedFormCascade, getFormsData, reopenPostedForm, saveFormSubmission, saveFormTemplate, savePostedForm, updatePostedFormReview } from "../services/formService.js";
+import { closePostedForm, deleteFormTemplateCascade, deletePostedFormCascade, getFormsData, reopenPostedForm, saveFormSubmission, saveFormTemplate, savePostedForm, saveReimbursementFormDraft, submitReimbursementForm, updatePostedFormReview } from "../services/formService.js";
 import { deleteNotification, getNotifications, markAllNotificationsRead, markNotificationRead, markNotificationsDoneForEntity } from "../services/notificationService.js";
 import { getWebsiteContentRevisions, reviewWebsiteContentRevision, submitWebsiteContentRevision } from "../services/websiteContentRevisionService.js";
 import {
@@ -75,6 +75,7 @@ import {
   updateDashboardDocument,
   uploadDashboardDocuments
 } from "../services/settingsWorkspaceService.js";
+import { normalizeBootstrapData } from "./bootstrapData.js";
 
 export const fallbackData = {
   users: demoUsers,
@@ -164,7 +165,8 @@ export async function getBootstrap() {
     ]);
     const valueAt = (index, fallback) =>
       results[index]?.status === "fulfilled" ? results[index].value : fallback;
-    const users = valueAt(0, []);
+    const usersValue = valueAt(0, []);
+    const users = Array.isArray(usersValue) ? usersValue : [];
     const currentUserId = getCurrentSupabaseUserId();
     const currentUser = users.find((user) => user.id === currentUserId);
     const shadowAccess = await getBootstrapShadowAccess({ isLegacyAdmin: currentUser?.role === "admin" });
@@ -193,7 +195,10 @@ export async function getBootstrap() {
     const siteContentRevisions = valueAt(11, []);
     const settingsWorkspaceData = valueAt(12, { documentCategories: [], documents: [], archivedYears: [] });
 
-    return {
+    const allBlogPosts = Array.isArray(contentData?.allBlogPosts) ? contentData.allBlogPosts : [];
+    const allGalleryAlbums = Array.isArray(galleryData?.allGalleryAlbums) ? galleryData.allGalleryAlbums : [];
+
+    return normalizeBootstrapData({
       users,
       ...scoutData,
       ...attendanceData,
@@ -210,16 +215,16 @@ export async function getBootstrap() {
       notifications,
       siteContentRevisions,
       contentSubmissions: [
-        ...(contentData.allBlogPosts ?? []).map((post) => ({ ...post, contentType: "blog" })),
-        ...(galleryData.allGalleryAlbums ?? []).map((album) => ({ ...album, contentType: "album" }))
+        ...allBlogPosts.map((post) => ({ ...post, contentType: "blog" })),
+        ...allGalleryAlbums.map((album) => ({ ...album, contentType: "album" }))
       ]
-    };
+    }, loadingData);
   }
 
   try {
-    return await request("/bootstrap");
+    return normalizeBootstrapData(await request("/bootstrap"), fallbackData);
   } catch {
-    return fallbackData;
+    return normalizeBootstrapData(fallbackData, fallbackData);
   }
 }
 
@@ -698,6 +703,16 @@ export async function saveDashboardFormSubmission(payload) {
 
 export function readDashboardNotification(notificationId) {
   return isSupabaseConfigured ? markNotificationRead(notificationId) : Promise.resolve([]);
+}
+
+export async function submitDashboardReimbursement(payload) {
+  if (isSupabaseConfigured) return submitReimbursementForm(payload);
+  return Promise.resolve(payload);
+}
+
+export async function saveDashboardReimbursementDraft(payload) {
+  if (isSupabaseConfigured) return saveReimbursementFormDraft(payload);
+  return Promise.resolve(payload);
 }
 
 export function readAllDashboardNotifications() {

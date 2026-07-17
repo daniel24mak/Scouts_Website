@@ -5,7 +5,8 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import AvatarCropModal from "../../components/AvatarCropModal.jsx";
 import UserAvatar from "../../components/UserAvatar.jsx";
-import { filterPeopleAccessUsers, normalizePeopleAccessInvitation } from "./peopleAccessModel.js";
+import { asArray } from "../../utils/collections.js";
+import { filterPeopleAccessUsers, mergePeopleAccessUserDetails, normalizePeopleAccessInvitation } from "./peopleAccessModel.js";
 import "./peopleAccessWorkspace.css";
 
 const TABS = [
@@ -66,7 +67,7 @@ function UsersView({ workspace, onSelectUser }) {
       <td><Badge tone={person.accountStatus === "active" ? "success" : person.accountStatus === "disabled" ? "danger" : "warning"}>{titleCase(person.accountStatus)}</Badge></td>
       <td><strong>{person.scoutingPosition ? titleCase(person.scoutingPosition) : "Not assigned"}</strong><small>{person.primaryGroup ?? "No primary group"}</small></td>
       <td><ChipList items={person.roles} /></td><td><ChipList items={person.teams} /></td>
-      <td>{person.mfaStatus === "unavailable" ? <Badge>Unavailable</Badge> : <Badge tone={person.mfaStatus === "enrolled" ? "success" : "warning"}>{titleCase(person.mfaStatus)}</Badge>}{person.warnings.length > 0 && <AlertTriangle className="people-warning-icon" size={17} aria-label={`${person.warnings.length} access warnings`} />}</td>
+      <td>{person.mfaStatus === "unavailable" ? <Badge>Unavailable</Badge> : <Badge tone={person.mfaStatus === "enrolled" ? "success" : "warning"}>{titleCase(person.mfaStatus)}</Badge>}{asArray(person.warnings).length > 0 && <AlertTriangle className="people-warning-icon" size={17} aria-label={`${asArray(person.warnings).length} access warnings`} />}</td>
       <td><button type="button" className="people-icon-button" aria-label={`View ${person.name}`} onClick={() => onSelectUser(person)}><ChevronRight aria-hidden="true" /></button></td>
     </tr>)}</tbody></table></div> : <EmptyState title="No users match these filters" message="Reset the filters or try a different search." />}
   </section>;
@@ -97,7 +98,7 @@ function AssignmentEditor({ kind, user, items = [], options = [], canEdit, onCha
   };
   const remove = async (item) => {
     setBusy(true); setError("");
-    try { await onChange(kind, "remove", user, { id: item.id, reason: draft.reason }); }
+    try { await onChange(kind, "remove", user, { ...item, id: item.id, reason: draft.reason }); }
     catch (caught) { setError(caught?.message || "The assignment could not be removed."); }
     finally { setBusy(false); }
   };
@@ -109,11 +110,12 @@ function AssignmentEditor({ kind, user, items = [], options = [], canEdit, onCha
   </div>;
 }
 
-function UserDrawer({ person, details, loading, workspace, capabilities, onClose, onAction, onAssignmentChange }) {
+function UserDrawer({ person, details, detailError, loading, workspace, capabilities, onClose, onRetry, onAction, onAssignmentChange }) {
   const [tab, setTab] = useState("overview");
   const [actionError, setActionError] = useState("");
   const sections = ["overview", "scouting", "teams", "roles", "effective", "security", "activity"];
-  const user = details?.user?.id ? { ...person, ...details.user, legacyAccess: { ...(person.legacyAccess ?? {}), ...(details.user.legacyAccess ?? {}) } } : person;
+  const mergedDetails = useMemo(() => mergePeopleAccessUserDetails(person, details), [details, person]);
+  const user = mergedDetails.user;
   const runAction = async (action) => {
     setActionError("");
     try {
@@ -126,15 +128,16 @@ function UserDrawer({ person, details, loading, workspace, capabilities, onClose
     <header><div className="people-drawer-person"><UserAvatar name={user.name} imageUrl={user.profilePictureUrl} size={58} /><div><h2 id="people-user-title">{user.name}</h2><p>{user.email}</p></div></div><button type="button" className="people-icon-button" aria-label="Close user details" onClick={onClose}><X /></button></header>
     <nav className="people-subtabs" aria-label="User details">{sections.map((id) => <button type="button" key={id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}>{titleCase(id)}</button>)}</nav>
     <div className="people-drawer-body">{loading ? <div className="people-skeleton-stack" aria-label="Loading user access"><span /><span /><span /></div> : <>
-      {tab === "overview" && <div className="people-overview-stack"><div className="people-profile-summary"><Badge tone={user.accountStatus === "active" ? "success" : "warning"}>{titleCase(user.accountStatus)}</Badge><dl><div><dt>Invitation</dt><dd>{titleCase(user.invitationStatus)}</dd></div><div><dt>MFA</dt><dd>{titleCase(details?.security?.mfaStatus ?? "unavailable")}</dd></div><div><dt>Last active</dt><dd>{safeDate(user.lastActive)}</dd></div></dl></div>{user.warnings?.map((warning) => <div className="people-warning" key={String(warning)}><AlertTriangle /><span>{typeof warning === "string" ? warning : warning.message}</span></div>)}<DetailList title="Roles" items={details?.roleAssignments ?? user.roles} empty="No active role assignments." renderItem={(item) => <><strong>{item.name ?? item.role_name ?? item.role_id}</strong><span>{titleCase(item.scopeType ?? item.scope_type)}{item.scopeId || item.scope_id ? ` · ${item.scopeId ?? item.scope_id}` : ""}</span></>} /><DetailList title="Teams" items={details?.teamMemberships ?? user.teams} empty="No team memberships." renderItem={(item) => <><strong>{item.name ?? item.team_name ?? item.team_id}</strong><span>{titleCase(item.position ?? "member")}</span></>} /></div>}
-      {tab === "scouting" && <AssignmentEditor kind="group" user={user} items={details?.groupAssignments ?? user.groups} options={workspace.groups} canEdit={capabilities.assignGroups} onChange={onAssignmentChange} />}
-      {tab === "teams" && <><p className="people-advisory">Team membership describes where a user belongs. It does not automatically grant system permissions.</p><AssignmentEditor kind="team" user={user} items={details?.teamMemberships ?? user.teams} options={workspace.teams} canEdit={capabilities.assignTeams} onChange={onAssignmentChange} /></>}
-      {tab === "roles" && <><AssignmentEditor kind="role" user={user} items={details?.roleAssignments ?? user.roles} options={workspace.roles} canEdit={capabilities.assignRoles} onChange={onAssignmentChange} /><div className="people-advisory is-warning">Direct overrides make access harder to review. Prefer assigning a role whenever possible.</div><DetailList title="Advanced permission overrides" items={details?.permissionOverrides} empty="No direct overrides." renderItem={(item) => <><strong>{item.permission_name ?? item.permission_id}</strong><Badge tone={item.effect === "deny" ? "danger" : "warning"}>{titleCase(item.effect)}</Badge><span>{item.reason}</span></>} /></>}
-      {tab === "effective" && <EffectiveAccess access={details?.effectiveAccess} />}
-      {tab === "security" && <section className="people-security"><h3>Security</h3><dl>{[["MFA enrollment", details?.security?.mfaStatus], ["MFA required", details?.security?.mfaRequired], ["Assurance level", details?.security?.assuranceLevel], ["Last sign-in", details?.security?.lastSignIn ? safeDate(details.security.lastSignIn) : null], ["Last password reset", details?.security?.lastPasswordReset ? safeDate(details.security.lastPasswordReset) : null], ["Active sessions", details?.security?.activeSessions]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value === null || value === undefined ? "Unavailable" : typeof value === "boolean" ? (value ? "Required" : "Not required") : titleCase(value)}</dd></div>)}</dl>{capabilities.resetPassword && <button type="button" className="people-secondary-button" onClick={() => runAction("passwordReset")}><KeyRound />Send password reset</button>}</section>}
-      {tab === "activity" && <DetailList title="Access activity" items={details?.activity} empty="No access activity is available." renderItem={(item) => <><strong>{item.action ?? "Access changed"}</strong><span>{item.actor_name ?? "System"} · {safeDate(item.created_at ?? item.createdAt)}</span><small>{item.reason ?? item.outcome ?? ""}</small></>} />}
+      {detailError && <div className="people-error" role="alert"><AlertTriangle /><div><strong>Some access details could not be refreshed</strong><p>{detailError} Existing assignments from the people list are still shown below.</p></div><button type="button" className="people-secondary-button" onClick={onRetry}><RefreshCw />Retry</button></div>}
+      {tab === "overview" && <div className="people-overview-stack"><div className="people-profile-summary"><Badge tone={user.accountStatus === "active" ? "success" : "warning"}>{titleCase(user.accountStatus)}</Badge><dl><div><dt>Invitation</dt><dd>{titleCase(user.invitationStatus)}</dd></div><div><dt>MFA</dt><dd>{titleCase(mergedDetails.security?.mfaStatus ?? "unavailable")}</dd></div><div><dt>Last active</dt><dd>{safeDate(user.lastActive)}</dd></div></dl></div>{user.warnings?.map((warning) => <div className="people-warning" key={String(warning)}><AlertTriangle /><span>{typeof warning === "string" ? warning : warning.message}</span></div>)}<DetailList title="Roles" items={mergedDetails.roleAssignments} empty="No active role assignments." renderItem={(item) => <><strong>{item.name ?? item.role_name ?? item.role_id}</strong><span>{titleCase(item.scopeType ?? item.scope_type)}{item.scopeId || item.scope_id ? ` / ${item.scopeId ?? item.scope_id}` : ""}</span></>} /><DetailList title="Teams" items={mergedDetails.teamMemberships} empty="No team memberships." renderItem={(item) => <><strong>{item.name ?? item.team_name ?? item.team_id}</strong><span>{titleCase(item.position ?? "member")}</span></>} /></div>}
+      {tab === "scouting" && <AssignmentEditor kind="group" user={user} items={mergedDetails.groupAssignments} options={workspace.groups} canEdit={capabilities.assignGroups} onChange={onAssignmentChange} />}
+      {tab === "teams" && <><p className="people-advisory">Team membership describes where a user belongs. It does not automatically grant system permissions.</p><AssignmentEditor kind="team" user={user} items={mergedDetails.teamMemberships} options={workspace.teams} canEdit={capabilities.assignTeams} onChange={onAssignmentChange} /></>}
+      {tab === "roles" && <><AssignmentEditor kind="role" user={user} items={mergedDetails.roleAssignments} options={workspace.roles} canEdit={capabilities.assignRoles} onChange={onAssignmentChange} /><div className="people-advisory is-warning">Direct overrides make access harder to review. Prefer assigning a role whenever possible.</div><DetailList title="Advanced permission overrides" items={mergedDetails.permissionOverrides} empty="No direct overrides." renderItem={(item) => <><strong>{item.permission_name ?? item.permission_id}</strong><Badge tone={item.effect === "deny" ? "danger" : "warning"}>{titleCase(item.effect)}</Badge><span>{item.reason}</span></>} /></>}
+      {tab === "effective" && <EffectiveAccess access={mergedDetails.effectiveAccess} />}
+      {tab === "security" && <section className="people-security"><h3>Security</h3><dl>{[["MFA enrollment", mergedDetails.security?.mfaStatus], ["MFA required", mergedDetails.security?.mfaRequired], ["Assurance level", mergedDetails.security?.assuranceLevel], ["Last sign-in", mergedDetails.security?.lastSignIn ? safeDate(mergedDetails.security.lastSignIn) : null], ["Last password reset", mergedDetails.security?.lastPasswordReset ? safeDate(mergedDetails.security.lastPasswordReset) : null], ["Active sessions", mergedDetails.security?.activeSessions]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value === null || value === undefined ? "Unavailable" : typeof value === "boolean" ? (value ? "Required" : "Not required") : titleCase(value)}</dd></div>)}</dl>{capabilities.resetPassword && <button type="button" className="people-secondary-button" onClick={() => runAction("passwordReset")}><KeyRound />Send password reset</button>}</section>}
+      {tab === "activity" && <><p className="people-section-intro">Shows audited People & Access changes for this account, including who changed access, when it changed, and the recorded reason.</p><DetailList title="Access activity" items={mergedDetails.activity} empty="No audited access changes are available for this user." renderItem={(item) => <><strong>{item.action ?? "Access changed"}</strong><span>{item.actor_name ?? "System"} / {safeDate(item.created_at ?? item.createdAt)}</span><small>{item.reason ?? item.outcome ?? ""}</small></>} /></>}
     </>}{actionError && <div className="people-error" role="alert"><AlertTriangle /><div><strong>Account action failed</strong><p>{actionError}</p></div></div>}</div>
-    {(capabilities.editUser || capabilities.deleteUser) && <footer>{capabilities.editUser && <button type="button" className="people-secondary-button" onClick={() => runAction("editProfile")}>Edit profile & account</button>}{capabilities.deleteUser && <button type="button" className="people-danger-button" disabled={user.id === capabilities.currentUserId} title={user.id === capabilities.currentUserId ? "You cannot delete the account you are currently using." : "Permanently delete this account"} onClick={() => runAction("delete")}>Delete account</button>}</footer>}
+    {(capabilities.editUser || capabilities.deleteUser) && <footer>{capabilities.editUser && <button type="button" className="people-secondary-button" onClick={() => runAction("editProfile")}>Edit profile & account</button>}{capabilities.deleteUser && <button type="button" className="people-danger-button" disabled={user.id === capabilities.currentUserId} title={user.id === capabilities.currentUserId ? "You cannot remove the account you are currently using." : "Remove login access while retaining historical contributions"} onClick={() => runAction("delete")}>Remove account</button>}</footer>}
   </aside></div>;
 }
 
@@ -144,10 +147,23 @@ function EffectiveAccess({ access }) {
   return <section className="people-effective"><h3>Effective access</h3><p>Trusted server-calculated access, including role grants and direct denies.</p>{Object.keys(grouped).length ? Object.entries(grouped).map(([module, items]) => <article key={module}><h4>{titleCase(module)}</h4>{items.map((item, index) => <div key={`${item.key}-${index}`}><span><strong>{titleCase(item.key)}</strong><small>{item.key}</small></span><span>{titleCase(item.scopeType)}{item.scopeId ? ` · ${item.scopeId}` : ""}</span><span>{item.source ?? "Role"}</span>{item.requiresMfa && <Badge tone="warning">MFA</Badge>}</div>)}</article>) : <EmptyState icon={ShieldCheck} title="No effective permissions" message="This user has no active normalized grants, or access could not be calculated." />}</section>;
 }
 
-function CatalogView({ kind, items, canCreate, onCreate }) {
+function CatalogView({ kind, items, canCreate, canDelete, onCreate, onDelete }) {
   const isRole = kind === "role";
+  const [deletingId, setDeletingId] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
+  const removeItem = async (item) => {
+    if (!window.confirm(`Delete ${item.name}? This removes it from every assigned user.`)) return;
+    const reason = window.prompt("Reason for deletion", `Delete custom ${kind}: ${item.name}`);
+    if (!reason?.trim()) return;
+    setDeleteError("");
+    setDeletingId(item.id);
+    try { await onDelete(item, reason.trim()); }
+    catch (caught) { setDeleteError(caught?.message || `${titleCase(kind)} could not be deleted.`); }
+    finally { setDeletingId(null); }
+  };
   return <section className="people-view"><div className="people-view-heading"><div><h2>{isRole ? "Roles" : "Teams"}</h2><p>{isRole ? "Reusable permission bundles with explicit scopes and security requirements." : "Organizational membership is separate from system authorization."}</p></div>{canCreate && <button type="button" className="people-primary-button" onClick={onCreate}><Plus />Create {titleCase(kind)}</button>}</div>
-    {items.length ? <div className="people-catalog-grid">{items.map((item) => <article key={item.id}><div><Badge tone={item.riskLevel === "high" ? "danger" : item.riskLevel === "elevated" ? "warning" : "neutral"}>{titleCase(item.riskLevel)}</Badge>{item.isSystem && <Badge>Protected</Badge>}</div><h3>{item.name}</h3><p>{item.description || (isRole ? "No role description provided." : "No team description provided.")}</p><dl><div><dt>{isRole ? "Assigned users" : "Members"}</dt><dd>{item.memberCount}</dd></div>{isRole && <div><dt>Permissions</dt><dd>{item.permissionCount}</dd></div>}<div><dt>Status</dt><dd>{item.isActive ? "Active" : "Disabled"}</dd></div></dl>{isRole && <ChipList items={item.supportedScopes.map((scope) => ({ key: scope, name: titleCase(scope) }))} empty="No scopes configured" />}</article>)}</div> : <EmptyState icon={isRole ? ShieldCheck : UsersRound} title={isRole ? "No roles are available" : "No organizational teams have been created yet"} message={isRole ? "Run the access-control seed or create an authorized custom role." : "Create a team when people need an organizational membership."} />}
+    {items.length ? <div className="people-catalog-grid">{items.map((item) => <article key={item.id}><div className="people-catalog-card-head"><div><Badge tone={item.riskLevel === "high" ? "danger" : item.riskLevel === "elevated" ? "warning" : "neutral"}>{titleCase(item.riskLevel)}</Badge>{item.isSystem && <Badge>Protected</Badge>}</div>{canDelete && !item.isSystem && <button type="button" className="people-icon-button is-danger" aria-label={`Delete ${item.name}`} disabled={deletingId === item.id} onClick={() => removeItem(item)}><Trash2 /></button>}</div><h3>{item.name}</h3><p>{item.description || (isRole ? "No role description provided." : "No team description provided.")}</p><dl><div><dt>{isRole ? "Assigned users" : "Members"}</dt><dd>{item.memberCount}</dd></div>{isRole && <div><dt>Permissions</dt><dd>{item.permissionCount}</dd></div>}<div><dt>Status</dt><dd>{item.isActive ? "Active" : "Disabled"}</dd></div></dl>{isRole && <ChipList items={item.supportedScopes.map((scope) => ({ key: scope, name: titleCase(scope) }))} empty="No scopes configured" />}</article>)}</div> : <EmptyState icon={isRole ? ShieldCheck : UsersRound} title={isRole ? "No roles are available" : "No organizational teams have been created yet"} message={isRole ? "Run the access-control seed or create an authorized custom role." : "Create a team when people need an organizational membership."} />}
+    {deleteError && <div className="people-error" role="alert"><AlertTriangle /><div><strong>Delete failed</strong><p>{deleteError}</p></div></div>}
   </section>;
 }
 
@@ -216,15 +232,24 @@ function InviteWizard({ workspace, onClose, onSubmit }) {
   </div>;
 }
 
-export default function PeopleAccessWorkspace({ workspace, loading, error, warning, capabilities = {}, onRefresh, onInvite, onLoadUser, onUserAction, onAssignmentChange, onCreateRole, onCreateTeam, onReviewDecision }) {
+export default function PeopleAccessWorkspace({ workspace, loading, error, warning, capabilities = {}, onRefresh, onInvite, onLoadUser, onUserAction, onAssignmentChange, onCreateRole, onCreateTeam, onDeleteRole, onDeleteTeam, onReviewDecision }) {
   const visibleTabs = TABS.filter(([id]) => capabilities[id] !== false);
   const [tab, setTab] = useState(visibleTabs[0]?.[0] ?? "users");
   const [selectedUser, setSelectedUser] = useState(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [details, setDetails] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const openUser = async (person) => { setSelectedUser(person); setDetails(null); setDetailLoading(true); try { setDetails(await onLoadUser?.(person.id)); } finally { setDetailLoading(false); } };
-  const closeUser = () => { setSelectedUser(null); setDetails(null); };
+  const [detailError, setDetailError] = useState("");
+  const openUser = async (person) => {
+    setSelectedUser(person);
+    setDetails(null);
+    setDetailError("");
+    setDetailLoading(true);
+    try { setDetails(await onLoadUser?.(person.id)); }
+    catch (caught) { setDetailError(caught?.message || "User access details could not be loaded."); }
+    finally { setDetailLoading(false); }
+  };
+  const closeUser = () => { setSelectedUser(null); setDetails(null); setDetailError(""); };
   if (loading) return <div className="people-workspace"><div className="people-skeleton-stack" aria-label="Loading People and Access"><span /><span /><span /><span /></div></div>;
   if (error) return <div className="people-workspace"><div className="people-error"><AlertTriangle /><div><strong>People & Access could not be loaded</strong><p>{error}</p></div><button type="button" className="people-secondary-button" onClick={onRefresh}><RefreshCw />Try again</button></div></div>;
   return <div className="people-workspace">
@@ -233,11 +258,11 @@ export default function PeopleAccessWorkspace({ workspace, loading, error, warni
     <SummaryCards summary={workspace.summary} />
     <nav className="people-tabs" aria-label="People and Access sections">{visibleTabs.map(([id, label, Icon]) => <button type="button" role="tab" aria-selected={tab === id} className={tab === id ? "active" : ""} key={id} onClick={() => setTab(id)}><Icon aria-hidden="true" />{label}</button>)}</nav>
     {tab === "users" && <UsersView workspace={workspace} onSelectUser={openUser} />}
-    {tab === "roles" && <CatalogView kind="role" items={workspace.roles} canCreate={capabilities.createRole} onCreate={onCreateRole} />}
-    {tab === "teams" && <CatalogView kind="team" items={workspace.teams} canCreate={capabilities.createTeam} onCreate={onCreateTeam} />}
+    {tab === "roles" && <CatalogView kind="role" items={workspace.roles} canCreate={capabilities.createRole} canDelete={capabilities.deleteRole} onCreate={onCreateRole} onDelete={onDeleteRole} />}
+    {tab === "teams" && <CatalogView kind="team" items={workspace.teams} canCreate={capabilities.createTeam} canDelete={capabilities.deleteTeam} onCreate={onCreateTeam} onDelete={onDeleteTeam} />}
     {tab === "reviews" && <ReviewView reviews={workspace.accessReviews} differences={workspace.migrationDifferences} onDecision={onReviewDecision} />}
     {tab === "audit" && <AuditView logs={workspace.auditLogs} />}
-    {selectedUser && <UserDrawer person={selectedUser} details={details} loading={detailLoading} workspace={workspace} capabilities={capabilities} onClose={closeUser} onAction={onUserAction} onAssignmentChange={async (...args) => { const next = await onAssignmentChange(...args); if (next) setDetails(next); return next; }} />}
+    {selectedUser && <UserDrawer person={selectedUser} details={details} detailError={detailError} loading={detailLoading} workspace={workspace} capabilities={capabilities} onClose={closeUser} onRetry={() => openUser(selectedUser)} onAction={onUserAction} onAssignmentChange={async (...args) => { const next = await onAssignmentChange(...args); if (next) setDetails(next); return next; }} />}
     {inviteOpen && <InviteWizard workspace={workspace} onClose={() => setInviteOpen(false)} onSubmit={onInvite} />}
   </div>;
 }
