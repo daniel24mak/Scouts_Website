@@ -9393,21 +9393,8 @@ textarea:focus-visible {
     display: none;
   }
 
-  .dashboard-mobile-search-toggle {
-  display: none;
-}
-
-.dashboard-topbar-actions {
+  .dashboard-topbar-actions {
     gap: 4px;
-  }
-
-  .dashboard-mobile-search-toggle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-color: transparent !important;
-    background: transparent !important;
-    box-shadow: none !important;
   }
 
   .dashboard-shell-toggle {
@@ -9421,7 +9408,6 @@ textarea:focus-visible {
 
   .dashboard-theme-toggle,
   .dashboard-notification-button,
-  .dashboard-mobile-search-toggle,
   .dashboard-profile-button {
     width: 36px;
     min-width: 36px;
@@ -16400,21 +16386,6 @@ span,
   white-space: nowrap;
 }
 
-.dashboard-mobile-search-toggle {
-  display: none;
-}
-
-.dashboard-topbar-search {
-  display: flex;
-  align-items: center;
-  min-width: 220px;
-  flex: 1 1 340px;
-}
-
-.dashboard-topbar-search input {
-  width: 100%;
-}
-
 .dashboard-topbar-actions {
   display: flex;
   align-items: center;
@@ -16633,6 +16604,67 @@ span,
   overflow-y: auto;
 }
 
+.dashboard-page-search {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--dashboard-line);
+  border-radius: 10px;
+  background: var(--dashboard-surface);
+}
+
+.dashboard-page-search label {
+  display: grid;
+  gap: 6px;
+  color: var(--dashboard-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.dashboard-page-search-field {
+  min-width: 220px;
+  flex: 1 1 520px;
+}
+
+.dashboard-page-search-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.dashboard-page-search-input > svg {
+  position: absolute;
+  left: 13px;
+  pointer-events: none;
+}
+
+.dashboard-page-search input,
+.dashboard-page-search select {
+  min-height: 42px;
+  border: 1px solid var(--dashboard-line);
+  border-radius: 8px;
+  color: var(--dashboard-text);
+  background: var(--dashboard-page-bg);
+}
+
+.dashboard-page-search input {
+  width: 100%;
+  padding: 0 14px 0 42px;
+}
+
+.dashboard-page-search select {
+  min-width: 170px;
+  padding: 0 34px 0 12px;
+}
+
+.dashboard-page-search input:focus,
+.dashboard-page-search select:focus {
+  outline: 2px solid color-mix(in srgb, var(--dashboard-blue) 35%, transparent);
+  border-color: var(--dashboard-blue);
+}
+
 @media (max-width: 900px) {
   .admin-cms-shell,
   .admin-cms-shell.sidebar-collapsed {
@@ -16670,40 +16702,27 @@ span,
     font-size: 1.05rem;
   }
 
-  .dashboard-mobile-search-toggle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-color: transparent !important;
-    background: transparent !important;
-    box-shadow: none !important;
-  }
-
   .dashboard-shell-toggle {
     display: none;
   }
 
-  .dashboard-topbar-search {
-    position: fixed;
-    top: 76px;
-    right: 12px;
-    left: 12px;
-    z-index: 75;
-    display: none;
-    min-width: 0;
-    padding: 10px;
-    border: 1px solid var(--dashboard-line);
-    border-radius: 14px;
-    background: var(--dashboard-surface);
-    box-shadow: 0 18px 48px rgb(15 23 42 / 0.18);
-  }
-
-  .dashboard-topbar-search.open {
-    display: flex;
-  }
-
   .dashboard-topbar-actions {
     gap: 4px;
+  }
+
+  .dashboard-page-search {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 11px;
+  }
+
+  .dashboard-page-search-field {
+    min-width: 0;
+    flex-basis: auto;
+  }
+
+  .dashboard-page-search select {
+    width: 100%;
   }
 
   .dashboard-bottom-tabs {
@@ -16864,7 +16883,6 @@ span,
 
   .dashboard-theme-toggle,
   .dashboard-notification-button,
-  .dashboard-mobile-search-toggle,
   .dashboard-profile-button {
     width: 36px;
     min-width: 36px;
@@ -16878,7 +16896,6 @@ span,
 .admin-cms-shell.dashboard-theme-dark button.dashboard-theme-toggle,
 .admin-cms-shell.dashboard-theme-dark button.dashboard-notification-button,
 .admin-cms-shell.dashboard-theme-dark button.dashboard-profile-button,
-.admin-cms-shell.dashboard-theme-dark button.dashboard-mobile-search-toggle,
 .admin-cms-shell.dashboard-theme-dark .admin-sidebar button,
 .admin-cms-shell.dashboard-theme-dark .admin-sidebar button.active,
 .admin-cms-shell.dashboard-theme-dark .sidebar-group.active-group > button.sidebar-group-trigger,
@@ -16902,7 +16919,6 @@ span,
 .admin-cms-shell.dashboard-theme-dark button.dashboard-theme-toggle,
 .admin-cms-shell.dashboard-theme-dark button.dashboard-notification-button,
 .admin-cms-shell.dashboard-theme-dark button.dashboard-profile-button,
-.admin-cms-shell.dashboard-theme-dark button.dashboard-mobile-search-toggle,
 .admin-cms-shell.dashboard-theme-dark .admin-sidebar button,
 .admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs button,
 .admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs a.dashboard-bottom-tab-link,
@@ -16921,8 +16937,6 @@ span,
 .admin-cms-shell.dashboard-theme-dark button.dashboard-notification-button:focus-visible,
 .admin-cms-shell.dashboard-theme-dark button.dashboard-profile-button:hover,
 .admin-cms-shell.dashboard-theme-dark button.dashboard-profile-button:focus-visible,
-.admin-cms-shell.dashboard-theme-dark button.dashboard-mobile-search-toggle:hover,
-.admin-cms-shell.dashboard-theme-dark button.dashboard-mobile-search-toggle:focus-visible,
 .admin-cms-shell.dashboard-theme-dark .admin-sidebar button:hover,
 .admin-cms-shell.dashboard-theme-dark .admin-sidebar button:focus-visible,
 .admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs button:hover,
@@ -18382,7 +18396,6 @@ span,
 .dashboard-theme-toggle,
 .dashboard-notification-button,
 .dashboard-profile-button,
-.dashboard-mobile-search-toggle,
 .admin-sidebar button,
 .dashboard-bottom-tabs button,
 .dashboard-bottom-tabs a.dashboard-bottom-tab-link,
@@ -18405,7 +18418,6 @@ span,
 .dashboard-theme-toggle:active,
 .dashboard-notification-button:active,
 .dashboard-profile-button:active,
-.dashboard-mobile-search-toggle:active,
 .admin-sidebar button:active,
 .dashboard-bottom-tabs button:active,
 .dashboard-bottom-tabs a.dashboard-bottom-tab-link:active,
@@ -18424,7 +18436,6 @@ span,
   .dashboard-theme-toggle:hover,
   .dashboard-notification-button:hover,
   .dashboard-profile-button:hover,
-  .dashboard-mobile-search-toggle:hover,
   .admin-sidebar button:hover,
   .dashboard-bottom-tabs button:hover,
   .dashboard-bottom-tabs a.dashboard-bottom-tab-link:hover,
@@ -18587,7 +18598,6 @@ span,
   .dashboard-theme-toggle,
   .dashboard-notification-button,
   .dashboard-profile-button,
-  .dashboard-mobile-search-toggle,
   .admin-sidebar button,
   .dashboard-bottom-tabs button,
   .dashboard-bottom-tabs a.dashboard-bottom-tab-link,
@@ -19216,8 +19226,6 @@ textarea:focus,
 .admin-cms-shell.dashboard-theme-dark button.dashboard-notification-button:focus-visible,
 .admin-cms-shell.dashboard-theme-dark button.dashboard-profile-button:hover,
 .admin-cms-shell.dashboard-theme-dark button.dashboard-profile-button:focus-visible,
-.admin-cms-shell.dashboard-theme-dark button.dashboard-mobile-search-toggle:hover,
-.admin-cms-shell.dashboard-theme-dark button.dashboard-mobile-search-toggle:focus-visible,
 .admin-cms-shell.dashboard-theme-dark .admin-sidebar button:hover,
 .admin-cms-shell.dashboard-theme-dark .admin-sidebar button:focus-visible,
 .admin-cms-shell.dashboard-theme-dark .dashboard-bottom-tabs button:hover,

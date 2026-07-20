@@ -8,6 +8,7 @@ const configs = {
   loans: ["Loans & returns", "loan", "Borrower custody, due dates, partial returns, and condition checks."],
   restocking: ["Restocking", "restock request", "Reorder work created from shortages and approved demand."],
   suppliers: ["Suppliers & deliveries", "supplier", "Supplier records and incoming delivery inspection."],
+  deliveries: ["Deliveries", "delivery", "Incoming delivery inspection and receipt against supplier orders."],
   maintenance: ["Maintenance", "maintenance issue", "Repair, safety, assignment, and completion tracking."],
   audits: ["Stock audits", "audit", "Independent stock counts and discrepancy review."],
   reports: ["Storage reports", "report", "Permission-scoped inventory, custody, and safety summaries."],

@@ -9,7 +9,8 @@ export const STORAGE_NAVIGATION = Object.freeze([
   { key: "maintenance", label: "Maintenance", group: "Supply & Care", permissions: ["storage.maintenance.view"] },
   { key: "audits", label: "Audits", group: "Supply & Care", permissions: ["storage.audits.view"] },
   { key: "reports", label: "Reports", group: "Insights", permissions: ["storage.reports.view"] },
-  { key: "settings", label: "Storage Settings", permission: "storage.settings.manage" }
+  { key: "myWork", label: "My Work" },
+  { key: "notifications", label: "Notifications" }
 ]);
 
 export const STORAGE_SECTION_TABS = Object.freeze({
@@ -20,7 +21,7 @@ export const STORAGE_SECTION_TABS = Object.freeze({
 
 export function getVisibleStorageNavigation(permissionKeys = []) {
   const permissions = new Set(permissionKeys);
-  return STORAGE_NAVIGATION.filter((item) => ["overview", "aiAssistant"].includes(item.key) || permissions.has(item.permission) || item.permissions?.some((key) => permissions.has(key)));
+  return STORAGE_NAVIGATION.filter((item) => ["overview", "aiAssistant", "myWork", "notifications"].includes(item.key) || permissions.has(item.permission) || item.permissions?.some((key) => permissions.has(key)));
 }
 
 export function normalizeStorageOverview(value = {}) {

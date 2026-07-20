@@ -11,10 +11,10 @@ import {
 test("finance navigation is grouped around user workflows and permission filtered", () => {
   assert.deepEqual(FINANCE_NAVIGATION.map((item) => item.key), [
     "overview", "aiAssistant", "transactions", "purchase-requests", "reimbursements", "collections",
-    "accounts-funds", "budgets", "reconciliation-periods", "reports", "settings"
+    "accounts-funds", "budgets", "reconciliation-periods", "reports", "myWork", "notifications", "settings"
   ]);
-  assert.deepEqual(getVisibleFinanceNavigation(["finance.transactions.view"]).map((item) => item.key), ["overview", "aiAssistant", "transactions"]);
-  assert.equal(getVisibleFinanceNavigation(["finance.workspace.access"]).length, 2);
+  assert.deepEqual(getVisibleFinanceNavigation(["finance.transactions.view"]).map((item) => item.key), ["overview", "aiAssistant", "transactions", "myWork", "notifications"]);
+  assert.equal(getVisibleFinanceNavigation(["finance.workspace.access"]).length, 4);
   assert.deepEqual(FINANCE_SECTION_TABS["accounts-funds"].map((tab) => tab.key), ["accounts", "funds", "categories"]);
   assert.deepEqual(FINANCE_SECTION_TABS.reimbursements.map((tab) => tab.key), ["requests", "forms"]);
   assert.deepEqual(FINANCE_SECTION_TABS.collections.map((tab) => tab.key), ["income", "campaigns", "charges-payments"]);

@@ -1,6 +1,6 @@
 import { Bell, ChevronDown, ListTodo, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Sun, UserRound } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import scoutLogo from "../assets/smscouts_logo.png";
 import UserAvatar from "../components/UserAvatar.jsx";
@@ -13,7 +13,6 @@ const sidebarKey = "scouts-dashboard-sidebar-mode";
 export default function FocusedWorkspaceShell({
   workspaceKey,
   workspaceLabel,
-  workspaceIcon: WorkspaceIcon,
   workspaces,
   onWorkspaceChange,
   navigation,
@@ -22,11 +21,11 @@ export default function FocusedWorkspaceShell({
   children
 }) {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const [theme, setTheme] = useState(() => window.localStorage.getItem(themeKey) ?? "light");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => window.localStorage.getItem(sidebarKey) === "collapsed");
   const [profileOpen, setProfileOpen] = useState(false);
+  const [mobileNavExpanded, setMobileNavExpanded] = useState(true);
   const profileRef = useRef(null);
 
   useEffect(() => {
@@ -40,65 +39,104 @@ export default function FocusedWorkspaceShell({
     document.addEventListener("pointerdown", close);
     return () => document.removeEventListener("pointerdown", close);
   }, []);
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+    let lastToggleY = window.scrollY;
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      const delta = currentScrollY - lastScrollY;
+      const distance = Math.abs(currentScrollY - lastToggleY);
+      if (!window.matchMedia("(max-width: 768px)").matches || mobileMenuOpen) {
+        setMobileNavExpanded(true);
+      } else if (currentScrollY < 120 || (delta < -6 && distance > 18)) {
+        setMobileNavExpanded(true);
+        lastToggleY = currentScrollY;
+      } else if (delta > 6 && distance > 28) {
+        setMobileNavExpanded(false);
+        lastToggleY = currentScrollY;
+      }
+      lastScrollY = currentScrollY;
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, [mobileMenuOpen]);
 
   const selectSection = (section) => {
     onSectionChange?.(section);
     setMobileMenuOpen(false);
   };
+  const activeTitle = navigation.find(({ key }) => key === activeSection)?.label ?? workspaceLabel;
+  const mobilePrimaryItems = navigation.slice(0, 4);
+  const mobileMoreActive = navigation.slice(4).some(({ key }) => key === activeSection);
+  const activeMobileIndex = Math.max(0, mobilePrimaryItems.findIndex(({ key }) => key === activeSection));
+  const mobileActiveIndex = mobileMoreActive || mobileMenuOpen ? mobilePrimaryItems.length : activeMobileIndex;
+  const mobileTabCount = mobilePrimaryItems.length + 1;
+  const triggerMobilePress = () => navigator.vibrate?.(8);
 
   return (
-    <div className={`focused-workspace-shell dashboard-theme-${theme} ${collapsed ? "sidebar-collapsed" : ""}`} data-workspace={workspaceKey}>
-      <header className="focused-workspace-topbar">
-        <button type="button" className="icon-button focused-workspace-collapse" title={collapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={() => setCollapsed((value) => !value)}>{collapsed ? <PanelLeftOpen size={19} /> : <PanelLeftClose size={19} />}</button>
-        <Link className="focused-workspace-logo" to="/" title="Back to website"><img src={scoutLogo} alt="St. Mary's Scouts Dubai" /></Link>
-        <div className="focused-workspace-brand">{WorkspaceIcon ? <WorkspaceIcon size={20} aria-hidden="true" /> : null}<strong>{workspaceLabel}</strong></div>
-        {workspaces?.length > 1 ? <WorkspaceSwitcher workspaces={workspaces} value={workspaceKey} onChange={onWorkspaceChange} /> : <span />}
-        <div className="focused-workspace-spacer" />
-        <div className="focused-workspace-actions">
-          {workspaceKey !== "my-work" ? <button type="button" className="icon-button" title="My Work" aria-label="Open My Work" onClick={() => navigate("/dashboard/my-work")}><ListTodo size={19} /></button> : null}
-          <button type="button" className="icon-button" title="Notifications" aria-label="Open Notifications" onClick={() => navigate("/dashboard/scouting/notifications")}><Bell size={19} /></button>
-          <button type="button" className="icon-button" title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} onClick={() => setTheme((value) => value === "dark" ? "light" : "dark")}> 
+    <div className={`admin-cms-shell focused-workspace-shell dashboard-theme-${theme} sidebar-${collapsed ? "collapsed" : "expanded"} ${mobileNavExpanded ? "mobile-menu-bar-visible" : ""}`} data-workspace={workspaceKey}>
+      <header className="dashboard-topbar">
+        <div className="dashboard-topbar-brand-group">
+          <button type="button" className="dashboard-shell-toggle" title={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={() => setCollapsed((value) => !value)}>{collapsed ? <PanelLeftOpen size={19} /> : <PanelLeftClose size={19} />}</button>
+          <Link className="dashboard-wordmark" to="/" title="Back to website" aria-label="Back to website"><img src={scoutLogo} alt="" /><span>St. Mary's Scouts</span></Link>
+        </div>
+        <div className="dashboard-topbar-title-group"><strong className="dashboard-topbar-title">{activeTitle}</strong>{workspaces?.length > 1 ? <WorkspaceSwitcher workspaces={workspaces} value={workspaceKey} onChange={onWorkspaceChange} /> : null}</div>
+        <div className="dashboard-topbar-actions">
+          {workspaceKey !== "my-work" ? <button type="button" className="dashboard-my-work-button" title="My Work" aria-label="Open My Work" onClick={() => selectSection("myWork")}><ListTodo size={19} /><span>My Work</span></button> : null}
+          <button type="button" className="dashboard-notification-button" title="Notifications" aria-label="Open Notifications" onClick={() => selectSection("notifications")}><Bell size={19} /></button>
+          <button type="button" className="dashboard-theme-toggle" title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} onClick={() => setTheme((value) => value === "dark" ? "light" : "dark")}>
             {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
           </button>
-          <div className="focused-workspace-profile-menu" ref={profileRef}>
-            <button type="button" className="focused-workspace-profile" title={user?.name ?? "Account"} onClick={() => setProfileOpen((value) => !value)} aria-expanded={profileOpen}>
-              <UserAvatar user={user} size={32} /><b>{user?.name ?? "Account"}</b><ChevronDown size={15} />
+          <div className="dashboard-profile-menu" ref={profileRef}>
+            <button type="button" className="dashboard-profile-button" title={user?.name ?? "Account"} onClick={() => setProfileOpen((value) => !value)} aria-expanded={profileOpen}>
+              <UserAvatar user={user} size={36} /><span>{user?.name ?? "Account"}</span><ChevronDown size={15} />
             </button>
-            {profileOpen ? <div className="focused-workspace-profile-dropdown"><button type="button" onClick={() => { setProfileOpen(false); window.sessionStorage.setItem("scouts-open-profile", "true"); onWorkspaceChange?.("scouting"); }}><UserRound size={16} />My Profile</button><button type="button" className="danger" onClick={() => logout()}><LogOut size={16} />Log Out</button></div> : null}
+            {profileOpen ? <div className="dashboard-profile-dropdown"><button type="button" onClick={() => { setProfileOpen(false); window.sessionStorage.setItem("scouts-open-profile", "true"); onWorkspaceChange?.("scouting"); }}><UserRound size={16} />My Profile</button><button type="button" className="danger" onClick={() => logout()}><LogOut size={16} />Log Out</button></div> : null}
           </div>
         </div>
       </header>
 
-      <aside className="focused-workspace-sidebar" aria-label={`${workspaceLabel} navigation`}>
-        {navigation.map(({ key, label, Icon, group }, index) => <Fragment key={key}>
-          {group && group !== navigation[index - 1]?.group ? <span className="focused-workspace-nav-group">{group}</span> : null}
-          <button type="button" className={activeSection === key ? "active" : ""} onClick={() => selectSection(key)}>{Icon ? <Icon size={18} aria-hidden="true" /> : null}<span>{label}</span></button>
-        </Fragment>)}
+      <aside className="admin-sidebar" aria-label={`${workspaceLabel} navigation`}>
+        <nav className="sidebar-navigation">
+          {navigation.map(({ key, label, Icon, group }, index) => <Fragment key={key}>
+            {group && group !== navigation[index - 1]?.group ? <span className="focused-workspace-nav-group">{group}</span> : null}
+            <button type="button" className={activeSection === key ? "active" : ""} onClick={() => selectSection(key)}>{Icon ? <Icon size={18} aria-hidden="true" /> : null}<span>{label}</span></button>
+          </Fragment>)}
+        </nav>
       </aside>
 
-      <main className="focused-workspace-main">{children}</main>
+      <main className="admin-main focused-workspace-main">{children}</main>
 
-      <nav className="focused-workspace-mobile-nav" aria-label={`${workspaceLabel} mobile navigation`}>
-        {navigation.slice(0, 4).map(({ key, label, Icon }) => (
-          <button type="button" key={key} className={activeSection === key ? "active" : ""} onClick={() => selectSection(key)}>
+      <nav className="dashboard-bottom-tabs" aria-label={`${workspaceLabel} mobile navigation`} style={{ "--mobile-tab-count": mobileTabCount, "--mobile-active-index": mobileActiveIndex }}>
+        <span className="dashboard-bottom-indicator" aria-hidden="true" />
+        {mobilePrimaryItems.map(({ key, label, Icon }) => (
+          <button type="button" key={key} className={activeSection === key ? "active" : ""} onPointerDown={triggerMobilePress} onClick={() => selectSection(key)} aria-label={label} title={label}>
             {Icon ? <Icon size={20} aria-hidden="true" /> : null}<span>{label}</span>
           </button>
         ))}
-        <button type="button" className={mobileMenuOpen ? "active" : ""} onClick={() => setMobileMenuOpen((open) => !open)} aria-expanded={mobileMenuOpen}>
+        <button type="button" className={mobileMenuOpen || mobileMoreActive ? "active" : ""} onPointerDown={triggerMobilePress} onClick={() => setMobileMenuOpen((open) => !open)} aria-expanded={mobileMenuOpen} aria-label="More" title="More">
           <Menu size={20} aria-hidden="true" /><span>More</span>
         </button>
       </nav>
 
       {mobileMenuOpen ? (
-        <div className="focused-workspace-mobile-sheet" role="dialog" aria-label={`${workspaceLabel} sections`}>
-          <button type="button" className="focused-workspace-sheet-backdrop" aria-label="Close menu" onClick={() => setMobileMenuOpen(false)} />
-          <div className="focused-workspace-sheet-panel">
-            <div><strong>{workspaceLabel} sections</strong><button type="button" onClick={() => setMobileMenuOpen(false)}>Close</button></div>
-            {navigation.map(({ key, label, Icon }) => (
-              <button type="button" key={key} className={activeSection === key ? "active" : ""} onClick={() => selectSection(key)}>
-                {Icon ? <Icon size={19} aria-hidden="true" /> : null}{label}
-              </button>
-            ))}
+        <div className="dashboard-more-sheet-backdrop" role="dialog" aria-label={`${workspaceLabel} sections`} onClick={() => setMobileMenuOpen(false)}>
+          <div className="dashboard-more-sheet" onClick={(event) => event.stopPropagation()}>
+            <div className="panel-heading compact"><div><p className="eyebrow">More</p><h2>{workspaceLabel} Sections</h2></div><button type="button" className="modal-close-button" aria-label="Close more menu" onClick={() => setMobileMenuOpen(false)}>Close</button></div>
+            <div className="dashboard-more-grid">
+              {navigation.map(({ key, label, Icon }) => (
+                <button type="button" key={key} className={activeSection === key ? "active" : ""} onClick={() => selectSection(key)}>
+                  {Icon ? <Icon size={19} aria-hidden="true" /> : null}<span>{label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       ) : null}

@@ -9,6 +9,8 @@ export const FINANCE_NAVIGATION = Object.freeze([
   { key: "budgets", label: "Budgets", group: "Planning & Control", permissions: ["finance.budgets.view"] },
   { key: "reconciliation-periods", label: "Reconciliation & Periods", group: "Planning & Control", permissions: ["finance.reconciliation.view", "finance.periods.view"] },
   { key: "reports", label: "Reports", group: "Insights", permissions: ["finance.reports.view"] },
+  { key: "myWork", label: "My Work" },
+  { key: "notifications", label: "Notifications" },
   { key: "settings", label: "Finance Settings", permission: "finance.settings.manage" }
 ]);
 
@@ -21,7 +23,7 @@ export const FINANCE_SECTION_TABS = Object.freeze({
 
 export function getVisibleFinanceNavigation(permissionKeys = []) {
   const permissions = new Set(permissionKeys);
-  return FINANCE_NAVIGATION.filter((item) => ["overview", "aiAssistant"].includes(item.key) || permissions.has(item.permission) || item.permissions?.some((key) => permissions.has(key)));
+  return FINANCE_NAVIGATION.filter((item) => ["overview", "aiAssistant", "myWork", "notifications"].includes(item.key) || permissions.has(item.permission) || item.permissions?.some((key) => permissions.has(key)));
 }
 
 export function formatFinanceAmount(value, currency = "AED") {

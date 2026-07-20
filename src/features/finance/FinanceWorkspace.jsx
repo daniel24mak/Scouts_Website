@@ -1,11 +1,12 @@
 import {
-  BarChart3, Banknote, BookOpenCheck, Building2, ClipboardCheck, FileBarChart2, HandCoins,
-  Landmark, LayoutDashboard, PiggyBank, ReceiptText, RefreshCcw, Settings2, Sparkles, WalletCards
+  BarChart3, Banknote, Bell, BookOpenCheck, Building2, ClipboardCheck, FileBarChart2, HandCoins,
+  Landmark, LayoutDashboard, ListTodo, PiggyBank, ReceiptText, RefreshCcw, Settings2, Sparkles, WalletCards
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import FocusedWorkspaceShell from "../../workspaces/FocusedWorkspaceShell.jsx";
 import WorkspaceAssistant from "../../workspaces/WorkspaceAssistant.jsx";
 import WorkspaceRecordManager from "../../workspaces/WorkspaceRecordManager.jsx";
+import { WorkspaceActivityLog, WorkspaceMyWork, WorkspaceNotifications } from "../../workspaces/WorkspaceSharedSections.jsx";
 import WorkspaceTabs from "../../workspaces/WorkspaceTabs.jsx";
 import { asArray } from "../../utils/collections.js";
 import { FINANCE_NAVIGATION, FINANCE_SECTION_TABS, formatFinanceAmount, getFinancePermissionKeys, getVisibleFinanceNavigation } from "./financeModel.js";
@@ -18,7 +19,7 @@ const icons = {
   overview: LayoutDashboard, aiAssistant: Sparkles, transactions: ReceiptText, "accounts-funds": Landmark,
   budgets: BarChart3, "purchase-requests": ClipboardCheck, reimbursements: HandCoins,
   collections: Banknote, "reconciliation-periods": RefreshCcw,
-  reports: FileBarChart2, settings: Settings2
+  reports: FileBarChart2, settings: Settings2, myWork: ListTodo, notifications: Bell
 };
 
 function FinanceState({ title, children, action }) {
@@ -84,15 +85,20 @@ export default function FinanceWorkspace({ section = "overview", effectiveAccess
   const [state, setState] = useState({ loading: true, error: "", data: null });
   const [reloadToken, setReloadToken] = useState(0);
   const refreshSection = async () => setReloadToken((value) => value + 1);
+  const isSharedSection = ["reports", "myWork", "notifications"].includes(activeSection);
 
   useEffect(() => {
     let cancelled = false;
+    if (isSharedSection) {
+      setState({ loading: false, error: "", data: null });
+      return () => { cancelled = true; };
+    }
     setState({ loading: true, error: "", data: null });
     const request = activeSection === "overview" ? getFinanceOverview() : getFinanceSectionData(activeSection);
     request.then((data) => { if (!cancelled) setState({ loading: false, error: "", data }); })
       .catch((error) => { if (!cancelled) setState({ loading: false, error: error.message, data: null }); });
     return () => { cancelled = true; };
-  }, [activeSection, reloadToken]);
+  }, [activeSection, isSharedSection, reloadToken]);
 
   const canManageCatalog = permissionKeys.includes("finance.settings.manage");
 
@@ -102,6 +108,9 @@ export default function FinanceWorkspace({ section = "overview", effectiveAccess
     {!state.loading && state.error ? <FinanceState title="Finance data could not be loaded" action={<button type="button" onClick={() => window.location.reload()}>Reload workspace</button>}><p>{state.error.includes("PGRST") || state.error.includes("schema cache") ? "Apply the Finance migrations in Supabase, then reload this workspace." : state.error}</p></FinanceState> : null}
     {!state.loading && !state.error && activeSection === "overview" ? <Overview data={state.data} /> : null}
     {!state.loading && !state.error && activeSection === "aiAssistant" ? <WorkspaceAssistant workspaceLabel="Finance" /> : null}
-    {!state.loading && !state.error && !["overview","aiAssistant"].includes(activeSection) ? <SectionData section={activeSection} rows={state.data ?? []} canManage={canManageCatalog} permissions={permissionKeys} onRefresh={refreshSection} /> : null}
+    {activeSection === "reports" ? <WorkspaceActivityLog workspaceKey="finance" workspaceLabel="Finance" /> : null}
+    {activeSection === "myWork" ? <WorkspaceMyWork workspaceKey="finance" effectiveAccess={effectiveAccess} /> : null}
+    {activeSection === "notifications" ? <WorkspaceNotifications workspaceLabel="Finance" /> : null}
+    {!state.loading && !state.error && !["overview", "aiAssistant", "reports", "myWork", "notifications"].includes(activeSection) ? <SectionData section={activeSection} rows={state.data ?? []} canManage={canManageCatalog} permissions={permissionKeys} onRefresh={refreshSection} /> : null}
   </FocusedWorkspaceShell>;
 }

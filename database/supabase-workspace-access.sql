@@ -97,4 +97,12 @@ INSERT INTO public.role_permissions(role_id, permission_id)
 SELECT 'system_administrator', id FROM desired_permissions
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
+DROP POLICY IF EXISTS "workspace report viewers read audit logs" ON public.audit_logs;
+CREATE POLICY "workspace report viewers read audit logs" ON public.audit_logs
+  FOR SELECT TO authenticated
+  USING (
+    (module = 'finance' AND public.has_permission('finance.reports.view'))
+    OR (module = 'storage' AND public.has_permission('storage.reports.view'))
+  );
+
 COMMIT;
