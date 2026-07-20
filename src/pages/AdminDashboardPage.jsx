@@ -413,6 +413,33 @@ function filterBySearch(items, search, fields) {
   );
 }
 
+const dashboardSectionSearchPlaceholders = {
+  overview: "Search upcoming events",
+  myGroup: "Search scouts in this group",
+  scouts: "Search registered scouts",
+  usersPermissions: "Search users and permissions",
+  posts: "Search blogs and news",
+  gallery: "Search albums and gallery content",
+  faqs: "Search FAQs",
+  notifications: "Search notifications",
+  approvals: "Search approval requests",
+  scoutAttendance: "Search scouts for attendance",
+  attendanceSheets: "Search attendance sheets",
+  chiefAttendance: "Search chiefs for attendance",
+  manageForms: "Search forms",
+  formsCreate: "Search forms",
+  formTemplates: "Search templates",
+  postedForms: "Search posted forms",
+  formResponses: "Search form responses",
+  myForms: "Search my forms",
+  myFormDrafts: "Search form drafts",
+  mySubmittedForms: "Search submitted forms",
+  calendar: "Search calendar events",
+  reports: "Search report records",
+  documents: "Search documents",
+  archives: "Search archived years and content"
+};
+
 function auditMetaValue(metadata, side, key) {
   return metadata?.[side]?.[key] ?? metadata?.[`${side}_${key}`] ?? null;
 }
@@ -877,7 +904,6 @@ export default function AdminDashboardPage({
   const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
   const [openMobileMoreGroups, setOpenMobileMoreGroups] = useState({});
   const [discardCloseRequest, setDiscardCloseRequest] = useState(null);
-  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [profileEdit, setProfileEdit] = useState({ name: user?.name ?? "", profilePictureFile: null, profilePicturePreview: "", currentPassword: "", newPassword: "", confirmPassword: "" });
   const [profileMessage, setProfileMessage] = useState("");
   const [passwordResetUser, setPasswordResetUser] = useState(null);
@@ -1228,6 +1254,7 @@ export default function AdminDashboardPage({
     }
   }, [allAlbums, photoAlbumId]);
   useEffect(() => {
+    setSearch("");
     setStatusFilter("all");
   }, [activeSection]);
   useEffect(() => {
@@ -1357,7 +1384,7 @@ export default function AdminDashboardPage({
     };
   }, [isMobileSidebarOpen]);
   useEffect(() => {
-    if (!isProfileMenuOpen && !isNotificationsOpen && !isMobileSearchOpen) {
+    if (!isProfileMenuOpen && !isNotificationsOpen) {
       return undefined;
     }
 
@@ -1366,9 +1393,6 @@ export default function AdminDashboardPage({
       if (!target.closest?.(".dashboard-profile-menu") && !target.closest?.(".dashboard-notification-menu")) {
         setIsProfileMenuOpen(false);
         setIsNotificationsOpen(false);
-      }
-      if (!target.closest?.(".dashboard-topbar-search") && !target.closest?.(".dashboard-mobile-search-toggle")) {
-        setIsMobileSearchOpen(false);
       }
     };
 
@@ -1379,7 +1403,7 @@ export default function AdminDashboardPage({
       document.removeEventListener("mousedown", closeOpenTopbarMenus);
       document.removeEventListener("touchstart", closeOpenTopbarMenus);
     };
-  }, [isProfileMenuOpen, isNotificationsOpen, isMobileSearchOpen]);
+  }, [isProfileMenuOpen, isNotificationsOpen]);
   useEffect(() => {
     const unsubscribe = subscribeDashboardRealtime(async () => {
       await refresh();
@@ -3044,7 +3068,7 @@ export default function AdminDashboardPage({
   const renderContactMessages = () => {
     const messages = (data.contactMessages ?? []).filter((message) => {
       const matchesStatus = contactInboxStatus === "all" || message.status === contactInboxStatus;
-      const query = `${contactInboxSearch} ${search}`.trim().toLowerCase();
+      const query = contactInboxSearch.trim().toLowerCase();
       const matchesSearch = !query || [message.name, message.email, message.subject, message.message].some((value) => String(value ?? "").toLowerCase().includes(query));
       return matchesStatus && matchesSearch;
     });
@@ -4709,24 +4733,6 @@ export default function AdminDashboardPage({
         <strong className="dashboard-topbar-title">{activeTitle}</strong>
         <WorkspaceSwitcher workspaces={availableWorkspaces} value={workspaceKey} onChange={onWorkspaceChange} />
       </div>
-      <button type="button" className="dashboard-mobile-search-toggle" aria-label="Search current section" aria-expanded={isMobileSearchOpen} onClick={() => setIsMobileSearchOpen((current) => !current)}><Search size={18} aria-hidden="true" /></button>
-      <div className={`dashboard-topbar-search ${isMobileSearchOpen ? "open" : ""}`}>
-        <input placeholder="Search current section" value={search} onChange={(event) => setSearch(event.target.value)} />
-        {[
-          "posts",
-          "gallery",
-          "approvals",
-          "contactMessages"
-        ].includes(activeSection) && (
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-            <option value="all">All statuses</option>
-            {(activeSection === "contactMessages"
-              ? ["new", "read", "replied", "archived"]
-              : contentStatuses
-            ).map((status) => <option value={status} key={status}>{status}</option>)}
-          </select>
-        )}
-      </div>
       <div className="dashboard-topbar-actions">
         <button type="button" className="dashboard-my-work-button" onClick={() => openDashboardSection("myWork")} title="My Work" aria-label="Open My Work"><ListTodo size={18} aria-hidden="true" /><span>My Work</span>{myWorkTasks.length > 0 && <small>{myWorkTasks.length}</small>}</button>
         <div className="dashboard-notification-menu">
@@ -4907,6 +4913,26 @@ export default function AdminDashboardPage({
           </div>
         )}
         {uploadStatus && <UploadLoadingState message={uploadStatus} progress={photoUploadProgress.total ? photoUploadProgress : null} />}
+        {dashboardSectionSearchPlaceholders[activeSection] && (
+          <div className="dashboard-page-search" role="search" aria-label={`${activeTitle} search and filters`}>
+            <label className="dashboard-page-search-field">
+              <span>Search</span>
+              <span className="dashboard-page-search-input">
+                <Search size={18} aria-hidden="true" />
+                <input type="search" placeholder={dashboardSectionSearchPlaceholders[activeSection]} value={search} onChange={(event) => setSearch(event.target.value)} />
+              </span>
+            </label>
+            {["posts", "gallery", "approvals"].includes(activeSection) && (
+              <label className="dashboard-page-status-filter">
+                <span>Status</span>
+                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                  <option value="all">All statuses</option>
+                  {contentStatuses.map((status) => <option value={status} key={status}>{status}</option>)}
+                </select>
+              </label>
+            )}
+          </div>
+        )}
         {renderSection()}
       </main>
       {isProfileModalOpen && (

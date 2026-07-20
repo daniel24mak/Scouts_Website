@@ -10,9 +10,9 @@ import {
 test("storage navigation is grouped around user workflows and permission filtered", () => {
   assert.deepEqual(STORAGE_NAVIGATION.map((item) => item.key), [
     "overview", "aiAssistant", "inventory", "requests", "loans", "locations-movements",
-    "procurement", "maintenance", "audits", "reports", "settings"
+    "procurement", "maintenance", "audits", "reports", "myWork", "notifications"
   ]);
-  assert.deepEqual(getVisibleStorageNavigation(["storage.inventory.view"]).map((item) => item.key), ["overview", "aiAssistant", "inventory", "locations-movements"]);
+  assert.deepEqual(getVisibleStorageNavigation(["storage.inventory.view"]).map((item) => item.key), ["overview", "aiAssistant", "inventory", "locations-movements", "myWork", "notifications"]);
   assert.deepEqual(STORAGE_SECTION_TABS.inventory.map((tab) => tab.key), ["items", "assets", "kits", "categories"]);
   assert.deepEqual(STORAGE_SECTION_TABS["locations-movements"].map((tab) => tab.key), ["locations", "movements"]);
   assert.deepEqual(STORAGE_SECTION_TABS.procurement.map((tab) => tab.key), ["restocking", "suppliers", "deliveries"]);

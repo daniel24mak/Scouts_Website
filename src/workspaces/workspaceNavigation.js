@@ -12,7 +12,7 @@ export const WORKSPACE_NAVIGATION = Object.freeze({
     ...COMMON_END
   ]),
   finance: Object.freeze([...COMMON_START, "transactions", "purchase-requests", "reimbursements", "collections", "accounts-funds", "budgets", "reconciliation-periods", "reports", "settings", ...COMMON_END]),
-  storage: Object.freeze([...COMMON_START, "inventory", "requests", "loans", "locations-movements", "procurement", "maintenance", "audits", "reports", "settings", ...COMMON_END]),
+  storage: Object.freeze([...COMMON_START, "inventory", "requests", "loans", "locations-movements", "procurement", "maintenance", "audits", "reports", ...COMMON_END]),
   media: Object.freeze([...COMMON_START, "posts", "gallery", "calendar", ...COMMON_END])
 });
 
