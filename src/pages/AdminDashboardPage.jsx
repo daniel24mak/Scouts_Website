@@ -2338,10 +2338,10 @@ export default function AdminDashboardPage({
     if (action === "delete") {
       if (!peopleAccessCapabilities.deleteUser) throw new Error("You do not have permission to delete users.");
       if (!profile?.id) throw new Error("This user account does not have a valid ID.");
-      const confirmed = window.confirm(`Remove ${profile.name}'s dashboard access? Their historical contributions will be retained for audit and reporting.`);
+      const confirmed = window.confirm(`Permanently delete ${profile.name}'s login account? Their existing contributions will continue to show their name.`);
       if (!confirmed) return false;
       await removeDashboardUser(profile.id);
-      setSaveMessage("User access removed. Historical contributions were retained.");
+      setSaveMessage("User deleted. Existing contributions still show the contributor's name.");
       await refresh();
       await loadPeopleAccessWorkspace();
       return true;

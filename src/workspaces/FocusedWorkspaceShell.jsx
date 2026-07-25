@@ -1,5 +1,6 @@
-import { Bell, ChevronDown, ListTodo, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Sun, UserRound } from "lucide-react";
+import { Bell, ChevronDown, ListTodo, Menu, Moon, PanelLeftClose, PanelLeftOpen, Sun } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import scoutLogo from "../assets/smscouts_logo.png";
@@ -26,6 +27,7 @@ export default function FocusedWorkspaceShell({
   const [collapsed, setCollapsed] = useState(() => window.localStorage.getItem(sidebarKey) === "collapsed");
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileNavExpanded, setMobileNavExpanded] = useState(true);
+  const [sidebarTooltip, setSidebarTooltip] = useState(null);
   const profileRef = useRef(null);
 
   useEffect(() => {
@@ -33,6 +35,7 @@ export default function FocusedWorkspaceShell({
   }, [theme]);
   useEffect(() => {
     window.localStorage.setItem(sidebarKey, collapsed ? "collapsed" : "expanded");
+    if (!collapsed) setSidebarTooltip(null);
   }, [collapsed]);
   useEffect(() => {
     const close = (event) => { if (!profileRef.current?.contains(event.target)) setProfileOpen(false); };
@@ -88,7 +91,30 @@ export default function FocusedWorkspaceShell({
   const selectSection = (section) => {
     onSectionChange?.(section);
     setMobileMenuOpen(false);
+    setSidebarTooltip(null);
   };
+  const sidebarTooltipHandlers = (label) => ({
+    onMouseEnter: (event) => {
+      if (!collapsed) return;
+      const rect = event.currentTarget.getBoundingClientRect();
+      setSidebarTooltip({
+        label,
+        left: rect.right + 8,
+        top: rect.top + rect.height / 2
+      });
+    },
+    onMouseLeave: () => setSidebarTooltip(null),
+    onFocus: (event) => {
+      if (!collapsed) return;
+      const rect = event.currentTarget.getBoundingClientRect();
+      setSidebarTooltip({
+        label,
+        left: rect.right + 8,
+        top: rect.top + rect.height / 2
+      });
+    },
+    onBlur: () => setSidebarTooltip(null)
+  });
   const activeTitle = navigation.find(({ key }) => key === activeSection)?.label ?? workspaceLabel;
   const mobilePrimaryItems = navigation.slice(0, 4);
   const mobileMoreActive = navigation.slice(4).some(({ key }) => key === activeSection);
@@ -106,16 +132,16 @@ export default function FocusedWorkspaceShell({
         </div>
         <div className="dashboard-topbar-title-group"><strong className="dashboard-topbar-title">{activeTitle}</strong>{workspaces?.length > 1 ? <WorkspaceSwitcher workspaces={workspaces} value={workspaceKey} onChange={onWorkspaceChange} /> : null}</div>
         <div className="dashboard-topbar-actions">
-          {workspaceKey !== "my-work" ? <button type="button" className="dashboard-my-work-button" title="My Work" aria-label="Open My Work" onClick={() => selectSection("myWork")}><ListTodo size={19} /><span>My Work</span></button> : null}
-          <button type="button" className="dashboard-notification-button" title="Notifications" aria-label="Open Notifications" onClick={() => selectSection("notifications")}><Bell size={19} /></button>
+          {workspaceKey !== "my-work" ? <button type="button" className="dashboard-my-work-button" title="My Work" aria-label="Open My Work" onClick={() => selectSection("myWork")}><ListTodo size={18} /><span>My Work</span></button> : null}
+          <button type="button" className="dashboard-notification-button" title="Notifications" aria-label="Open Notifications" onClick={() => selectSection("notifications")}><Bell size={18} /></button>
           <button type="button" className="dashboard-theme-toggle" title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} onClick={() => setTheme((value) => value === "dark" ? "light" : "dark")}>
-            {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
+            {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
           </button>
           <div className="dashboard-profile-menu" ref={profileRef}>
             <button type="button" className="dashboard-profile-button" title={user?.name ?? "Account"} onClick={() => setProfileOpen((value) => !value)} aria-expanded={profileOpen}>
               <UserAvatar user={user} size={36} /><span>{user?.name ?? "Account"}</span><ChevronDown size={15} />
             </button>
-            {profileOpen ? <div className="dashboard-profile-dropdown"><button type="button" onClick={() => { setProfileOpen(false); window.sessionStorage.setItem("scouts-open-profile", "true"); onWorkspaceChange?.("scouting"); }}><UserRound size={16} />My Profile</button><button type="button" className="danger" onClick={() => logout()}><LogOut size={16} />Log Out</button></div> : null}
+            {profileOpen ? <div className="dashboard-profile-dropdown"><button type="button" onClick={() => { setProfileOpen(false); window.sessionStorage.setItem("scouts-open-profile", "true"); onWorkspaceChange?.("scouting"); }}>My Profile</button><button type="button" className="danger-action" onClick={() => logout()}>Log Out</button></div> : null}
           </div>
         </div>
       </header>
@@ -124,10 +150,16 @@ export default function FocusedWorkspaceShell({
         <nav className="sidebar-navigation">
           {navigation.map(({ key, label, Icon, group }, index) => <Fragment key={key}>
             {group && group !== navigation[index - 1]?.group ? <span className="focused-workspace-nav-group">{group}</span> : null}
-            <button type="button" className={activeSection === key ? "active" : ""} onClick={() => selectSection(key)}>{Icon ? <Icon size={18} aria-hidden="true" /> : null}<span>{label}</span></button>
+            <button type="button" className={activeSection === key ? "active" : ""} aria-label={label} onClick={() => selectSection(key)} {...sidebarTooltipHandlers(label)}>{Icon ? <Icon size={17} aria-hidden="true" /> : null}<span>{label}</span></button>
           </Fragment>)}
         </nav>
       </aside>
+      {sidebarTooltip && createPortal(
+        <div className="dashboard-sidebar-tooltip-portal" style={{ left: `${sidebarTooltip.left}px`, top: `${sidebarTooltip.top}px` }} role="tooltip">
+          {sidebarTooltip.label}
+        </div>,
+        document.body
+      )}
 
       <main className="admin-main focused-workspace-main">{children}</main>
 

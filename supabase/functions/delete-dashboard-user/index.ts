@@ -10,7 +10,13 @@ serve(async (req) => {
     const body = await req.json().catch(() => { throw new AuthorizationError("Invalid request body", 400); });
     const userId = parseUuid(body.user_id);
     if (userId === context.callerId) throw new AuthorizationError("You cannot delete your own account", 400);
-    const { data: target } = await context.adminClient.from("user_profiles").select("id").eq("id", userId).maybeSingle();
+    const { data: target, error: targetError } = await context.adminClient.from("user_profiles")
+      .select("id,auth_user_id")
+      .eq("id", userId)
+      .maybeSingle();
+    if (targetError) {
+      throw new AuthorizationError("Run supabase-preserve-user-attribution.sql before deleting users", 409);
+    }
     if (!target) throw new AuthorizationError("User not found", 404);
 
     const { data: targetIsSystemAdmin } = await context.adminClient.rpc("is_system_administrator", { target_user_id: userId });
@@ -43,11 +49,15 @@ serve(async (req) => {
     });
     if (retireError) throw new AuthorizationError(retireError.message || "The user account could not be retired", 400);
 
-    // Keep the Auth row so contribution foreign keys retain their historical owner.
-    const { error: banError } = await context.adminClient.auth.admin.updateUserById(userId, { ban_duration: "876000h" });
-    if (banError) throw new AuthorizationError("Access was revoked, but the Auth login could not be disabled", 500);
-    await writeSecurityAudit(context, "user.auth_banned", userId, "success", { target_user_id: userId, reason });
-    return jsonResponse(req, { success: true, retained_history: true });
+    const { error: deleteError } = await context.adminClient.auth.admin.deleteUser(userId, false);
+    if (deleteError) {
+      throw new AuthorizationError(
+        "Access was revoked, but the Auth identity could not be deleted. Check Storage ownership and database foreign keys.",
+        500
+      );
+    }
+    await writeSecurityAudit(context, "user.auth_deleted", userId, "success", { target_user_id: userId, reason });
+    return jsonResponse(req, { success: true, retained_history: true, auth_deleted: true });
   } catch (error) {
     const status = error instanceof AuthorizationError ? error.status : 500;
     return jsonResponse(req, { error: error instanceof AuthorizationError ? error.message : "User deletion failed" }, status);

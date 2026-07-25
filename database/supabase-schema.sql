@@ -30,7 +30,8 @@ CREATE TABLE role_permissions (
 );
 
 CREATE TABLE user_profiles (
-  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  id uuid PRIMARY KEY,
+  auth_user_id uuid UNIQUE REFERENCES auth.users(id) ON DELETE SET NULL,
   full_name text NOT NULL,
   email text,
   role text NOT NULL REFERENCES roles(id),

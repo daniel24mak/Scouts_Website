@@ -14765,8 +14765,7 @@ span,
   .status-badge.archived,
   .forms-status-pill.rejected,
   .forms-status-pill.closed,
-  .contact-status-pill.archived,
-  .danger-action
+  .contact-status-pill.archived
 ) {
   background: var(--dashboard-surface-2) !important;
   color: var(--dashboard-text) !important;
@@ -16011,22 +16010,6 @@ span,
 .admin-cms-shell.dashboard-theme-dark .dashboard-wordmark,
 .admin-cms-shell.dashboard-theme-dark .dashboard-wordmark span {
   color: var(--dashboard-brand-text-color, #f8fafc);
-}
-
-.dashboard-sidebar-tooltip-portal {
-  position: fixed;
-  z-index: 9999;
-  transform: translateY(-50%);
-  pointer-events: none;
-  border-radius: 999px;
-  padding: 0.45rem 0.7rem;
-  color: #ffffff;
-  background: #172033;
-  box-shadow: 0 14px 34px rgb(15 23 42 / 0.22);
-  font-size: 0.78rem;
-  font-weight: 900;
-  line-height: 1;
-  white-space: nowrap;
 }
 
 .ai-assistant-placeholder {
