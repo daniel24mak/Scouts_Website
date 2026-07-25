@@ -382,8 +382,19 @@ BEGIN
   DELETE FROM public.user_permissions WHERE user_id=target_user_id;
   UPDATE public.equipe_leaders SET is_active=false WHERE chief_id=target_user_id AND is_active;
 
+  IF to_regclass('storage.objects') IS NOT NULL
+    AND EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema='storage' AND table_name='objects' AND column_name='owner'
+    ) THEN
+    EXECUTE 'UPDATE storage.objects SET owner = NULL WHERE owner = $1'
+      USING target_user_id;
+  END IF;
+
   UPDATE public.user_profiles AS profile
   SET account_status='archived',
+      auth_user_id=target_user_id,
       group_id=NULL,
       chief_level=NULL,
       is_coordinator=false,
@@ -399,7 +410,7 @@ BEGIN
   RETURNING to_jsonb(profile.*) INTO saved;
 
   PERFORM public.write_people_access_audit(
-    'user_retired',
+    'user_deleted',
     'User account',
     target_user_id::text,
     target_user_id,

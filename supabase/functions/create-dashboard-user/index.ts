@@ -42,7 +42,7 @@ serve(async (req) => {
     const userId = invitation.user.id;
 
     const { error: profileError } = await context.adminClient.from("user_profiles").insert({
-      id: userId, full_name: fullName, email, role,
+      id: userId, auth_user_id: userId, full_name: fullName, email, role,
       chief_level: role === "chief" ? chiefLevel : null,
       group_id: groupIds[0] ?? null,
       is_coordinator: groupIds.length > 1,

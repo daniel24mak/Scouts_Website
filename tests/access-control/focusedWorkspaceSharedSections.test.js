@@ -38,3 +38,16 @@ test("workspace searches live with page content instead of the shared top bar", 
   assert.match(dashboard, /dashboard-page-search/);
   assert.match(records, /workspace-manager-search/);
 });
+
+test("focused workspaces preserve the shared dashboard shell interactions", () => {
+  const shell = read("../../src/workspaces/FocusedWorkspaceShell.jsx");
+  const shellStyles = read("../../src/workspaces/dashboardShell.css");
+
+  assert.match(shell, /sidebarTooltipHandlers\(label\)/);
+  assert.match(shell, /dashboard-sidebar-tooltip-portal/);
+  assert.match(shell, /className="danger-action"/);
+  assert.doesNotMatch(shell, /className="danger"/);
+  assert.match(shellStyles, /\.dashboard-sidebar-tooltip-portal\s*\{/);
+  assert.match(shellStyles, /\.dashboard-profile-dropdown \.danger-action\s*\{/);
+  assert.match(shellStyles, /\.admin-cms-shell\.dashboard-theme-dark \.dashboard-profile-dropdown \.danger-action\s*\{/);
+});
