@@ -40,6 +40,23 @@ export default function FocusedWorkspaceShell({
     return () => document.removeEventListener("pointerdown", close);
   }, []);
   useEffect(() => {
+    const closeOverlays = (event) => {
+      if (event.key !== "Escape") return;
+      setProfileOpen(false);
+      setMobileMenuOpen(false);
+    };
+    document.addEventListener("keydown", closeOverlays);
+    return () => document.removeEventListener("keydown", closeOverlays);
+  }, []);
+  useEffect(() => {
+    if (!mobileMenuOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileMenuOpen]);
+  useEffect(() => {
     let lastScrollY = window.scrollY;
     let lastToggleY = window.scrollY;
 

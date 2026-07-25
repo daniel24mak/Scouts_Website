@@ -1,0 +1,760 @@
+/* Authoritative chrome for every dashboard workspace. */
+.admin-cms-shell {
+  --dashboard-page-bg: #eef2f8;
+  --dashboard-surface: #ffffff;
+  --dashboard-surface-2: #f2f5fa;
+  --dashboard-text: #182033;
+  --dashboard-muted: #687386;
+  --dashboard-line: #dce2ec;
+  --dashboard-blue: #4055a6;
+  --dashboard-gold: #f5bf15;
+  --dashboard-topbar-height: 68px;
+  --dashboard-sidebar-width: 260px;
+  --dashboard-shell-gap: 12px;
+  --dashboard-shell-shadow: 0 16px 42px rgb(15 23 42 / 0.08);
+  --dashboard-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  display: grid;
+  grid-template-columns: calc(var(--dashboard-sidebar-width) + var(--dashboard-shell-gap) * 2) minmax(0, 1fr);
+  grid-template-rows: var(--dashboard-topbar-height) minmax(0, 1fr);
+  min-height: 100dvh;
+  color: var(--dashboard-text);
+  background: var(--dashboard-page-bg);
+  transition: grid-template-columns 260ms var(--dashboard-ease);
+}
+
+.admin-cms-shell.dashboard-theme-dark {
+  --dashboard-page-bg: #0d1320;
+  --dashboard-surface: #171e2c;
+  --dashboard-surface-2: #212a3b;
+  --dashboard-text: #f3f6fb;
+  --dashboard-muted: #a7b1c3;
+  --dashboard-line: #2b3548;
+  --dashboard-blue: #9aabff;
+  --dashboard-shell-shadow: 0 18px 48px rgb(0 0 0 / 0.28);
+}
+
+.admin-cms-shell.sidebar-collapsed {
+  --dashboard-sidebar-width: 72px;
+}
+
+.dashboard-topbar,
+.admin-sidebar,
+.dashboard-bottom-tabs,
+.dashboard-more-sheet,
+.dashboard-notification-dropdown,
+.dashboard-profile-dropdown {
+  box-sizing: border-box;
+  color: var(--dashboard-text);
+  border: 1px solid color-mix(in srgb, var(--dashboard-line) 84%, transparent);
+  background: color-mix(in srgb, var(--dashboard-surface) 90%, transparent);
+  box-shadow: var(--dashboard-shell-shadow);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+}
+
+.dashboard-topbar {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  display: grid;
+  grid-template-columns: minmax(210px, auto) minmax(160px, 1fr) auto;
+  align-items: center;
+  gap: clamp(10px, 1.5vw, 20px);
+  width: 100%;
+  min-height: var(--dashboard-topbar-height);
+  margin: 0;
+  padding: 10px clamp(14px, 2vw, 28px);
+  border-width: 0 0 1px;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--dashboard-surface) 88%, transparent);
+}
+
+.dashboard-topbar-brand-group,
+.dashboard-topbar-title-group,
+.dashboard-topbar-actions {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.dashboard-topbar-brand-group {
+  gap: 10px;
+}
+
+.dashboard-topbar-title-group {
+  gap: 10px;
+}
+
+.dashboard-topbar-actions {
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.dashboard-wordmark {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--dashboard-blue);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.dashboard-wordmark img {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  object-fit: contain;
+}
+
+.dashboard-wordmark span {
+  overflow: hidden;
+  color: inherit;
+  font-size: 0.94rem;
+  font-weight: 750;
+  text-overflow: ellipsis;
+}
+
+.dashboard-topbar-title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--dashboard-text);
+  font-size: clamp(1rem, 1.3vw, 1.18rem);
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-shell-toggle,
+.dashboard-theme-toggle,
+.dashboard-notification-button,
+.dashboard-my-work-button,
+.dashboard-profile-button {
+  min-width: 40px;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 10px;
+  padding: 0 10px;
+  color: var(--dashboard-muted);
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    transform 120ms ease;
+}
+
+.dashboard-profile-button {
+  padding: 2px 8px 2px 3px;
+}
+
+.dashboard-profile-button > span:not(.user-avatar) {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-shell-toggle:hover,
+.dashboard-theme-toggle:hover,
+.dashboard-notification-button:hover,
+.dashboard-my-work-button:hover,
+.dashboard-profile-button:hover,
+.dashboard-shell-toggle:focus-visible,
+.dashboard-theme-toggle:focus-visible,
+.dashboard-notification-button:focus-visible,
+.dashboard-my-work-button:focus-visible,
+.dashboard-profile-button:focus-visible {
+  color: var(--dashboard-blue);
+  background: color-mix(in srgb, var(--dashboard-blue) 10%, transparent);
+}
+
+.dashboard-shell-toggle:active,
+.dashboard-theme-toggle:active,
+.dashboard-notification-button:active,
+.dashboard-my-work-button:active,
+.dashboard-profile-button:active {
+  transform: scale(0.96);
+}
+
+.dashboard-notification-menu,
+.dashboard-profile-menu {
+  position: relative;
+}
+
+.dashboard-notification-dropdown,
+.dashboard-profile-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 110;
+  animation: dashboard-shell-popover 180ms var(--dashboard-ease);
+}
+
+.dashboard-profile-dropdown {
+  width: 190px;
+  display: grid;
+  gap: 3px;
+  padding: 7px;
+  border-radius: 12px;
+}
+
+.dashboard-profile-dropdown button {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--dashboard-text);
+  background: transparent;
+  cursor: pointer;
+}
+
+.dashboard-profile-dropdown button:hover,
+.dashboard-profile-dropdown button:focus-visible {
+  background: var(--dashboard-surface-2);
+}
+
+.admin-sidebar {
+  grid-column: 1;
+  grid-row: 2;
+  position: sticky;
+  top: calc(var(--dashboard-topbar-height) + var(--dashboard-shell-gap));
+  z-index: 45;
+  align-self: start;
+  width: var(--dashboard-sidebar-width);
+  height: calc(100dvh - var(--dashboard-topbar-height) - var(--dashboard-shell-gap) * 2);
+  margin: var(--dashboard-shell-gap);
+  padding: 12px 10px;
+  border-radius: 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dashboard-line) transparent;
+}
+
+.admin-sidebar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.admin-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-sidebar::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--dashboard-line);
+}
+
+.sidebar-navigation {
+  min-height: 100%;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+}
+
+.focused-workspace-nav-group {
+  margin: 10px 10px 3px;
+  color: var(--dashboard-muted);
+  font-size: 0.67rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.admin-sidebar button {
+  width: 100%;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 11px;
+  color: var(--dashboard-muted);
+  background: transparent;
+  box-shadow: none;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    transform 120ms ease;
+}
+
+.admin-sidebar button:hover,
+.admin-sidebar button:focus-visible {
+  color: var(--dashboard-blue);
+  background: color-mix(in srgb, var(--dashboard-blue) 9%, transparent);
+}
+
+.admin-sidebar button.active,
+.sidebar-group.active-group > .sidebar-group-trigger {
+  color: var(--dashboard-blue);
+  background: color-mix(in srgb, var(--dashboard-blue) 13%, transparent);
+}
+
+.admin-sidebar button:active {
+  transform: scale(0.98);
+}
+
+.admin-sidebar button svg {
+  flex: 0 0 auto;
+}
+
+.admin-sidebar button span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-group {
+  min-height: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.sidebar-chevron {
+  margin-left: auto;
+  transition: transform 180ms var(--dashboard-ease);
+}
+
+.sidebar-group.open .sidebar-chevron {
+  transform: rotate(180deg);
+}
+
+.sidebar-subitems {
+  max-height: 0;
+  display: grid;
+  gap: 3px;
+  overflow: hidden;
+  padding-left: 10px;
+  opacity: 0;
+  transition:
+    max-height 220ms var(--dashboard-ease),
+    opacity 160ms ease;
+}
+
+.sidebar-group.open .sidebar-subitems {
+  max-height: 440px;
+  opacity: 1;
+}
+
+.sidebar-subitems button {
+  min-height: 38px;
+  font-size: 0.9rem;
+}
+
+.admin-cms-shell.sidebar-collapsed .admin-sidebar {
+  padding-inline: 9px;
+  overflow: visible;
+}
+
+.admin-cms-shell.sidebar-collapsed .admin-sidebar::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-cms-shell.sidebar-collapsed .sidebar-navigation {
+  height: 100%;
+  min-height: 0;
+  grid-auto-rows: minmax(42px, 1fr);
+  align-content: stretch;
+}
+
+.admin-cms-shell.sidebar-collapsed .focused-workspace-nav-group,
+.admin-cms-shell.sidebar-collapsed .sidebar-subitems {
+  display: none;
+}
+
+.admin-cms-shell.sidebar-collapsed .admin-sidebar button {
+  height: 100%;
+  min-height: 42px;
+  justify-content: center;
+  padding: 0;
+}
+
+.admin-cms-shell.sidebar-collapsed .admin-sidebar button span,
+.admin-cms-shell.sidebar-collapsed .admin-sidebar .sidebar-badge,
+.admin-cms-shell.sidebar-collapsed .sidebar-chevron {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.admin-cms-shell.sidebar-collapsed .sidebar-group.open .sidebar-subitems {
+  position: fixed;
+  top: clamp(
+    calc(var(--dashboard-topbar-height) + 12px),
+    var(--sidebar-flyout-top, 96px),
+    calc(100dvh - 456px)
+  );
+  left: calc(var(--dashboard-shell-gap) + var(--dashboard-sidebar-width) + 8px);
+  z-index: 120;
+  width: min(250px, calc(100vw - 112px));
+  max-height: min(420px, calc(100dvh - var(--dashboard-topbar-height) - 28px));
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid var(--dashboard-line);
+  border-radius: 14px;
+  padding: 9px;
+  opacity: 1;
+  background: color-mix(in srgb, var(--dashboard-surface) 94%, transparent);
+  box-shadow: 0 22px 58px rgb(15 23 42 / 0.18);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  animation: dashboard-shell-flyout 180ms var(--dashboard-ease);
+}
+
+.admin-cms-shell.sidebar-collapsed .sidebar-group.open .sidebar-subitems button {
+  height: auto;
+  min-height: 44px;
+  justify-content: flex-start;
+  padding: 9px 11px;
+}
+
+.admin-cms-shell.sidebar-collapsed .sidebar-group.open .sidebar-subitems button span {
+  position: static;
+  width: auto;
+  height: auto;
+  clip: auto;
+}
+
+.admin-main,
+.focused-workspace-main {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  padding: 12px var(--dashboard-shell-gap) 20px 0;
+  color: var(--dashboard-text);
+  background: var(--dashboard-page-bg);
+}
+
+.dashboard-bottom-tabs,
+.dashboard-more-sheet-backdrop {
+  display: none;
+}
+
+@keyframes dashboard-shell-popover {
+  from { opacity: 0; transform: translateY(-5px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes dashboard-shell-flyout {
+  from { opacity: 0; transform: translateX(-5px) scale(0.98); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@media (max-width: 900px) {
+  .admin-cms-shell,
+  .admin-cms-shell.sidebar-collapsed {
+    display: block;
+    min-height: 100dvh;
+    padding-bottom: calc(78px + env(safe-area-inset-bottom));
+  }
+
+  .admin-sidebar,
+  .dashboard-sidebar-overlay,
+  .dashboard-mobile-reveal-bar {
+    display: none;
+  }
+
+  .dashboard-topbar {
+    position: sticky;
+    top: 0;
+    grid-template-columns: minmax(40px, auto) minmax(0, 1fr) auto;
+    gap: 6px;
+    min-height: 60px;
+    padding: 8px max(10px, env(safe-area-inset-right)) 8px max(10px, env(safe-area-inset-left));
+  }
+
+  .dashboard-shell-toggle {
+    display: none;
+  }
+
+  .dashboard-wordmark span,
+  .dashboard-my-work-button span,
+  .dashboard-profile-button > span:not(.user-avatar),
+  .dashboard-profile-button > svg {
+    display: none;
+  }
+
+  .dashboard-topbar-title-group {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 2px;
+    overflow: hidden;
+  }
+
+  .dashboard-topbar-title {
+    width: 100%;
+    max-width: 132px;
+    font-size: 0.92rem;
+  }
+
+  .dashboard-topbar-actions {
+    gap: 2px;
+  }
+
+  .dashboard-theme-toggle,
+  .dashboard-notification-button,
+  .dashboard-my-work-button,
+  .dashboard-profile-button {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    min-height: 40px;
+    padding: 0;
+  }
+
+  .dashboard-profile-button {
+    padding: 2px;
+  }
+
+  .dashboard-notification-dropdown,
+  .dashboard-profile-dropdown {
+    position: fixed;
+    top: 66px;
+    right: max(10px, env(safe-area-inset-right));
+    left: max(10px, env(safe-area-inset-left));
+    width: auto;
+    max-height: calc(100dvh - 86px - env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+
+  .admin-main,
+  .focused-workspace-main {
+    min-width: 0;
+    padding: 10px 10px 24px;
+  }
+
+  .dashboard-bottom-tabs {
+    --mobile-tab-count: 5;
+    position: fixed;
+    left: 50%;
+    bottom: max(9px, env(safe-area-inset-bottom));
+    z-index: 80;
+    width: min(430px, calc(100vw - 20px));
+    display: grid;
+    grid-template-columns: repeat(var(--mobile-tab-count), minmax(0, 1fr));
+    gap: 2px;
+    border-radius: 18px;
+    padding: 6px;
+    transform: translateX(-50%) scale(0.9);
+    transform-origin: bottom center;
+    transition: transform 280ms var(--dashboard-ease);
+  }
+
+  .admin-cms-shell.mobile-menu-bar-visible .dashboard-bottom-tabs {
+    transform: translateX(-50%) scale(1);
+  }
+
+  .dashboard-bottom-indicator {
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    left: 6px;
+    width: calc((100% - 12px) / var(--mobile-tab-count));
+    border-radius: 13px;
+    background: color-mix(in srgb, var(--dashboard-blue) 14%, transparent);
+    transform: translateX(calc(var(--mobile-active-index) * 100%));
+    transition:
+      transform 260ms var(--dashboard-ease),
+      width 180ms var(--dashboard-ease);
+    pointer-events: none;
+  }
+
+  .dashboard-bottom-tabs button,
+  .dashboard-bottom-tabs a.dashboard-bottom-tab-link {
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+    min-height: 48px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 13px;
+    padding: 0;
+    color: var(--dashboard-muted);
+    background: transparent;
+    box-shadow: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition:
+      color 180ms ease,
+      transform 120ms ease;
+  }
+
+  .dashboard-bottom-tabs button > span,
+  .dashboard-bottom-tabs a.dashboard-bottom-tab-link > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .dashboard-bottom-tabs button:hover,
+  .dashboard-bottom-tabs button:focus-visible,
+  .dashboard-bottom-tabs a.dashboard-bottom-tab-link:hover,
+  .dashboard-bottom-tabs a.dashboard-bottom-tab-link:focus-visible,
+  .dashboard-bottom-tabs button.active,
+  .dashboard-bottom-tabs a.dashboard-bottom-tab-link.active {
+    color: var(--dashboard-blue);
+    background: transparent;
+  }
+
+  .dashboard-bottom-tabs button:active,
+  .dashboard-bottom-tabs a.dashboard-bottom-tab-link:active {
+    transform: scale(0.92);
+  }
+
+  .dashboard-bottom-tabs small {
+    position: absolute;
+    top: 3px;
+    right: 18%;
+  }
+
+  .dashboard-more-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: grid;
+    align-items: end;
+    padding: 10px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    background: rgb(7 12 25 / 0.42);
+  }
+
+  .dashboard-more-sheet {
+    width: min(520px, 100%);
+    max-height: min(76dvh, 640px);
+    margin: 0 auto;
+    overflow: auto;
+    overscroll-behavior: contain;
+    border-radius: 18px;
+    padding: 14px 14px calc(14px + env(safe-area-inset-bottom));
+    animation: dashboard-shell-sheet 240ms var(--dashboard-ease);
+  }
+
+  .dashboard-more-grid {
+    display: grid;
+    gap: 7px;
+  }
+
+  .dashboard-more-grid button,
+  .dashboard-more-group-trigger,
+  .dashboard-more-subitems button {
+    width: 100%;
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 0;
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: var(--dashboard-text);
+    background: transparent;
+    box-shadow: none;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .dashboard-more-grid button:hover,
+  .dashboard-more-grid button:focus-visible,
+  .dashboard-more-group-trigger:hover,
+  .dashboard-more-group-trigger:focus-visible,
+  .dashboard-more-subitems button:hover,
+  .dashboard-more-subitems button:focus-visible,
+  .dashboard-more-grid button.active,
+  .dashboard-more-group.active-group > .dashboard-more-group-trigger,
+  .dashboard-more-subitems button.active {
+    color: var(--dashboard-blue);
+    background: color-mix(in srgb, var(--dashboard-blue) 10%, transparent);
+  }
+
+  .dashboard-more-group {
+    display: grid;
+    gap: 5px;
+  }
+
+  .dashboard-more-subitems {
+    display: grid;
+    gap: 4px;
+    padding-left: 12px;
+  }
+}
+
+@keyframes dashboard-shell-sheet {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 390px) {
+  .dashboard-topbar {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+  }
+
+  .dashboard-wordmark img {
+    width: 26px;
+    height: 26px;
+    flex-basis: 26px;
+  }
+
+  .dashboard-topbar-title {
+    max-width: 31vw;
+    font-size: 0.94rem;
+  }
+
+  .dashboard-theme-toggle,
+  .dashboard-notification-button,
+  .dashboard-my-work-button,
+  .dashboard-profile-button {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+    min-height: 38px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-cms-shell,
+  .dashboard-bottom-tabs,
+  .dashboard-bottom-indicator,
+  .sidebar-chevron,
+  .sidebar-subitems,
+  .dashboard-shell-toggle,
+  .dashboard-theme-toggle,
+  .dashboard-notification-button,
+  .dashboard-my-work-button,
+  .dashboard-profile-button,
+  .admin-sidebar button {
+    transition-duration: 0ms !important;
+  }
+
+  .dashboard-notification-dropdown,
+  .dashboard-profile-dropdown,
+  .dashboard-more-sheet,
+  .admin-cms-shell.sidebar-collapsed .sidebar-group.open .sidebar-subitems {
+    animation: none !important;
+  }
+}

@@ -4,6 +4,10 @@ import { HashRouter } from "react-router-dom";
 import App from "./App.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import "./styles.css";
+import "./workspaces/dashboardShell.css";
+import "./components/publicShell.css";
+import "./components/publicPages.css";
+import "./workspaces/dashboardSurfaces.css";
 
 const authCallbackStorageKey = "scouts-supabase-auth-callback";
 const authHash = new URLSearchParams(window.location.hash.replace(/^#/, ""));

@@ -38,6 +38,7 @@ export default function DashboardWorkspaceRoute({ DashboardComponent }) {
   const { user } = useAuth();
   const [effectiveAccess, setEffectiveAccess] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const isFreshLogin = location.state?.freshLogin === true;
 
   useEffect(() => {
     let cancelled = false;
@@ -58,8 +59,9 @@ export default function DashboardWorkspaceRoute({ DashboardComponent }) {
     effectiveAccess,
     requestedWorkspace,
     lastWorkspace: window.localStorage.getItem(LAST_WORKSPACE_KEY),
-    lastRoutes: readStoredRoutes()
-  }), [effectiveAccess, requestedWorkspace, user]);
+    lastRoutes: readStoredRoutes(),
+    startAtOverview: isFreshLogin
+  }), [effectiveAccess, isFreshLogin, requestedWorkspace, user]);
 
   useEffect(() => {
     if (!destination || destination.workspaceKey !== requestedWorkspace) return;
@@ -71,6 +73,9 @@ export default function DashboardWorkspaceRoute({ DashboardComponent }) {
 
   if (isLoading) return <BrandedLoader label="Opening dashboard workspace" />;
   if (!destination) return <Navigate to="/" replace />;
+  if (isFreshLogin) {
+    return <Navigate to={destination.path} replace state={null} />;
+  }
   if (!requestedWorkspace || destination.workspaceKey !== requestedWorkspace) {
     return <Navigate to={destination.path} replace />;
   }
