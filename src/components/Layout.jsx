@@ -61,7 +61,7 @@ export default function Layout() {
   return (
     <div className={`app-shell ${isDashboardPage ? "dashboard-shell" : ""}`}>
       {!isDashboardPage && (
-        <header className={`site-header ${isHomePage && !isScrolled && !isMenuOpen ? "transparent" : "scrolled"} ${isHeaderHidden ? "hidden" : ""}`}>
+        <header className={`site-header ${isHomePage && !isScrolled && !isMenuOpen ? "transparent" : "scrolled"} ${isHeaderHidden ? "hidden" : ""} ${isMenuOpen ? "menu-open" : ""}`}>
         <NavLink to="/" className="brand" onClick={closeMenu}>
           <img className="brand-logo" src={scoutLogo} alt="Scout of Saint Mary logo" />
           <span>

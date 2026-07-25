@@ -1,0 +1,242 @@
+/* Shared workflow surfaces beneath the dashboard chrome. */
+.admin-cms-shell .admin-main,
+.admin-cms-shell .focused-workspace-main {
+  min-width: 0;
+  padding: clamp(16px, 2vw, 28px);
+  background: var(--dashboard-page-bg);
+}
+
+.admin-cms-shell :where(.finance-page-heading, .storage-page-heading, .workspace-page-heading) {
+  margin: 0 0 18px;
+  animation: dashboard-content-enter 260ms var(--dashboard-ease);
+}
+
+.admin-cms-shell :where(.finance-page-heading, .storage-page-heading, .workspace-page-heading) h1 {
+  margin: 2px 0 4px;
+  color: var(--dashboard-text);
+  font-size: clamp(1.35rem, 2vw, 1.8rem);
+  letter-spacing: 0;
+}
+
+.admin-cms-shell :where(.finance-page-heading, .storage-page-heading, .workspace-page-heading) p {
+  margin: 0;
+  color: var(--dashboard-muted);
+}
+
+.admin-cms-shell :where(
+  .admin-panel,
+  .finance-panel,
+  .storage-panel,
+  .workspace-manager-panel,
+  .workspace-assistant,
+  .editor-panel,
+  .calendar-create-panel
+) {
+  border: 1px solid var(--dashboard-line);
+  border-radius: 12px;
+  color: var(--dashboard-text);
+  background: var(--dashboard-surface);
+  box-shadow: 0 10px 30px rgb(15 23 42 / 0.055);
+  animation: dashboard-content-enter 300ms var(--dashboard-ease) both;
+}
+
+.dashboard-theme-dark :where(
+  .admin-panel,
+  .finance-panel,
+  .storage-panel,
+  .workspace-manager-panel,
+  .workspace-assistant,
+  .editor-panel,
+  .calendar-create-panel
+) {
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.18);
+}
+
+.admin-cms-shell :where(
+  .admin-panel,
+  .finance-panel,
+  .storage-panel,
+  .workspace-manager-panel,
+  .workspace-assistant,
+  .editor-panel,
+  .calendar-create-panel
+):hover {
+  transform: none;
+}
+
+.admin-cms-shell :where(.dashboard-stat-grid, .finance-summary-grid, .storage-summary-grid) {
+  gap: 12px;
+}
+
+.admin-cms-shell :where(.dashboard-stat-grid, .finance-summary-grid, .storage-summary-grid) > article {
+  min-width: 0;
+  border: 1px solid var(--dashboard-line);
+  border-radius: 11px;
+  padding: 17px 18px;
+  color: var(--dashboard-text);
+  background: var(--dashboard-surface);
+  box-shadow: 0 8px 24px rgb(15 23 42 / 0.045);
+}
+
+.admin-cms-shell :where(.dashboard-stat-grid, .finance-summary-grid, .storage-summary-grid) > article:hover {
+  transform: none;
+}
+
+.admin-cms-shell :where(.dashboard-stat-grid, .finance-summary-grid, .storage-summary-grid) > article span {
+  color: var(--dashboard-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.admin-cms-shell :where(.dashboard-stat-grid, .finance-summary-grid, .storage-summary-grid) > article strong {
+  display: block;
+  margin-top: 7px;
+  color: var(--dashboard-text);
+  font-size: clamp(1.35rem, 2vw, 1.8rem);
+  letter-spacing: 0;
+}
+
+.admin-cms-shell :where(.workspace-tabs, .forms-section-tabs, .approval-type-tabs, .calendar-view-toolbar) {
+  min-width: 0;
+  border: 1px solid var(--dashboard-line);
+  border-radius: 10px;
+  padding: 4px;
+  overflow-x: auto;
+  background: var(--dashboard-surface);
+  scrollbar-width: none;
+}
+
+.admin-cms-shell :where(.workspace-tabs, .forms-section-tabs, .approval-type-tabs, .calendar-view-toolbar)::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-cms-shell :where(input, select, textarea) {
+  border-color: var(--dashboard-line);
+  border-radius: 9px;
+  color: var(--dashboard-text);
+  background: var(--dashboard-surface);
+}
+
+.admin-cms-shell :where(input, select, textarea):focus {
+  border-color: var(--dashboard-blue);
+  outline: 0;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dashboard-blue) 18%, transparent);
+}
+
+.admin-cms-shell :where(.finance-table-wrap, .storage-table-wrap, .table-scroll, .admin-table-wrap) {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--dashboard-line);
+  border-radius: 10px;
+  background: var(--dashboard-surface);
+}
+
+.admin-cms-shell table {
+  color: var(--dashboard-text);
+  background: transparent;
+}
+
+.admin-cms-shell table :where(th, td) {
+  border-color: var(--dashboard-line);
+}
+
+.admin-cms-shell table th {
+  color: var(--dashboard-muted);
+  background: var(--dashboard-surface-2);
+}
+
+.admin-cms-shell table tr:hover,
+.admin-cms-shell table td:hover {
+  background: inherit;
+}
+
+.admin-cms-shell :where(button, a[role="button"], .button-link, .inline-action):not(:disabled) {
+  cursor: pointer;
+}
+
+.admin-cms-shell :where(button, a[role="button"], .button-link, .inline-action) {
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 120ms ease;
+}
+
+.admin-cms-shell :where(button, a[role="button"], .button-link, .inline-action):not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.admin-cms-shell :where(.empty-state, .finance-empty-copy, .storage-empty-copy, .workspace-manager-empty) {
+  color: var(--dashboard-muted);
+  background: color-mix(in srgb, var(--dashboard-surface-2) 72%, transparent);
+}
+
+.admin-cms-shell :where(.modal-panel, .approval-review-modal, .profile-modal, .people-access-drawer) {
+  color: var(--dashboard-text);
+  background: var(--dashboard-surface);
+  box-shadow: 0 28px 80px rgb(3 10 28 / 0.28);
+  animation: dashboard-modal-enter 220ms var(--dashboard-ease);
+}
+
+@keyframes dashboard-content-enter {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+}
+
+@keyframes dashboard-modal-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-cms-shell .admin-main,
+  .admin-cms-shell .focused-workspace-main {
+    padding: 14px 12px calc(88px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .admin-cms-shell :where(.dashboard-stat-grid, .finance-summary-grid, .storage-summary-grid) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-cms-shell :where(.admin-panel, .finance-panel, .storage-panel, .workspace-manager-panel, .editor-panel) {
+    border-radius: 10px;
+  }
+
+  .admin-cms-shell :where(.modal-panel, .approval-review-modal, .profile-modal, .people-access-drawer) {
+    width: min(100vw - 16px, 760px);
+    max-height: calc(100dvh - 16px);
+    border-radius: 13px;
+  }
+}
+
+@media (max-width: 440px) {
+  .admin-cms-shell :where(.dashboard-stat-grid, .finance-summary-grid, .storage-summary-grid) {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-cms-shell :where(
+    .finance-page-heading,
+    .storage-page-heading,
+    .workspace-page-heading,
+    .admin-panel,
+    .finance-panel,
+    .storage-panel,
+    .workspace-manager-panel,
+    .workspace-assistant,
+    .editor-panel,
+    .calendar-create-panel,
+    .modal-panel,
+    .approval-review-modal,
+    .profile-modal,
+    .people-access-drawer
+  ) {
+    animation: none;
+  }
+}

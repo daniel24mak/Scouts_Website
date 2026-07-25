@@ -81,12 +81,25 @@ export function resolveWorkspaceDestination({
   lastWorkspace = null,
   preferredWorkspace = null,
   primaryWorkspace = null,
-  lastRoutes = {}
+  lastRoutes = {},
+  startAtOverview = false
 } = {}) {
   const available = getAvailableWorkspaces({ user, effectiveAccess });
   if (!available.length) return null;
 
   const allowedKeys = new Set(available.map(({ key }) => key));
+  if (startAtOverview) {
+    const requestedKey = normalizeWorkspaceKey(requestedWorkspace);
+    const workspaceKey = requestedKey && allowedKeys.has(requestedKey)
+      ? requestedKey
+      : allowedKeys.has("admin")
+        ? "admin"
+        : available[0].key;
+    const workspace = getWorkspaceDefinition(workspaceKey);
+
+    return { workspaceKey, path: workspace.basePath };
+  }
+
   const candidates = [requestedWorkspace, lastWorkspace, preferredWorkspace, primaryWorkspace]
     .map(normalizeWorkspaceKey)
     .filter(Boolean);

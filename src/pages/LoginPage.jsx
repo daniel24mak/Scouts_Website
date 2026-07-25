@@ -9,7 +9,6 @@ export default function LoginPage() {
   const { user, users, login, loginWithPassword, refreshUsers, isAuthLoading, isProfileLoading, authError } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname ?? "/dashboard";
   const [credentials, setCredentials] = useState({ email: "", password: "" });
   const [errorMessage, setErrorMessage] = useState("");
   const invitationAccepted = Boolean(location.state?.invitationAccepted);
@@ -31,8 +30,8 @@ export default function LoginPage() {
     setErrorMessage("");
 
     try {
-      const nextUser = await loginWithPassword(credentials.email, credentials.password);
-      navigate(nextUser.role === "admin" ? "/admin" : from, { replace: true });
+      await loginWithPassword(credentials.email, credentials.password);
+      navigate("/dashboard", { replace: true, state: { freshLogin: true } });
     } catch (error) {
       setErrorMessage(error.message || "Login failed.");
     }
@@ -45,8 +44,8 @@ export default function LoginPage() {
     }
 
     login(userId);
-    console.debug("[auth] demo login page navigate", { userId: selectedUser?.id ?? null, role: selectedUser?.role ?? null, to: from });
-    navigate(from, { replace: true });
+    console.debug("[auth] demo login page navigate", { userId: selectedUser?.id ?? null, role: selectedUser?.role ?? null, to: "/dashboard" });
+    navigate("/dashboard", { replace: true, state: { freshLogin: true } });
   };
 
   return (

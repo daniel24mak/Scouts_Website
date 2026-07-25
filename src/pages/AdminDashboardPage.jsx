@@ -3265,18 +3265,15 @@ export default function AdminDashboardPage({
       ["Total active scouts", data.registeredScouts.length],
       ["Total groups", data.groups.length],
       ["Upcoming events", visibleUpcomingEvents.length],
-      ["Open forms", openAssignedForms.length],
-      ["My Work", myWorkTasks.length]
+      ["Open forms", openAssignedForms.length]
     ] : workspaceKey === "media" ? [
       ["Posts", allPosts.length],
       ["Albums", allAlbums.length],
-      ["Upcoming events", visibleUpcomingEvents.length],
-      ["My Work", myWorkTasks.length]
+      ["Upcoming events", visibleUpcomingEvents.length]
     ] : [
       ["Active scouts", groupScouts.length],
       ["Upcoming meetings", visibleUpcomingEvents.length],
       ["Open forms", openAssignedForms.length],
-      ["My Work", myWorkTasks.length],
       ...(hasChiefAccess(user) ? [["Attendance days", groupAttendance.length]] : [])
     ];
 
@@ -3292,13 +3289,6 @@ export default function AdminDashboardPage({
         </div>
         <div className="dashboard-overview-stack">
           {workspaceKey === "scouting" && (isAdmin || ["head", "vice"].includes(user?.chiefLevel) || hasEffectivePermission(data.effectiveAccess, PERMISSIONS.FINANCE_GROUP_BUDGET_VIEW)) ? <ScoutingBudgetSummary onOpenReports={() => openDashboardSection("reports")} /> : null}
-          <article className="admin-panel scouting-my-work-preview">
-            <div className="panel-heading compact-heading"><div><h2>My Work</h2><p>Forms and assigned actions that need your attention.</p></div><span>{myWorkTasks.length}</span></div>
-            {myWorkLoading ? <div className="dashboard-inline-loader" aria-label="Loading My Work" /> : myWorkTasks.length ? (
-              <div className="mini-list">{myWorkTasks.slice(0, 4).map((task) => <Link to={task.href || "/dashboard/my-work"} key={`${task.workspaceKey}-${task.type}-${task.id}`}><strong>{task.title}</strong><span>{task.relatedLabel || task.type}</span></Link>)}</div>
-            ) : <p className="empty-state">No assigned work right now.</p>}
-            <button type="button" className="inline-action" onClick={() => openDashboardSection("myWork")}>View all</button>
-          </article>
           <article className="admin-panel dashboard-upcoming-events-panel">
             <div className="panel-heading compact-heading">
               <div>

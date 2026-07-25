@@ -124,6 +124,39 @@ test("the last valid route is restored only inside its allowed workspace", () =>
   });
 });
 
+test("a fresh login opens an allowed workspace overview instead of a saved section", () => {
+  const destination = resolveWorkspaceDestination({
+    user: { role: "admin", accountStatus: "active" },
+    startAtOverview: true,
+    lastWorkspace: "storage",
+    lastRoutes: {
+      storage: "/dashboard/storage/inventory",
+      admin: "/dashboard/admin/users"
+    }
+  });
+
+  assert.deepEqual(destination, {
+    workspaceKey: "admin",
+    path: "/dashboard/admin"
+  });
+});
+
+test("a fresh department login opens its permitted overview", () => {
+  const destination = resolveWorkspaceDestination({
+    startAtOverview: true,
+    lastWorkspace: "finance",
+    lastRoutes: {
+      finance: "/dashboard/finance/transactions"
+    },
+    effectiveAccess: activeAccess(["finance.workspace.access"])
+  });
+
+  assert.deepEqual(destination, {
+    workspaceKey: "finance",
+    path: "/dashboard/finance"
+  });
+});
+
 test("a manipulated last route cannot escape the selected workspace", () => {
   const destination = resolveWorkspaceDestination({
     requestedWorkspace: "finance",
