@@ -1,5 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors
+} from "@dnd-kit/core";
+import {
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+  SortableContext,
+  useSortable
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { getCountries, getCountryCallingCode } from "libphonenumber-js";
 import { ArrowDown, ArrowLeft, ArrowUp, CalendarDays, CheckCircle2, Clock, Copy, FileText, GripVertical, Plus, Save, Search, Send, ShieldCheck, Star, Trash2, Users } from "lucide-react";
 import {
   closeDashboardPostedForm,
@@ -19,6 +36,17 @@ import RegistrationCampaignSettings from "../registration/RegistrationCampaignSe
 import RegistrationCampaigns from "../registration/RegistrationCampaigns.jsx";
 import RegistrationCenter from "../registration/RegistrationCenter.jsx";
 import UploadQuestionSettings from "../registration/UploadQuestionSettings.jsx";
+import PhoneNumberInput from "./PhoneNumberInput.jsx";
+import {
+  FORM_FIELD_WIDTHS,
+  formatPhoneAnswer,
+  getAnswerScalar,
+  getCountryName,
+  getFormWidthUnits,
+  moveFormQuestion,
+  normalizeFormQuestion,
+  validatePhoneAnswer
+} from "./formModel.js";
 import {
   REGISTRATION_UPLOAD_TYPES,
   normalizeRegistrationSettings,
@@ -29,6 +57,12 @@ const optionQuestionTypes = new Set(["multiple_choice", "checkboxes", "dropdown"
 const uploadQuestionTypes = new Set(REGISTRATION_UPLOAD_TYPES);
 const aiSummarySections = ["Recommendations", "Course of action", "What went wrong", "What was good", "Key risks", "Follow-up actions"];
 const builderSteps = ["Form Details", "Build Questions", "Posting Settings / Review"];
+const phoneCountries = getCountries()
+  .map((country) => ({
+    id: country,
+    label: `${getCountryName(country)} (+${getCountryCallingCode(country)})`
+  }))
+  .sort((a, b) => a.label.localeCompare(b.label));
 const defaultCondition = { enabled: false, sourceQuestionId: "", operator: "equals", value: "" };
 const defaultFormSettings = {
   appearance: {
@@ -116,8 +150,9 @@ function makePage(order = 0) {
 }
 
 function makeQuestion(type = "short_text", pageId = null, order = 0) {
+  const id = crypto.randomUUID();
   const question = {
-    id: crypto.randomUUID(),
+    id,
     pageId,
     order,
     type,
@@ -127,6 +162,14 @@ function makeQuestion(type = "short_text", pageId = null, order = 0) {
     placeholder: "",
     required: false,
     options: optionQuestionTypes.has(type) ? ["Option 1"] : [],
+    layout: { rowId: `row-${id}`, width: "full" },
+    ...(type === "phone" ? {
+      phoneSettings: {
+        countryMode: "all",
+        defaultCountry: "AE",
+        allowedCountry: "AE"
+      }
+    } : {}),
     conditionalLogic: { ...defaultCondition }
   };
   return uploadQuestionTypes.has(type) ? { ...question, ...normalizeUploadQuestion(question) } : question;
@@ -160,7 +203,8 @@ function safeSchema(schema) {
     settings: normalizeFormSettings(nextSchema.settings),
     pages,
     questions: nextSchema.questions.map((question) => {
-      const normalized = {
+      const normalized = normalizeFormQuestion({
+        ...question,
         id: question.id || crypto.randomUUID(),
         pageId: pageIds.has(question.pageId) ? question.pageId : primaryPageId,
         order: Number.isFinite(Number(question.order)) ? Number(question.order) : 0,
@@ -172,7 +216,7 @@ function safeSchema(schema) {
         required: Boolean(question.required),
         options: Array.isArray(question.options) ? question.options : [],
         conditionalLogic: normalizeConditionalLogic(question.conditionalLogic)
-      };
+      });
       return uploadQuestionTypes.has(normalized.type)
         ? { ...normalized, ...normalizeUploadQuestion({ ...question, ...normalized }) }
         : normalized;
@@ -212,7 +256,7 @@ function conditionMatches(rule, answers, questions) {
   if (!condition.enabled || !condition.sourceQuestionId) return true;
   const sourceQuestion = questions.find((question) => question.id === condition.sourceQuestionId);
   if (!sourceQuestion) return true;
-  const answer = answers?.[sourceQuestion.id];
+  const answer = getAnswerScalar(answers?.[sourceQuestion.id]);
   const expected = condition.value;
   const expectedList = valueList(expected);
   const answerList = valueList(answer);
@@ -270,6 +314,9 @@ function isTargetedToUser(form, user) {
 
 
 function isAnswerFilled(value) {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return Boolean(getAnswerScalar(value) || value.nationalNumber);
+  }
   return !(value === undefined || value === null || value === "" || (Array.isArray(value) && !value.length));
 }
 
@@ -298,12 +345,33 @@ function getQuestionPlaceholder(question) {
 
 function getQuestionHelper(question) {
   if (question.helperText) return question.helperText;
-  if (question.required) return "This question is required.";
   if (question.type === "number") return "Numbers only.";
   if (question.type === "rating") return "Choose one rating from 1 to 5.";
   if (question.type === "checkboxes") return "Select all options that apply.";
   if (question.type === "multiple_choice") return "Select one option.";
   return "";
+}
+
+function getQuestionValidationError(question, value) {
+  if (question.required && !isAnswerFilled(value)) return "This question is required.";
+  if (question.type === "phone") return validatePhoneAnswer(question, value);
+  return "";
+}
+
+function groupQuestionsByRow(questions) {
+  const rows = [];
+  questions.map(normalizeFormQuestion).forEach((question) => {
+    const existing = rows.find((row) => row.id === question.layout.rowId);
+    if (existing && canShareFormRow(existing.questions, question)) {
+      existing.questions.push(question);
+      return;
+    }
+    rows.push({
+      id: existing ? `${question.layout.rowId}-${question.id}` : question.layout.rowId,
+      questions: [question]
+    });
+  });
+  return rows;
 }
 
 function getFormStats(form, answers) {
@@ -323,6 +391,7 @@ function getFormStats(form, answers) {
 }
 function answerToText(value) {
   if (Array.isArray(value)) return value.join("; ");
+  if (value && typeof value === "object") return formatPhoneAnswer(value);
   return value ?? "";
 }
 
@@ -352,8 +421,11 @@ function downloadCsv({ form, submissions, users, groups }) {
   URL.revokeObjectURL(url);
 }
 
-function QuestionInput({ question, value, onChange, disabled = false }) {
+function QuestionInput({ question, value, onChange, disabled = false, showError = false }) {
   const placeholder = getQuestionPlaceholder(question);
+  if (question.type === "phone") {
+    return <PhoneNumberInput question={question} value={value} onChange={onChange} disabled={disabled} showError={showError} />;
+  }
   if (uploadQuestionTypes.has(question.type)) {
     const upload = normalizeUploadQuestion(question);
     const files = Array.isArray(value) ? value : value ? [value] : [];
@@ -453,7 +525,7 @@ function FormReviewAnswerGroups({ form, answers }) {
   );
 }
 
-export function FormPreview({ form, answers = {}, onAnswerChange = null, disabled = false, errorQuestionIds = [], meta = null, showHeader = true, isStarted = null, onStart = null }) {
+export function FormPreview({ form, answers = {}, onAnswerChange = null, disabled = false, errorQuestionIds = [], meta = null, showHeader = true, isStarted = null, onStart = null, embeddedHeader = false, onPageStateChange = null }) {
   const schema = safeSchema(form.schemaJson);
   const settings = getFormSettings(schema);
   const themeStyle = getFormThemeStyle(settings);
@@ -467,6 +539,7 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
   const currentPage = visiblePages.find((page) => page.id === currentPageId) ?? visiblePages[0] ?? schema.pages[0];
   const currentPageIndex = visiblePages.findIndex((page) => page.id === currentPage?.id);
   const visibleQuestions = currentPage ? getVisibleQuestionsForPage(schema, currentPage.id, answers) : [];
+  const questionRows = groupQuestionsByRow(visibleQuestions);
   const stats = getFormStats(form, answers);
   const combinedErrors = [...new Set([...errorQuestionIds, ...pageErrors])];
   const started = !showStartScreen || (isStarted ?? internalStarted);
@@ -485,7 +558,12 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
         container.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
-      formTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (formTopRef.current) {
+        const stickyHeader = document.querySelector(".registration-form-topbar");
+        const offset = (stickyHeader?.getBoundingClientRect().height ?? 0) + 12;
+        const top = window.scrollY + formTopRef.current.getBoundingClientRect().top - offset;
+        window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+      }
     });
   };
 
@@ -500,13 +578,21 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
     if (started) scrollFormToTop();
   }, [currentPageId, started]);
 
+  useEffect(() => {
+    onPageStateChange?.({
+      currentPageIndex,
+      pageCount: visiblePages.length,
+      isLastPage: currentPageIndex === visiblePages.length - 1
+    });
+  }, [currentPageIndex, onPageStateChange, visiblePages.length]);
+
   const validateCurrentPage = () => {
-    const missing = visibleQuestions.filter((question) => question.required && !isAnswerFilled(answers[question.id]));
-    if (!missing.length) {
+    const invalid = visibleQuestions.filter((question) => getQuestionValidationError(question, answers[question.id]));
+    if (!invalid.length) {
       setPageErrors([]);
       return true;
     }
-    const ids = missing.map((question) => question.id);
+    const ids = invalid.map((question) => question.id);
     setPageErrors(ids);
     window.requestAnimationFrame(() => document.querySelector(`[data-question-id="${ids[0]}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
     return false;
@@ -528,18 +614,14 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
   if (showStartScreen && !started) {
     return (
       <article className="forms-preview-card premium-form-card forms-start-card google-form-canvas" style={themeStyle}>
-        <FormBrandHeader form={form} settings={settings} meta={meta} />
+        {!embeddedHeader && <FormBrandHeader form={form} settings={settings} meta={meta} />}
         <div className="forms-preview-header premium-form-header">
-          <p className="eyebrow">Form introduction</p>
-          <h2>{form.title || "Untitled form"}</h2>
+          {!embeddedHeader && <h2>{form.title || "Untitled form"}</h2>}
           <FormattedText text={form.description} fallback="No description provided." />
           {form.instructions && <div className="forms-preview-instructions premium"><strong>Instructions</strong><FormattedText text={form.instructions} /></div>}
           <div className="premium-form-meta-grid">
-            <span><Users size={16} />Assigned by <strong>{meta?.assignedBy ?? "Scouts Admin"}</strong></span>
             <span><CalendarDays size={16} />Due <strong>{formatDate(form.dueDate)}</strong></span>
             <span><Clock size={16} />Estimated <strong>{settings.startScreen.estimatedMinutes || stats.estimateMinutes} min</strong></span>
-            <span><FileText size={16} />Structure <strong>{visiblePages.length} pages / {stats.questions.length} questions</strong></span>
-            <span><ShieldCheck size={16} />Editing <strong>{form.allowEdits ? "Allowed while open" : "Locked after submit"}</strong></span>
           </div>
           {settings.startScreen.notice && <p className="forms-start-notice">{settings.startScreen.notice}</p>}
           {settings.startScreen.requireConfirmation && <label className="forms-start-confirm"><input type="checkbox" checked={confirmedStart} onChange={(event) => setConfirmedStart(event.target.checked)} />{settings.startScreen.confirmationLabel}</label>}
@@ -551,7 +633,7 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
 
   return (
     <article className="forms-preview-card premium-form-card google-form-canvas" style={themeStyle} ref={formTopRef}>
-      {(settings.appearance.headerMode === "repeat" || currentPageIndex === 0 || settings.appearance.headerMode === "compact_later") && (
+      {!embeddedHeader && (settings.appearance.headerMode === "repeat" || currentPageIndex === 0 || settings.appearance.headerMode === "compact_later") && (
         <FormBrandHeader form={form} settings={settings} compact={currentPageIndex > 0 && settings.appearance.headerMode === "compact_later"} meta={meta} />
       )}
       {currentPage && <div className={`forms-page-fill-header ${showProgressBar || showProgressDots ? "" : "single-column"}`}>
@@ -567,25 +649,32 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
         </div>
         {(showProgressBar || showProgressDots) && <div className="forms-page-progress-block">
           {showProgressBar && <div className="premium-form-progress"><div><span style={{ width: `${progressPercent}%` }} /></div><strong>{progressPercent}%</strong></div>}
-          {showProgressDots && <div className="forms-page-dots" aria-label="Visible form pages">{visiblePages.map((page, index) => <button type="button" key={page.id} className={page.id === currentPage.id ? "active" : ""} aria-label={`Go to ${page.title}`} onClick={() => { if (index <= currentPageIndex || validateCurrentPage()) { setCurrentPageId(page.id); setPageErrors([]); scrollFormToTop(); } }}>{index + 1}</button>)}</div>}
+          {showProgressDots && <div className="forms-page-dots forms-page-stepper" aria-label="Visible form pages">{visiblePages.map((page, index) => <button type="button" key={page.id} className={page.id === currentPage.id ? "active" : ""} aria-label={`Go to ${page.title}`} onClick={() => { if (index <= currentPageIndex || validateCurrentPage()) { setCurrentPageId(page.id); setPageErrors([]); scrollFormToTop(); } }}><span>{index + 1}</span><small>{page.title || `Page ${index + 1}`}</small></button>)}</div>}
+          <div className="forms-mobile-page-progress" aria-live="polite"><div><strong>{currentPage.title || `Page ${currentPageIndex + 1}`}</strong><span>{currentPageIndex + 1} of {visiblePages.length}</span></div><div><span style={{ width: `${((currentPageIndex + 1) / visiblePages.length) * 100}%` }} /></div></div>
         </div>}
       </div>}
       <div className="forms-preview-questions premium-question-stack">
-        {visibleQuestions.map((question, index) => (
-          <section className={`forms-fill-question premium-question-card ${combinedErrors.includes(question.id) ? "has-error" : ""}`} key={question.id} data-question-id={question.id}>
-            <div className="premium-question-topline">
+        {questionRows.map((row) => <div className="forms-question-row" key={row.id}>
+        {row.questions.map((question) => {
+          const index = stats.questions.findIndex((item) => item.id === question.id);
+          const error = combinedErrors.includes(question.id) ? getQuestionValidationError(question, answers[question.id]) || "This question is required." : "";
+          return (
+          <section className={`forms-fill-question premium-question-card ${error ? "has-error" : ""}`} key={question.id} data-question-id={question.id} style={{ "--form-field-span": normalizeFormQuestion(question).layout.width === "half" ? 6 : normalizeFormQuestion(question).layout.width === "one_third" ? 4 : normalizeFormQuestion(question).layout.width === "two_thirds" ? 8 : 12 }}>
+            <div className="premium-question-heading">
               <span className="premium-question-number">{String(index + 1).padStart(2, "0")}</span>
-              {question.required && <em aria-label="Required">*</em>}
+              <FormattedText text={question.text} className="premium-question-title" fallback="Untitled question" />
+              {question.required && <em className="premium-question-required" aria-label="Required">*</em>}
             </div>
-            <label>
-              <span className="premium-question-title">{question.text}</span>
+            <div className="forms-question-control">
               {question.description && <FormattedText text={question.description} className="premium-question-description" />}
-              {(combinedErrors.includes(question.id) || getQuestionHelper(question)) && <small className="premium-question-helper">{combinedErrors.includes(question.id) ? "This question is required before submission." : getQuestionHelper(question)}</small>}
-              <QuestionInput question={question} value={answers[question.id]} disabled={disabled || !onAnswerChange} onChange={(nextValue) => { onAnswerChange?.(question.id, nextValue); setPageErrors((current) => current.filter((id) => id !== question.id)); }} />
-              {combinedErrors.includes(question.id) && <small className="forms-field-error">This question is required.</small>}
-            </label>
+              {getQuestionHelper(question) && <small className="premium-question-helper">{getQuestionHelper(question)}</small>}
+              <QuestionInput question={question} value={answers[question.id]} disabled={disabled || !onAnswerChange} showError={Boolean(error)} onChange={(nextValue) => { onAnswerChange?.(question.id, nextValue); setPageErrors((current) => current.filter((id) => id !== question.id)); }} />
+              {error && question.type !== "phone" && <small className="forms-field-error">{error}</small>}
+            </div>
           </section>
-        ))}
+          );
+        })}
+        </div>)}
       </div>
       {visiblePages.length > 1 && <div className="forms-page-navigation">
         <button type="button" className="inline-action" disabled={currentPageIndex <= 0} onClick={() => goToPage(-1)}>Previous</button>
@@ -632,6 +721,35 @@ function ConditionalLogicEditor({ label, item, questions, onChange, helper, disa
     </div>
   );
 }
+
+function SortableQuestionCard({ question, columnStart, hasError, children }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: question.id, data: { pageId: question.pageId } });
+  const normalized = normalizeFormQuestion(question);
+
+  return (
+    <article
+      ref={setNodeRef}
+      className={`forms-question-card ${hasError ? "has-error" : ""} ${isDragging ? "is-dragging" : ""}`}
+      data-builder-field={`question-${question.id}`}
+      style={{
+        "--builder-field-span": getFormWidthUnits(normalized.layout.width),
+        "--builder-field-start": columnStart,
+        transform: CSS.Transform.toString(transform),
+        transition
+      }}
+    >
+      {children({ attributes, listeners })}
+    </article>
+  );
+}
+
 function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template, postedForm, onDone, setSaveMessage }) {
   const source = postedForm ?? template;
   const [title, setTitle] = useState(source?.title ?? "Untitled form");
@@ -649,7 +767,11 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
   const [questionMode, setQuestionMode] = useState("edit");
   const [showTemplates, setShowTemplates] = useState(false);
   const [addQuestionType, setAddQuestionType] = useState("short_text");
-  const [draggedIndex, setDraggedIndex] = useState(null);
+  const dragSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   const formSettings = getFormSettings(schemaJson);
   const orderedQuestions = getOrderedQuestions(schemaJson);
@@ -657,6 +779,11 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
     const issues = [];
     if (!title.trim()) issues.push({ id: "form-title", step: 0, label: "Form title", message: "Add a form title." });
     if (!hasMeaningfulText(description)) issues.push({ id: "form-description", step: 0, label: "Form description", message: "Add a short form description." });
+    schemaJson.pages.forEach((page, index) => {
+      if (!page.title.trim()) {
+        issues.push({ id: `page-${page.id}`, step: 1, label: `Page ${index + 1}`, message: "Add a page name." });
+      }
+    });
     orderedQuestions.forEach((question, index) => {
       if (!question.text.trim()) {
         issues.push({ id: `question-${question.id}`, step: 1, label: `Question ${index + 1}`, message: "Add question text." });
@@ -679,7 +806,7 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
       if (registration.requireIdBack && !uploadCategories.has("identity_back")) issues.push({ id: "registration-id-back", step: 1, label: "Identity back", message: "Add an identity-back upload question or turn off the requirement." });
     }
     return issues;
-  }, [description, formSettings.behavior.formKind, formSettings.behavior.registration, orderedQuestions, title]);
+  }, [description, formSettings.behavior.formKind, formSettings.behavior.registration, orderedQuestions, schemaJson.pages, title]);
   const builderIssueIds = new Set(builderIssues.map((issue) => issue.id));
   const updateSettings = (patch) => setSchemaJson((current) => {
     const schema = safeSchema(current);
@@ -703,18 +830,36 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
     const sourcePage = schema.pages.find((page) => page.id === pageId);
     if (!sourcePage) return schema;
     const nextPage = { ...sourcePage, id: crypto.randomUUID(), title: `${sourcePage.title} copy`, order: sourcePage.order + 1 };
-    const questions = getQuestionsForPage(schema, pageId).map((question, index) => ({ ...question, id: crypto.randomUUID(), pageId: nextPage.id, order: index, text: `${question.text} copy` }));
+    const rowIds = new Map();
+    const questions = getQuestionsForPage(schema, pageId).map((question, index) => {
+      const id = crypto.randomUUID();
+      const sourceRowId = question.layout?.rowId || `row-${question.id}`;
+      if (!rowIds.has(sourceRowId)) rowIds.set(sourceRowId, `row-${crypto.randomUUID()}`);
+      return {
+        ...question,
+        id,
+        pageId: nextPage.id,
+        order: index,
+        text: `${question.text} copy`,
+        layout: { ...question.layout, rowId: rowIds.get(sourceRowId) }
+      };
+    });
     const pages = [...schema.pages];
     pages.splice(sourcePage.order + 1, 0, nextPage);
     return safeSchema({ pages: pages.map((page, index) => ({ ...page, order: index })), questions: [...schema.questions, ...questions] });
   });
-  const deletePage = (pageId) => setSchemaJson((current) => {
+  const deletePage = (pageId) => {
+    const page = safeSchema(schemaJson).pages.find((item) => item.id === pageId);
+    const questionCount = getQuestionsForPage(schemaJson, pageId).length;
+    if (!window.confirm(`Delete "${page?.title || "this page"}" and its ${questionCount} ${questionCount === 1 ? "question" : "questions"}? This cannot be undone.`)) return;
+    setSchemaJson((current) => {
     const schema = safeSchema(current);
     if (schema.pages.length === 1) return schema;
     const pages = schema.pages.filter((page) => page.id !== pageId).map((page, index) => ({ ...page, order: index }));
     const questions = schema.questions.filter((question) => question.pageId !== pageId);
     return safeSchema({ pages, questions: questions.length ? questions : [makeQuestion("short_text", pages[0].id, 0)] });
-  });
+    });
+  };
   const addPage = () => setSchemaJson((current) => {
     const schema = safeSchema(current);
     const page = makePage(schema.pages.length);
@@ -729,22 +874,22 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
     const reordered = pageQuestions.map((question, questionIndex) => ({ ...question, order: questionIndex }));
     return safeSchema({ ...schema, questions: schema.questions.map((question) => reordered.find((item) => item.id === question.id) ?? question) });
   });
-  const dropQuestion = (pageId, toIndex) => {
-    if (!draggedIndex || draggedIndex.pageId !== pageId || draggedIndex.index === toIndex) return;
-    setSchemaJson((current) => {
-      const schema = safeSchema(current);
-      const pageQuestions = getQuestionsForPage(schema, pageId);
-      const [moved] = pageQuestions.splice(draggedIndex.index, 1);
-      pageQuestions.splice(toIndex, 0, moved);
-      const reordered = pageQuestions.map((question, questionIndex) => ({ ...question, order: questionIndex }));
-      return safeSchema({ ...schema, questions: schema.questions.map((question) => reordered.find((item) => item.id === question.id) ?? question) });
-    });
-    setDraggedIndex(null);
+  const handleQuestionDragEnd = ({ active, over }) => {
+    if (!over || active.id === over.id) return;
+    setSchemaJson((current) => safeSchema(
+      moveFormQuestion(safeSchema(current), String(active.id), String(over.id))
+    ));
   };
   const duplicateQuestion = (pageId, index) => setSchemaJson((current) => {
     const schema = safeSchema(current);
     const pageQuestions = getQuestionsForPage(schema, pageId);
-    pageQuestions.splice(index + 1, 0, { ...pageQuestions[index], id: crypto.randomUUID(), text: `${pageQuestions[index].text} copy` });
+    const id = crypto.randomUUID();
+    pageQuestions.splice(index + 1, 0, {
+      ...pageQuestions[index],
+      id,
+      text: `${pageQuestions[index].text} copy`,
+      layout: { ...pageQuestions[index].layout, rowId: `row-${id}` }
+    });
     const reordered = pageQuestions.map((question, questionIndex) => ({ ...question, order: questionIndex }));
     return safeSchema({ ...schema, questions: [...schema.questions.filter((question) => question.pageId !== pageId), ...reordered] });
   });
@@ -889,11 +1034,12 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
         </div>}
 
         {step === 1 && <div className="forms-wizard-panel">
-          <div className="forms-section-heading"><div><p className="eyebrow">Step 2</p><h2>Build questions</h2></div><div className="forms-mode-toggle" role="tablist" aria-label="Question builder mode"><button type="button" className={questionMode === "edit" ? "active" : ""} aria-pressed={questionMode === "edit"} onClick={() => setQuestionMode("edit")}>Edit</button><button type="button" className={questionMode === "preview" ? "active" : ""} aria-pressed={questionMode === "preview"} onClick={() => setQuestionMode("preview")}>Preview</button></div></div>
+          <div className="forms-section-heading"><div><p className="eyebrow">Step 2</p><h2>Build questions</h2></div><div className="forms-mode-toggle" data-mode={questionMode} role="tablist" aria-label="Question builder mode"><span className="forms-mode-indicator" aria-hidden="true" /><button type="button" className={questionMode === "edit" ? "active" : ""} aria-pressed={questionMode === "edit"} onClick={() => setQuestionMode("edit")}>Edit</button><button type="button" className={questionMode === "preview" ? "active" : ""} aria-pressed={questionMode === "preview"} onClick={() => setQuestionMode("preview")}>Preview</button></div></div>
           {questionMode === "preview" ? <FormPreview form={{ title, description, instructions, schemaJson }} /> : <>
+            <DndContext sensors={dragSensors} collisionDetection={closestCenter} onDragEnd={handleQuestionDragEnd}>
             <div className="forms-page-builder-list">{schemaJson.pages.map((page, pageIndex) => {
               const pageQuestions = getQuestionsForPage(schemaJson, page.id);
-              return <article className="forms-page-builder-card" key={page.id}>
+              return <article className={`forms-page-builder-card ${builderIssueIds.has(`page-${page.id}`) ? "has-error" : ""}`} key={page.id} data-builder-field={`page-${page.id}`}>
                 <div className="forms-page-builder-header">
                   <span className="forms-page-index">Page {pageIndex + 1}</span>
                   <div className="forms-question-icon-actions">
@@ -904,13 +1050,21 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
                   </div>
                 </div>
                 <div className="forms-page-fields">
-                  <label>Page title<input value={page.title} onChange={(event) => updatePage(page.id, { title: event.target.value })} /></label>
+                  <label>Page title<input value={page.title} onChange={(event) => updatePage(page.id, { title: event.target.value })} placeholder="Name this page" />{builderIssueIds.has(`page-${page.id}`) && <small className="forms-field-error">Page name is required before posting.</small>}</label>
                   <label>Page instructions<textarea value={page.description} onChange={(event) => updatePage(page.id, { description: event.target.value })} placeholder="Tell users what to do on this page" /></label>
                 </div>
                 <ConditionalLogicEditor label="Show this page when..." item={page} questions={orderedQuestions} onChange={(rule) => updatePage(page.id, { conditionalLogic: rule })} helper="This page appears only when the selected answer matches." disabled={pageIndex === 0} disabledReason="The first page always remains available so users can start the form." />
-                <div className="forms-question-list">{pageQuestions.map((question, index) => <article className={`forms-question-card ${builderIssueIds.has(`question-${question.id}`) ? "has-error" : ""}`} key={question.id} data-builder-field={`question-${question.id}`} draggable onDragStart={() => setDraggedIndex({ pageId: page.id, index })} onDragOver={(event) => event.preventDefault()} onDrop={() => dropQuestion(page.id, index)}>
-                  <div className="forms-question-card-topline"><span className="forms-drag-handle" title="Drag to reorder"><GripVertical size={20} /></span><span className="forms-question-number">Question {index + 1}</span><div className="forms-question-icon-actions"><button type="button" className="icon-button" title="Move up" disabled={index === 0} onClick={() => moveQuestion(page.id, index, -1)}><ArrowUp size={16} /></button><button type="button" className="icon-button" title="Move down" disabled={index === pageQuestions.length - 1} onClick={() => moveQuestion(page.id, index, 1)}><ArrowDown size={16} /></button><button type="button" className="icon-button" title="Duplicate" onClick={() => duplicateQuestion(page.id, index)}><Copy size={16} /></button><button type="button" className="icon-button danger-action" title="Delete" onClick={() => deleteQuestion(question.id)} disabled={schemaJson.questions.length === 1}><Trash2 size={16} /></button></div></div>
-                  <div className="forms-question-header"><label>Question<input value={question.text} onChange={(event) => updateQuestion(question.id, { text: event.target.value })} placeholder="Write the question" />{builderIssueIds.has(`question-${question.id}`) && <small className="forms-field-error">Question text is required before posting.</small>}</label><label>Answer type<select value={question.type} onChange={(event) => { const type = event.target.value; updateQuestion(question.id, uploadQuestionTypes.has(type) ? { type, options: [], ...normalizeUploadQuestion({ ...question, type }) } : { type, options: optionQuestionTypes.has(type) ? (question.options.length ? question.options : ["Option 1"]) : [] }); }}>{formQuestionTypes.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label><label>Page<select value={question.pageId} onChange={(event) => updateQuestion(question.id, { pageId: event.target.value, order: getQuestionsForPage(schemaJson, event.target.value).length })}>{schemaJson.pages.map((schemaPage) => <option key={schemaPage.id} value={schemaPage.id}>{schemaPage.title || `Page ${schemaPage.order + 1}`}</option>)}</select></label></div>
+                <p className="forms-layout-hint">Choose field widths, then drag a compatible field onto another to place them in the same row. Mobile forms stack fields automatically.</p>
+                <SortableContext items={pageQuestions.map((question) => question.id)} strategy={rectSortingStrategy}>
+                <div className="forms-question-list">{pageQuestions.map((question, index) => {
+                  const normalizedQuestion = normalizeFormQuestion(question);
+                  const columnStart = 1 + pageQuestions
+                    .slice(0, index)
+                    .filter((candidate) => normalizeFormQuestion(candidate).layout.rowId === normalizedQuestion.layout.rowId)
+                    .reduce((total, candidate) => total + getFormWidthUnits(normalizeFormQuestion(candidate).layout.width), 0);
+                  return <SortableQuestionCard question={question} columnStart={columnStart} hasError={builderIssueIds.has(`question-${question.id}`)} key={question.id}>{({ attributes, listeners }) => <>
+                  <div className="forms-question-card-topline"><button type="button" className="forms-drag-handle" title="Drag to reorder" aria-label={`Move question ${index + 1}`} {...attributes} {...listeners}><GripVertical size={20} /></button><span className="forms-question-number">Question {index + 1}</span><div className="forms-question-icon-actions"><button type="button" className="icon-button" title="Move up" disabled={index === 0} onClick={() => moveQuestion(page.id, index, -1)}><ArrowUp size={16} /></button><button type="button" className="icon-button" title="Move down" disabled={index === pageQuestions.length - 1} onClick={() => moveQuestion(page.id, index, 1)}><ArrowDown size={16} /></button><button type="button" className="icon-button" title="Duplicate" onClick={() => duplicateQuestion(page.id, index)}><Copy size={16} /></button><button type="button" className="icon-button danger-action" title="Delete" onClick={() => deleteQuestion(question.id)} disabled={schemaJson.questions.length === 1}><Trash2 size={16} /></button></div></div>
+                  <div className="forms-question-header"><label>Question<input value={question.text} onChange={(event) => updateQuestion(question.id, { text: event.target.value })} placeholder="Write the question" />{builderIssueIds.has(`question-${question.id}`) && <small className="forms-field-error">Question text is required before posting.</small>}</label><label>Answer type<select value={question.type} onChange={(event) => { const type = event.target.value; updateQuestion(question.id, uploadQuestionTypes.has(type) ? { type, options: [], ...normalizeUploadQuestion({ ...question, type }) } : { type, options: optionQuestionTypes.has(type) ? (question.options.length ? question.options : ["Option 1"]) : [] }); }}>{formQuestionTypes.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label><label>Field width<select value={normalizeFormQuestion(question).layout.width} onChange={(event) => updateQuestion(question.id, { layout: { ...normalizeFormQuestion(question).layout, width: event.target.value, rowId: `row-${question.id}` } })}>{FORM_FIELD_WIDTHS.map(([id, label]) => <option key={id} value={id} disabled={normalizeFormQuestion({ ...question, layout: { ...question.layout, width: id } }).layout.width !== id}>{label}</option>)}</select></label><label>Page<select value={question.pageId} onChange={(event) => updateQuestion(question.id, { pageId: event.target.value, order: getQuestionsForPage(schemaJson, event.target.value).length, layout: { ...normalizeFormQuestion(question).layout, rowId: `row-${question.id}` } })}>{schemaJson.pages.map((schemaPage) => <option key={schemaPage.id} value={schemaPage.id}>{schemaPage.title || `Page ${schemaPage.order + 1}`}</option>)}</select></label></div>
                   <details className="forms-question-advanced">
                     <summary>Question guidance and placeholder</summary>
                     <div className="forms-question-support-grid">
@@ -920,13 +1074,17 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
                     </div>
                   </details>
                   {optionQuestionTypes.has(question.type) && <div className="forms-options-editor">{question.options.map((option, optionIndex) => <div key={`${question.id}-${optionIndex}`}><span>{optionIndex + 1}</span><input value={option} onChange={(event) => updateQuestion(question.id, { options: question.options.map((item, idx) => idx === optionIndex ? event.target.value : item) })} /><button type="button" className="icon-button" onClick={() => updateQuestion(question.id, { options: question.options.filter((_, idx) => idx !== optionIndex) })}><Trash2 size={15} /></button></div>)}<button type="button" className="inline-action" onClick={() => updateQuestion(question.id, { options: [...question.options, `Option ${question.options.length + 1}`] })}>Add option</button></div>}
+                  {question.type === "phone" && <div className="forms-phone-settings"><label>Allowed countries<select value={question.phoneSettings?.countryMode ?? "all"} onChange={(event) => updateQuestion(question.id, { phoneSettings: { ...question.phoneSettings, countryMode: event.target.value } })}><option value="all">All countries</option><option value="single">One country only</option></select></label><label>{question.phoneSettings?.countryMode === "single" ? "Required country" : "Default country"}<select value={question.phoneSettings?.countryMode === "single" ? question.phoneSettings?.allowedCountry ?? "AE" : question.phoneSettings?.defaultCountry ?? "AE"} onChange={(event) => updateQuestion(question.id, { phoneSettings: { ...question.phoneSettings, ...(question.phoneSettings?.countryMode === "single" ? { allowedCountry: event.target.value, defaultCountry: event.target.value } : { defaultCountry: event.target.value }) } })}>{phoneCountries.map((country) => <option key={country.id} value={country.id}>{country.label}</option>)}</select></label><small>People see a searchable country selector when all countries are allowed. Answers are saved in international E.164 format.</small></div>}
                   {uploadQuestionTypes.has(question.type) && <UploadQuestionSettings question={question} onChange={(patch) => updateQuestion(question.id, patch)} />}
                   <ConditionalLogicEditor label="Show this question when..." item={question} questions={orderedQuestions} onChange={(rule) => updateQuestion(question.id, { conditionalLogic: rule })} />
                   <label className="toggle-row"><input type="checkbox" checked={question.required} onChange={(event) => updateQuestion(question.id, { required: event.target.checked })} />Required when visible</label>
-                </article>)}</div>
+                </>}</SortableQuestionCard>;
+                })}</div>
+                </SortableContext>
                 <div className="forms-add-question-row"><select value={addQuestionType} onChange={(event) => setAddQuestionType(event.target.value)}>{formQuestionTypes.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select><button type="button" className="primary-action" onClick={() => addQuestionToPage(page.id)}><Plus size={17} />Add Question to {page.title}</button></div>
               </article>;
             })}</div>
+            </DndContext>
             <button type="button" className="inline-action forms-add-page-button" onClick={addPage}><Plus size={17} />Add Page</button>
           </>}
         </div>}
@@ -1073,14 +1231,12 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
     if (!activeForm) return;
     const quiet = Boolean(options.quiet);
     const keepOpen = Boolean(options.keepOpen);
-    const missing = getVisibleQuestions(activeForm.schemaJson, answers).filter((question) => {
-      const answer = answers[question.id];
-      return question.required && (answer === undefined || answer === null || answer === "" || (Array.isArray(answer) && !answer.length));
-    });
+    const missing = getVisibleQuestions(activeForm.schemaJson, answers)
+      .filter((question) => getQuestionValidationError(question, answers[question.id]));
     if (status === "submitted" && missing.length) {
       const ids = missing.map((question) => question.id);
       setRequiredErrors(ids);
-      setSaveMessage("Complete the highlighted required questions.");
+      setSaveMessage("Correct the highlighted questions before submitting.");
       window.requestAnimationFrame(() => document.querySelector(`[data-question-id="${ids[0]}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
       return;
     }

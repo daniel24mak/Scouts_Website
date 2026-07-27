@@ -16,6 +16,7 @@ function jsonValue(value, fallback) {
 export const formQuestionTypes = [
   ["short_text", "Short text"],
   ["long_text", "Long text"],
+  ["phone", "Phone number"],
   ["number", "Number"],
   ["rating", "Rating scale 1-5"],
   ["yes_no", "Yes / No"],
@@ -50,6 +51,7 @@ export function blankFormSchema() {
         text: "Untitled question",
         required: false,
         options: [],
+        layout: { rowId: null, width: "full" },
         conditionalLogic: { enabled: false, sourceQuestionId: "", operator: "equals", value: "" }
       }
     ]
