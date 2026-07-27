@@ -15,8 +15,18 @@ import {
 import FormattedText from "../../components/FormattedText.jsx";
 import RichTextEditor from "../../components/RichTextEditor.jsx";
 import { blankFormSchema, formQuestionTypes } from "../../services/formService.js";
+import RegistrationCampaignSettings from "../registration/RegistrationCampaignSettings.jsx";
+import RegistrationCampaigns from "../registration/RegistrationCampaigns.jsx";
+import RegistrationCenter from "../registration/RegistrationCenter.jsx";
+import UploadQuestionSettings from "../registration/UploadQuestionSettings.jsx";
+import {
+  REGISTRATION_UPLOAD_TYPES,
+  normalizeRegistrationSettings,
+  normalizeUploadQuestion
+} from "../registration/registrationModel.js";
 
 const optionQuestionTypes = new Set(["multiple_choice", "checkboxes", "dropdown"]);
+const uploadQuestionTypes = new Set(REGISTRATION_UPLOAD_TYPES);
 const aiSummarySections = ["Recommendations", "Course of action", "What went wrong", "What was good", "Key risks", "Follow-up actions"];
 const builderSteps = ["Form Details", "Build Questions", "Posting Settings / Review"];
 const defaultCondition = { enabled: false, sourceQuestionId: "", operator: "equals", value: "" };
@@ -57,15 +67,20 @@ const defaultFormSettings = {
     receiptRequired: false,
     amountQuestionId: "",
     expenseDateQuestionId: "",
-    descriptionQuestionId: ""
+    descriptionQuestionId: "",
+    registration: normalizeRegistrationSettings()
   }
 };
 
 function normalizeFormSettings(settings = {}) {
+  const behavior = { ...defaultFormSettings.behavior, ...(settings.behavior ?? {}) };
   return {
     appearance: { ...defaultFormSettings.appearance, ...(settings.appearance ?? {}) },
     startScreen: { ...defaultFormSettings.startScreen, ...(settings.startScreen ?? {}) },
-    behavior: { ...defaultFormSettings.behavior, ...(settings.behavior ?? {}) }
+    behavior: {
+      ...behavior,
+      registration: normalizeRegistrationSettings(behavior.registration)
+    }
   };
 }
 
@@ -101,7 +116,7 @@ function makePage(order = 0) {
 }
 
 function makeQuestion(type = "short_text", pageId = null, order = 0) {
-  return {
+  const question = {
     id: crypto.randomUUID(),
     pageId,
     order,
@@ -114,6 +129,7 @@ function makeQuestion(type = "short_text", pageId = null, order = 0) {
     options: optionQuestionTypes.has(type) ? ["Option 1"] : [],
     conditionalLogic: { ...defaultCondition }
   };
+  return uploadQuestionTypes.has(type) ? { ...question, ...normalizeUploadQuestion(question) } : question;
 }
 
 function normalizeConditionalLogic(rule) {
@@ -143,19 +159,24 @@ function safeSchema(schema) {
   return {
     settings: normalizeFormSettings(nextSchema.settings),
     pages,
-    questions: nextSchema.questions.map((question) => ({
-      id: question.id || crypto.randomUUID(),
-      pageId: pageIds.has(question.pageId) ? question.pageId : primaryPageId,
-      order: Number.isFinite(Number(question.order)) ? Number(question.order) : 0,
-      type: question.type || "short_text",
-      text: question.text ?? "Untitled question",
-      description: question.description ?? "",
-      helperText: question.helperText ?? "",
-      placeholder: question.placeholder ?? "",
-      required: Boolean(question.required),
-      options: Array.isArray(question.options) ? question.options : [],
-      conditionalLogic: normalizeConditionalLogic(question.conditionalLogic)
-    })).sort((a, b) => a.order - b.order).map((question, index, list) => ({
+    questions: nextSchema.questions.map((question) => {
+      const normalized = {
+        id: question.id || crypto.randomUUID(),
+        pageId: pageIds.has(question.pageId) ? question.pageId : primaryPageId,
+        order: Number.isFinite(Number(question.order)) ? Number(question.order) : 0,
+        type: question.type || "short_text",
+        text: question.text ?? "Untitled question",
+        description: question.description ?? "",
+        helperText: question.helperText ?? "",
+        placeholder: question.placeholder ?? "",
+        required: Boolean(question.required),
+        options: Array.isArray(question.options) ? question.options : [],
+        conditionalLogic: normalizeConditionalLogic(question.conditionalLogic)
+      };
+      return uploadQuestionTypes.has(normalized.type)
+        ? { ...normalized, ...normalizeUploadQuestion({ ...question, ...normalized }) }
+        : normalized;
+    }).sort((a, b) => a.order - b.order).map((question, index, list) => ({
       ...question,
       order: list.filter((item) => item.pageId === question.pageId).findIndex((item) => item.id === question.id)
     }))
@@ -220,7 +241,7 @@ function getVisibleQuestionsForPage(schema, pageId, answers = {}) {
   return orderedQuestions.filter((question) => question.pageId === pageId && conditionMatches(question.conditionalLogic, answers, orderedQuestions));
 }
 
-function getVisibleQuestions(schema, answers = {}) {
+export function getVisibleQuestions(schema, answers = {}) {
   return getVisiblePages(schema, answers).flatMap((page) => getVisibleQuestionsForPage(schema, page.id, answers));
 }
 
@@ -333,6 +354,28 @@ function downloadCsv({ form, submissions, users, groups }) {
 
 function QuestionInput({ question, value, onChange, disabled = false }) {
   const placeholder = getQuestionPlaceholder(question);
+  if (uploadQuestionTypes.has(question.type)) {
+    const upload = normalizeUploadQuestion(question);
+    const files = Array.isArray(value) ? value : value ? [value] : [];
+    const accept = upload.acceptedFormats.map((format) => format === "jpg" || format === "jpeg" ? "image/jpeg" : format === "pdf" ? "application/pdf" : `image/${format}`).join(",");
+    if (disabled) {
+      return files.length
+        ? <ul className="forms-upload-file-list">{files.map((file, index) => <li key={file.id ?? file.name ?? index}>{file.name ?? file.originalName ?? `File ${index + 1}`}</li>)}</ul>
+        : <div className="forms-rich-answer-placeholder">No file uploaded</div>;
+    }
+    return (
+      <div className="forms-premium-upload-input">
+        <input
+          type="file"
+          accept={accept}
+          multiple={upload.maxFiles > 1}
+          onChange={(event) => onChange(Array.from(event.target.files ?? []).slice(0, upload.maxFiles))}
+        />
+        <small>{upload.uploadInstructions || `Upload up to ${upload.maxFiles} file${upload.maxFiles === 1 ? "" : "s"}, ${upload.maxFileSizeMb} MB each.`}</small>
+        {files.length > 0 && <ul className="forms-upload-file-list">{files.map((file, index) => <li key={file.name ?? index}>{file.name ?? `File ${index + 1}`}</li>)}</ul>}
+      </div>
+    );
+  }
   if (question.type === "long_text") {
     if (disabled) return value ? <FormattedText text={value} className="formatted-text forms-rich-answer" /> : <div className="forms-rich-answer-placeholder">Long answer</div>;
     return <div className="forms-premium-rich-input"><RichTextEditor value={value ?? ""} onChange={onChange} minHeight={150} placeholder={placeholder} /></div>;
@@ -619,8 +662,24 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
         issues.push({ id: `question-${question.id}`, step: 1, label: `Question ${index + 1}`, message: "Add question text." });
       }
     });
+    if (formSettings.behavior.formKind === "scout_registration") {
+      const registration = formSettings.behavior.registration;
+      const uploadCategories = new Set(
+        orderedQuestions
+          .filter((question) => uploadQuestionTypes.has(question.type))
+          .map((question) => String(question.storageCategory ?? "").toLowerCase())
+      );
+      if (!registration.seasonId) issues.push({ id: "registration-season", step: 0, label: "Scout season", message: "Choose the campaign season." });
+      if (!registration.registrationTitle.trim()) issues.push({ id: "registration-title", step: 0, label: "Registration title", message: "Add the public registration title." });
+      if (!registration.slug.trim()) issues.push({ id: "registration-slug", step: 0, label: "Public link", message: "Add a unique public slug." });
+      if (!registration.privacyText.trim()) issues.push({ id: "registration-privacy", step: 0, label: "Privacy notice", message: "Explain how registration data will be used." });
+      if (!registration.consentText.trim()) issues.push({ id: "registration-consent", step: 0, label: "Consent text", message: "Add the consent statement." });
+      if (registration.requireHeadshot && !uploadCategories.has("headshot")) issues.push({ id: "registration-headshot", step: 1, label: "Headshot", message: "Add a headshot upload question or turn off the requirement." });
+      if (registration.requireIdFront && !uploadCategories.has("identity_front")) issues.push({ id: "registration-id-front", step: 1, label: "Identity front", message: "Add an identity-front upload question or turn off the requirement." });
+      if (registration.requireIdBack && !uploadCategories.has("identity_back")) issues.push({ id: "registration-id-back", step: 1, label: "Identity back", message: "Add an identity-back upload question or turn off the requirement." });
+    }
     return issues;
-  }, [description, orderedQuestions, title]);
+  }, [description, formSettings.behavior.formKind, formSettings.behavior.registration, orderedQuestions, title]);
   const builderIssueIds = new Set(builderIssues.map((issue) => issue.id));
   const updateSettings = (patch) => setSchemaJson((current) => {
     const schema = safeSchema(current);
@@ -703,6 +762,7 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
     title, description, instructions, schemaJson: safeSchema(schemaJson), targetType, targetGroupIds,
     targetUserIds: postedForm?.targetUserIds ?? [], dueDate, linkedEventId, allowEdits, generateAiSummary,
     formKind: formSettings.behavior.formKind,
+    publicSlug: formSettings.behavior.formKind === "scout_registration" ? formSettings.behavior.registration.slug : null,
     allowMultipleSubmissions: formSettings.behavior.allowMultipleSubmissions,
     maxSubmissions: formSettings.behavior.maxSubmissions,
     availableFrom: formSettings.behavior.availableFrom,
@@ -750,6 +810,8 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
       await saveDashboardPostedForm({ id: postedForm?.id, ...payload(), templateId: nextTemplate?.id ?? template?.id ?? null, templateVersionId: nextTemplate?.currentVersionId ?? template?.currentVersionId ?? null, approvalStatus: isAdmin ? "open" : "pending" });
       setSaveMessage(isAdmin ? "Form posted and opened." : "Form sent for approval before posting.");
       await onDone("postedForms");
+    } catch (error) {
+      setSaveMessage(`Form could not be posted: ${error.message}`);
     } finally { setIsSaving(false); }
   };
 
@@ -801,7 +863,7 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
 
             <section className="forms-builder-settings-card">
               <div className="forms-section-heading compact"><div><p className="eyebrow">Behavior</p><h3>Progress and hidden answers</h3></div></div>
-              <label>Form purpose<select value={formSettings.behavior.formKind} onChange={(event) => updateBehavior({ formKind: event.target.value })}><option value="standard">Standard form</option><option value="reimbursement">Reimbursement claim</option></select></label>
+              <label>Form purpose<select value={formSettings.behavior.formKind} onChange={(event) => updateBehavior({ formKind: event.target.value })}><option value="standard">Standard form</option><option value="reimbursement">Reimbursement claim</option><option value="scout_registration">Scout registration</option></select></label>
               {formSettings.behavior.formKind === "reimbursement" && <div className="forms-reimbursement-settings">
                 <label className="toggle-row"><input type="checkbox" checked={formSettings.behavior.allowMultipleSubmissions} onChange={(event) => updateBehavior({ allowMultipleSubmissions: event.target.checked })} />Allow the same user to submit more than once</label>
                 <label>Maximum claims per user<input type="number" min="1" value={formSettings.behavior.maxSubmissions} onChange={(event) => updateBehavior({ maxSubmissions: event.target.value })} placeholder="Unlimited" /></label>
@@ -809,6 +871,14 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
                 <label className="toggle-row"><input type="checkbox" checked={formSettings.behavior.receiptRequired} onChange={(event) => updateBehavior({ receiptRequired: event.target.checked })} />Receipt is required</label>
                 <p className="helper-text">Add one Number question for the amount, one Date question for the purchase date, and a text question for the expense description. The first matching question of each type is used to create the Finance record.</p>
               </div>}
+              {formSettings.behavior.formKind === "scout_registration" && (
+                <RegistrationCampaignSettings
+                  value={formSettings.behavior.registration}
+                  onChange={(registration) => updateBehavior({ registration })}
+                  scoutYears={data.scoutYears ?? []}
+                  groups={data.groups ?? []}
+                />
+              )}
               <label className="toggle-row"><input type="checkbox" checked={formSettings.behavior.requiredNotice} onChange={(event) => updateBehavior({ requiredNotice: event.target.checked })} />Show required-question notice</label>
               <label>Progress display<select value={formSettings.behavior.progressDisplay} onChange={(event) => updateBehavior({ progressDisplay: event.target.value })}><option value="bar">Progress bar</option><option value="dots">Dots for short forms</option><option value="minimal">Minimal page count</option></select></label>
               <label>Hidden conditional answers<select value={formSettings.behavior.hiddenAnswerMode} onChange={(event) => updateBehavior({ hiddenAnswerMode: event.target.value })}><option value="preserve">Preserve answers when hidden</option><option value="clear">Clear answers when hidden later</option></select></label>
@@ -840,7 +910,7 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
                 <ConditionalLogicEditor label="Show this page when..." item={page} questions={orderedQuestions} onChange={(rule) => updatePage(page.id, { conditionalLogic: rule })} helper="This page appears only when the selected answer matches." disabled={pageIndex === 0} disabledReason="The first page always remains available so users can start the form." />
                 <div className="forms-question-list">{pageQuestions.map((question, index) => <article className={`forms-question-card ${builderIssueIds.has(`question-${question.id}`) ? "has-error" : ""}`} key={question.id} data-builder-field={`question-${question.id}`} draggable onDragStart={() => setDraggedIndex({ pageId: page.id, index })} onDragOver={(event) => event.preventDefault()} onDrop={() => dropQuestion(page.id, index)}>
                   <div className="forms-question-card-topline"><span className="forms-drag-handle" title="Drag to reorder"><GripVertical size={20} /></span><span className="forms-question-number">Question {index + 1}</span><div className="forms-question-icon-actions"><button type="button" className="icon-button" title="Move up" disabled={index === 0} onClick={() => moveQuestion(page.id, index, -1)}><ArrowUp size={16} /></button><button type="button" className="icon-button" title="Move down" disabled={index === pageQuestions.length - 1} onClick={() => moveQuestion(page.id, index, 1)}><ArrowDown size={16} /></button><button type="button" className="icon-button" title="Duplicate" onClick={() => duplicateQuestion(page.id, index)}><Copy size={16} /></button><button type="button" className="icon-button danger-action" title="Delete" onClick={() => deleteQuestion(question.id)} disabled={schemaJson.questions.length === 1}><Trash2 size={16} /></button></div></div>
-                  <div className="forms-question-header"><label>Question<input value={question.text} onChange={(event) => updateQuestion(question.id, { text: event.target.value })} placeholder="Write the question" />{builderIssueIds.has(`question-${question.id}`) && <small className="forms-field-error">Question text is required before posting.</small>}</label><label>Answer type<select value={question.type} onChange={(event) => updateQuestion(question.id, { type: event.target.value, options: optionQuestionTypes.has(event.target.value) ? (question.options.length ? question.options : ["Option 1"]) : [] })}>{formQuestionTypes.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label><label>Page<select value={question.pageId} onChange={(event) => updateQuestion(question.id, { pageId: event.target.value, order: getQuestionsForPage(schemaJson, event.target.value).length })}>{schemaJson.pages.map((schemaPage) => <option key={schemaPage.id} value={schemaPage.id}>{schemaPage.title || `Page ${schemaPage.order + 1}`}</option>)}</select></label></div>
+                  <div className="forms-question-header"><label>Question<input value={question.text} onChange={(event) => updateQuestion(question.id, { text: event.target.value })} placeholder="Write the question" />{builderIssueIds.has(`question-${question.id}`) && <small className="forms-field-error">Question text is required before posting.</small>}</label><label>Answer type<select value={question.type} onChange={(event) => { const type = event.target.value; updateQuestion(question.id, uploadQuestionTypes.has(type) ? { type, options: [], ...normalizeUploadQuestion({ ...question, type }) } : { type, options: optionQuestionTypes.has(type) ? (question.options.length ? question.options : ["Option 1"]) : [] }); }}>{formQuestionTypes.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label><label>Page<select value={question.pageId} onChange={(event) => updateQuestion(question.id, { pageId: event.target.value, order: getQuestionsForPage(schemaJson, event.target.value).length })}>{schemaJson.pages.map((schemaPage) => <option key={schemaPage.id} value={schemaPage.id}>{schemaPage.title || `Page ${schemaPage.order + 1}`}</option>)}</select></label></div>
                   <details className="forms-question-advanced">
                     <summary>Question guidance and placeholder</summary>
                     <div className="forms-question-support-grid">
@@ -850,6 +920,7 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
                     </div>
                   </details>
                   {optionQuestionTypes.has(question.type) && <div className="forms-options-editor">{question.options.map((option, optionIndex) => <div key={`${question.id}-${optionIndex}`}><span>{optionIndex + 1}</span><input value={option} onChange={(event) => updateQuestion(question.id, { options: question.options.map((item, idx) => idx === optionIndex ? event.target.value : item) })} /><button type="button" className="icon-button" onClick={() => updateQuestion(question.id, { options: question.options.filter((_, idx) => idx !== optionIndex) })}><Trash2 size={15} /></button></div>)}<button type="button" className="inline-action" onClick={() => updateQuestion(question.id, { options: [...question.options, `Option ${question.options.length + 1}`] })}>Add option</button></div>}
+                  {uploadQuestionTypes.has(question.type) && <UploadQuestionSettings question={question} onChange={(patch) => updateQuestion(question.id, patch)} />}
                   <ConditionalLogicEditor label="Show this question when..." item={question} questions={orderedQuestions} onChange={(rule) => updateQuestion(question.id, { conditionalLogic: rule })} />
                   <label className="toggle-row"><input type="checkbox" checked={question.required} onChange={(event) => updateQuestion(question.id, { required: event.target.checked })} />Required when visible</label>
                 </article>)}</div>
@@ -902,7 +973,7 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
     setSubmitProgress(null);
 
     if (mode === "manageForms") {
-      setView((current) => ["formsCreate", "formTemplates", "postedForms", "formResponses"].includes(current) ? current : "formTemplates");
+      setView((current) => ["formsCreate", "formTemplates", "postedForms", "registrationCampaigns", "formResponses", "registrationCenter"].includes(current) ? current : "formTemplates");
       return;
     }
 
@@ -1048,6 +1119,12 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
         setActiveFormId(null);
       }
       if (!quiet) setSaveMessage(status === "draft" ? "Form draft saved." : "Form submitted.");
+    } catch (error) {
+      if (!quiet) {
+        setSubmitProgress(null);
+        setSaveMessage(`${status === "draft" ? "Draft could not be saved" : "Form could not be submitted"}: ${error.message}`);
+      }
+      if (quiet) throw error;
     } finally {
       window.clearTimeout(progressTimerRef.current);
       if (!quiet) progressTimerRef.current = window.setTimeout(() => setSubmitProgress(null), 700);
@@ -1113,16 +1190,19 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
   }
   const manageTabs = [
     ...(canManageTemplates || canPostForms ? [["formsCreate", "Create Form"], ["formTemplates", "Templates"], ["postedForms", "Posted Forms"]] : []),
-    ...(canViewAllForms || canPostForms ? [["formResponses", "Submissions"]] : [])
+    ...(canManageTemplates || canPostForms ? [["registrationCampaigns", "Registration Campaigns"]] : []),
+    ...(canViewAllForms || canPostForms ? [["formResponses", "Submissions"], ["registrationCenter", "Registration Center"]] : [])
   ];
   const myTabs = [["myForms", "My Forms"], ["myFormDrafts", "My Drafts"], ["mySubmittedForms", "My Submissions"], ["reimbursements", "Reimbursements"]];
-  const tabs = mode === "manageForms" ? manageTabs : mode === "myForms" ? myTabs : [...manageTabs, ...myTabs];
+  const tabs = mode === "registrationCenter" ? [] : mode === "manageForms" ? manageTabs : mode === "myForms" ? myTabs : [...manageTabs, ...myTabs];
 
   return (
     <div className="forms-dashboard cms-panel-stack">
-      <div className="approval-type-tabs forms-section-tabs" role="tablist" aria-label="Forms sections">{tabs.map(([id, label]) => <button type="button" key={id} className={view === id ? "active" : ""} onClick={() => setView(id)}>{label}</button>)}</div>
+      {tabs.length > 0 && <div className="approval-type-tabs forms-section-tabs" role="tablist" aria-label="Forms sections">{tabs.map(([id, label]) => <button type="button" key={id} className={view === id ? "active" : ""} onClick={() => setView(id)}>{label}</button>)}</div>}
       {view === "formTemplates" && <div className="forms-management-grid">{templates.length ? templates.map((template) => <article className="forms-management-card" key={template.id}><div className="forms-card-heading"><FileText size={22} /><span className="forms-count-badge">{safeSchema(template.schemaJson).pages.length} pages / {getOrderedQuestions(template.schemaJson).length} questions</span></div><div><p className="eyebrow">{template.status}</p><h3>{template.title}</h3><FormattedText text={template.description} fallback="No description." /></div><small>Last edited {formatDate(template.updatedAt)}</small><div className="action-row"><button type="button" className="primary-action" onClick={() => { setBuilderTemplate(template); setView("formsCreate"); }}>Use Template</button><button type="button" className="inline-action" onClick={async () => { await saveDashboardFormTemplate({ title: `${template.title} copy`, description: template.description, schemaJson: template.schemaJson, status: "active" }); setSaveMessage("Template duplicated."); await onRefresh(); }}>Save as New Template</button><button type="button" className="icon-button danger-action" title="Delete template" onClick={async () => { if (window.confirm("Delete this reusable template? Posted forms using it will remain available.")) { await deleteDashboardFormTemplate(template.id); setSaveMessage("Form template deleted."); await onRefresh(); } }}><Trash2 size={17} /></button></div></article>) : <EmptyFormsState title="No templates yet" text="Create a reusable form template to start." />}</div>}
       {view === "postedForms" && <div className="forms-management-grid">{visiblePostedForms.length ? visiblePostedForms.map((form) => { const formSubmissions = submissions.filter((submission) => submission.postedFormId === form.id); const eligible = (data.users ?? []).filter((profile) => (profile.role === "chief" || profile.roles?.includes?.("chief") || profile.assignedGroupIds?.length || profile.coordinatorGroupIds?.length) && isTargetedToUser(form, profile)).length; return <article className="forms-management-card" key={form.id}><div className="forms-card-heading"><span className={`forms-status-pill ${form.approvalStatus}`}>{form.approvalStatus}</span><small>{form.targetType === "groups" ? form.targetGroupIds.map((id) => getGroupName(data.groups, id)).join(", ") : "All chiefs"}</small></div><div><h3>{form.title}</h3><p className="forms-response-count"><Users size={16} />{formSubmissions.length}{eligible ? ` of ${eligible}` : ""} responded</p><p className="helper-text"><CalendarDays size={15} />Due {formatDate(form.dueDate)}</p></div><div className="action-row"><button type="button" className="inline-action" onClick={() => setBuilderPostedForm(form)}>Edit copy</button><button type="button" className="inline-action" onClick={() => openForm(form)}>Preview</button>{form.approvalStatus === "open" ? <button type="button" className="inline-action" onClick={async () => { if (window.confirm("Close this form? Chiefs will no longer be able to submit or edit responses.")) { await closeDashboardPostedForm(form.id); setSaveMessage("Form closed. Exports are now available."); await onRefresh(); } }}>Close</button> : <button type="button" className="inline-action" disabled={form.approvalStatus !== "closed"} onClick={async () => { if (window.confirm("Reopen this form? Targeted chiefs will be able to submit or edit again.")) { await reopenDashboardPostedForm(form.id); setSaveMessage("Form reopened."); await onRefresh(); } }}>Reopen</button>}<button type="button" className="inline-action" disabled={form.approvalStatus !== "closed"} onClick={() => downloadCsv({ form, submissions: formSubmissions, users: data.users, groups: data.groups })}>Export CSV</button><button type="button" className="icon-button danger-action" title="Delete posted form" onClick={async () => { if (window.confirm("Permanently delete this posted form and all responses? Its reusable template will be preserved.")) { await deleteDashboardPostedForm(form.id); setSaveMessage("Posted form deleted."); await onRefresh(); } }}><Trash2 size={17} /></button></div></article>; }) : <EmptyFormsState title="No posted forms yet" text="Posted and pending forms will appear here." />}</div>}
+      {view === "registrationCampaigns" && <RegistrationCampaigns campaigns={data.registrationCampaigns ?? []} postedForms={postedForms} scoutYears={data.scoutYears ?? []} searchQuery={searchQuery} onEdit={(form) => { setBuilderPostedForm(form); setView("formsCreate"); }} onRefresh={onRefresh} setSaveMessage={setSaveMessage} />}
+      {view === "registrationCenter" && <RegistrationCenter data={{ submissions: data.registrationSubmissions, people: data.registrationPeople, parents: data.registrationParents, documents: data.registrationDocuments, duplicates: data.registrationDuplicates, reviews: data.registrationReviews, enrollments: data.scoutSeasonEnrollments, scouts: data.scouts, storageSummary: data.registrationStorageSummary }} groups={data.groups ?? []} scoutYears={data.scoutYears ?? []} searchQuery={searchQuery} onRefresh={onRefresh} setSaveMessage={setSaveMessage} viewerName={user?.fullName ?? user?.name ?? "Authorised reviewer"} canManageRetention={isAdmin} />}
       {view === "formResponses" && <div className="forms-submissions-view"><div className="forms-filter-bar"><label><Search size={16} /><select value={submissionFormFilter} onChange={(event) => setSubmissionFormFilter(event.target.value)}><option value="all">All forms</option>{postedForms.map((form) => <option value={form.id} key={form.id}>{form.title}</option>)}</select></label><label><Users size={16} /><select value={submissionGroupFilter} onChange={(event) => setSubmissionGroupFilter(event.target.value)}><option value="all">All groups</option>{(data.groups ?? []).map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}</select></label><label>Date from<input type="date" value={submissionDateFrom} onChange={(event) => setSubmissionDateFrom(event.target.value)} /></label><label>Date to<input type="date" value={submissionDateTo} onChange={(event) => setSubmissionDateTo(event.target.value)} /></label></div><div className="table-panel forms-submissions-table"><table className="editable-table"><thead><tr><th>Select</th><th>Form</th><th>Submitted by</th><th>Group</th><th>Status</th><th>Submitted</th></tr></thead><tbody>{filteredSubmissions.length ? filteredSubmissions.map((submission) => { const form = postedForms.find((item) => item.id === submission.postedFormId); const submitter = (data.users ?? []).find((item) => item.id === submission.submittedBy); return <tr key={submission.id}><td><input type="checkbox" checked={selectedSubmissionIds.includes(submission.id)} onChange={(event) => setSelectedSubmissionIds((current) => event.target.checked ? [...current, submission.id] : current.filter((id) => id !== submission.id))} /></td><td>{form?.title ?? "Unknown form"}</td><td>{submitter?.name ?? "Unknown user"}</td><td>{getGroupName(data.groups, submission.groupId ?? submitter?.groupId)}</td><td><span className={`forms-status-pill ${submission.approvalStatus}`}>{submission.approvalStatus}</span></td><td>{formatDate(submission.submittedAt ?? submission.updatedAt)}</td></tr>; }) : <tr><td colSpan="6">No submissions match these filters.</td></tr>}</tbody></table></div><article className="forms-ai-summary-card"><div className="forms-section-heading"><div><p className="eyebrow">Response analysis</p><h3>AI Summary</h3></div><span className="forms-coming-soon-badge">Coming Soon</span></div><p>{selectedSubmissionIds.length ? `${selectedSubmissionIds.length} responses selected.` : "Select responses above to prepare a future summary."}</p><div className="forms-ai-sections">{aiSummarySections.map((section) => <span key={section}>{section}</span>)}</div><button type="button" className="primary-action" disabled>Generate AI Summary</button></article></div>}
       {view === "myForms" && <FormsList forms={searchedPostedForms.filter((form) => form.approvalStatus === "open" && isTargetedToUser(form, user) && !mySubmissions.some((submission) => submission.postedFormId === form.id && submission.approvalStatus === "submitted"))} submissions={mySubmissions} type="pending" onOpen={openForm} empty="No pending forms match this search." />}
       {view === "myFormDrafts" && <FormsList forms={searchedPostedForms.filter((form) => mySubmissions.some((submission) => submission.postedFormId === form.id && submission.approvalStatus === "draft"))} submissions={mySubmissions} type="draft" onOpen={openForm} empty="No saved form drafts match this search." />}

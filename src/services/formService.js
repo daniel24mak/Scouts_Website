@@ -1,4 +1,5 @@
-import { callSupabaseRpc, deleteSupabaseRows, getCurrentSupabaseUserId, getSupabaseRows, insertSupabaseRow, patchSupabaseRows } from "./supabaseClient.js";
+import { callSupabaseRpc, deleteSupabaseRows, getCurrentSupabaseUserId, getSupabaseRows, insertSupabaseRow, patchSupabaseRows, upsertSupabaseRows } from "./supabaseClient.js";
+import { normalizeRegistrationSettings } from "../features/registration/registrationModel.js";
 
 function jsonValue(value, fallback) {
   if (value === null || value === undefined) return fallback;
@@ -21,7 +22,11 @@ export const formQuestionTypes = [
   ["multiple_choice", "Multiple choice"],
   ["checkboxes", "Checkboxes"],
   ["dropdown", "Dropdown"],
-  ["date", "Date"]
+  ["date", "Date"],
+  ["file_upload", "File upload"],
+  ["image_upload", "Image upload"],
+  ["protected_document_upload", "Protected document upload"],
+  ["scout_headshot_upload", "Scout headshot upload"]
 ];
 
 export function blankFormSchema() {
@@ -100,6 +105,8 @@ export function normalizePostedForm(form) {
     allowEdits: Boolean(form.allow_edits ?? form.allowEdits ?? true),
     generateAiSummary: Boolean(form.generate_ai_summary ?? form.generateAiSummary ?? false),
     formKind: form.form_kind ?? form.formKind ?? behavior.formKind ?? "standard",
+    publicSlug: form.public_slug ?? form.publicSlug ?? null,
+    publicAccessEnabled: Boolean(form.public_access_enabled ?? form.publicAccessEnabled ?? false),
     allowMultipleSubmissions: Boolean(form.allow_multiple_submissions ?? form.allowMultipleSubmissions ?? behavior.allowMultipleSubmissions ?? false),
     maxSubmissions: form.max_submissions ?? form.maxSubmissions ?? behavior.maxSubmissions ?? null,
     availableFrom: form.available_from ?? form.availableFrom ?? behavior.availableFrom ?? null,
@@ -162,14 +169,76 @@ export function normalizeFormAiSummary(summary) {
   };
 }
 
+export function normalizeRegistrationCampaign(campaign) {
+  return {
+    id: campaign.id,
+    postedFormId: campaign.posted_form_id ?? campaign.postedFormId,
+    status: campaign.status ?? "draft",
+    settings: normalizeRegistrationSettings({
+      seasonId: campaign.scout_year_id ?? campaign.seasonId,
+      registrationTitle: campaign.title ?? campaign.registrationTitle,
+      slug: campaign.slug,
+      returningEnabled: campaign.returning_enabled ?? campaign.returningEnabled,
+      newEnabled: campaign.new_enabled ?? campaign.newEnabled,
+      returningOpensAt: campaign.returning_opens_at ?? campaign.returningOpensAt,
+      newOpensAt: campaign.new_opens_at ?? campaign.newOpensAt,
+      closesAt: campaign.closes_at ?? campaign.closesAt,
+      showOpeningDate: campaign.show_opening_date ?? campaign.showOpeningDate,
+      newScoutWaitlist: campaign.new_scout_waitlist ?? campaign.newScoutWaitlist,
+      capacity: campaign.capacity,
+      acceptedGroupIds: campaign.accepted_group_ids ?? campaign.acceptedGroupIds,
+      minimumAge: campaign.minimum_age ?? campaign.minimumAge,
+      maximumAge: campaign.maximum_age ?? campaign.maximumAge,
+      birthYearFrom: campaign.birth_year_from ?? campaign.birthYearFrom,
+      birthYearTo: campaign.birth_year_to ?? campaign.birthYearTo,
+      requireHeadshot: campaign.require_headshot ?? campaign.requireHeadshot,
+      requireIdFront: campaign.require_id_front ?? campaign.requireIdFront,
+      requireIdBack: campaign.require_id_back ?? campaign.requireIdBack,
+      requireVerification: campaign.require_verification ?? campaign.requireVerification,
+      requireParentVerification: campaign.require_parent_verification ?? campaign.requireParentVerification,
+      allowDrafts: campaign.allow_drafts ?? campaign.allowDrafts,
+      privacyText: campaign.privacy_text ?? campaign.privacyText,
+      consentText: campaign.consent_text ?? campaign.consentText,
+      retentionText: campaign.retention_text ?? campaign.retentionText
+    }),
+    createdAt: campaign.created_at ?? campaign.createdAt ?? null,
+    updatedAt: campaign.updated_at ?? campaign.updatedAt ?? null
+  };
+}
+
 export async function getFormsData() {
-  const [templates, versions, postedForms, submissions, aiSummaries, reimbursements] = await Promise.all([
+  const [
+    templates,
+    versions,
+    postedForms,
+    submissions,
+    aiSummaries,
+    reimbursements,
+    registrationCampaigns,
+    registrationSubmissions,
+    registrationPeople,
+    registrationParents,
+    registrationDocuments,
+    registrationDuplicates,
+    registrationReviews,
+    scoutSeasonEnrollments,
+    registrationStorageSummary
+  ] = await Promise.all([
     getSupabaseRows("form_templates", "select=*&order=updated_at.desc"),
     getSupabaseRows("form_template_versions", "select=*&order=created_at.desc"),
     getSupabaseRows("posted_forms", "select=*,creator:user_profiles!posted_forms_created_by_fkey(full_name,profile_picture_url)&order=updated_at.desc").catch(() => getSupabaseRows("posted_forms", "select=*&order=updated_at.desc")),
     getSupabaseRows("form_submissions", "select=*&order=updated_at.desc"),
     getSupabaseRows("form_ai_summaries", "select=*&order=updated_at.desc"),
-    getSupabaseRows("finance_reimbursements", "select=*&order=updated_at.desc").catch(() => [])
+    getSupabaseRows("finance_reimbursements", "select=*&order=updated_at.desc").catch(() => []),
+    getSupabaseRows("registration_campaigns", "select=*&order=updated_at.desc").catch(() => []),
+    getSupabaseRows("scout_registration_submissions", "select=*&order=submitted_at.desc").catch(() => []),
+    getSupabaseRows("scout_registration_people", "select=*").catch(() => []),
+    getSupabaseRows("scout_registration_parent_contacts", "select=*").catch(() => []),
+    getSupabaseRows("scout_registration_documents", "select=*&order=uploaded_at.desc").catch(() => []),
+    getSupabaseRows("scout_registration_duplicate_matches", "select=*&order=created_at.desc").catch(() => []),
+    getSupabaseRows("scout_registration_reviews", "select=*&order=reviewed_at.desc").catch(() => []),
+    getSupabaseRows("scout_season_enrollments", "select=*&order=enrolled_at.desc").catch(() => []),
+    callSupabaseRpc("get_registration_storage_summary").catch(() => null)
   ]);
 
   return {
@@ -178,8 +247,58 @@ export async function getFormsData() {
     postedForms: postedForms.map(normalizePostedForm),
     formSubmissions: submissions.map(normalizeFormSubmission),
     formAiSummaries: aiSummaries.map(normalizeFormAiSummary),
-    reimbursements: reimbursements.map(normalizeReimbursement)
+    reimbursements: reimbursements.map(normalizeReimbursement),
+    registrationCampaigns: registrationCampaigns.map(normalizeRegistrationCampaign),
+    registrationSubmissions,
+    registrationPeople,
+    registrationParents,
+    registrationDocuments,
+    registrationDuplicates,
+    registrationReviews,
+    scoutSeasonEnrollments,
+    registrationStorageSummary
   };
+}
+
+async function saveRegistrationCampaign(postedFormId, payload, postedStatus) {
+  const settings = normalizeRegistrationSettings(payload.schemaJson?.settings?.behavior?.registration);
+  const now = new Date().toISOString();
+  const status = postedStatus === "open" || postedStatus === "approved"
+    ? "open"
+    : postedStatus === "closed" ? "closed" : "draft";
+  const [campaign] = await upsertSupabaseRows("registration_campaigns", [{
+    posted_form_id: postedFormId,
+    scout_year_id: settings.seasonId,
+    title: settings.registrationTitle || payload.title,
+    slug: settings.slug,
+    status,
+    returning_enabled: settings.returningEnabled,
+    new_enabled: settings.newEnabled,
+    returning_opens_at: settings.returningOpensAt || null,
+    new_opens_at: settings.newOpensAt || null,
+    closes_at: settings.closesAt || null,
+    show_opening_date: settings.showOpeningDate,
+    new_scout_waitlist: settings.newScoutWaitlist,
+    capacity: settings.capacity,
+    accepted_group_ids: settings.acceptedGroupIds,
+    minimum_age: settings.minimumAge,
+    maximum_age: settings.maximumAge,
+    birth_year_from: settings.birthYearFrom,
+    birth_year_to: settings.birthYearTo,
+    require_headshot: settings.requireHeadshot,
+    require_id_front: settings.requireIdFront,
+    require_id_back: settings.requireIdBack,
+    require_verification: settings.requireVerification,
+    require_parent_verification: settings.requireParentVerification,
+    allow_drafts: settings.allowDrafts,
+    privacy_text: settings.privacyText,
+    consent_text: settings.consentText,
+    retention_text: settings.retentionText,
+    created_by: getCurrentSupabaseUserId(),
+    updated_by: getCurrentSupabaseUserId(),
+    updated_at: now
+  }], "posted_form_id");
+  return normalizeRegistrationCampaign(campaign);
 }
 
 async function insertTemplateVersion(templateId, payload) {
@@ -250,11 +369,13 @@ export async function savePostedForm(payload) {
     allow_edits: payload.allowEdits ?? true,
     generate_ai_summary: payload.generateAiSummary ?? false,
     reviewer_comment: payload.reviewerComment ?? "",
+    form_kind: payload.formKind ?? "standard",
+    public_slug: payload.publicSlug || null,
+    public_access_enabled: payload.formKind === "scout_registration",
     updated_at: new Date().toISOString()
   };
 
   if (payload.formKind === "reimbursement") {
-    row.form_kind = "reimbursement";
     row.allow_multiple_submissions = payload.allowMultipleSubmissions ?? true;
     row.max_submissions = payload.maxSubmissions || null;
     row.available_from = payload.availableFrom || null;
@@ -269,6 +390,7 @@ export async function savePostedForm(payload) {
 
   if (payload.id) {
     const [form] = await patchSupabaseRows("posted_forms", `id=eq.${encodeURIComponent(payload.id)}`, row);
+    if (row.form_kind === "scout_registration") await saveRegistrationCampaign(form.id, payload, row.status);
     if (row.status === "open") await callSupabaseRpc("create_posted_form_notifications", { target_form_id: form.id });
     return normalizePostedForm(form);
   }
@@ -277,6 +399,7 @@ export async function savePostedForm(payload) {
     ...row,
     created_by: userId
   });
+  if (row.form_kind === "scout_registration") await saveRegistrationCampaign(form.id, payload, row.status);
   if (row.status === "open") await callSupabaseRpc("create_posted_form_notifications", { target_form_id: form.id });
   return normalizePostedForm(form);
 }

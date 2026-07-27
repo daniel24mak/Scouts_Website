@@ -378,12 +378,19 @@ CREATE POLICY "form submissions update own open forms" ON public.form_submission
   USING (
     submitted_by = auth.uid()
     AND public.can_fill_posted_form(posted_form_id)
-    AND EXISTS (SELECT 1 FROM public.posted_forms pf WHERE pf.id = posted_form_id AND pf.allow_edits)
+    AND (
+      status = 'draft'
+      OR EXISTS (
+        SELECT 1
+        FROM public.posted_forms pf
+        WHERE pf.id = posted_form_id
+          AND pf.allow_edits
+      )
+    )
   )
   WITH CHECK (
     submitted_by = auth.uid()
     AND public.can_fill_posted_form(posted_form_id)
-    AND EXISTS (SELECT 1 FROM public.posted_forms pf WHERE pf.id = posted_form_id AND pf.allow_edits)
   );
 
 -- Prevent cross-group/equipe attendance associations even through direct REST calls.

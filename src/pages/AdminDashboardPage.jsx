@@ -268,6 +268,7 @@ const sections = [
   ["overview", "Overview", LayoutDashboard, "all"],
   ["aiAssistant", "AI Assistant", Sparkles, "all"],
   ["myGroup", "My Group", Users, "chief"],
+  ["registrationVerification", "Registration Verification", ShieldCheck, "chief"],
   ["scoutAttendance", "Scout Attendance", CheckCircle2, "attendance"],
   ["attendanceSheets", "Attendance Sheets", FileText, "attendance"],
   ["chiefAttendance", "Chief Attendance", ShieldCheck, "admin"],
@@ -292,7 +293,7 @@ const sections = [
   ["settings", "Settings", Settings, "admin"],
   ["usersPermissions", "People & Access", LockKeyhole, "settings"],
   ["websiteContent", "Website Content", Image, "settings"],
-  ["upload", "Registered Scout Upload", Upload, "settings"],
+  ["upload", "Registration & Season Import", Upload, "settings"],
   ["rules", "Groups & Sorting Rules", Settings, "settings"],  ["documents", "Documents", Folder, "settings"],
   ["reports", "Reports", Archive, "settings"],
   ["archives", "Archived Years", Archive, "settings"]
@@ -301,7 +302,7 @@ const sections = [
 const settingSections = [
   ["usersPermissions", "People & Access", LockKeyhole, "Manage people, scouting assignments, teams, roles, reviews, and effective access."],
   ["scouts", "Scouts", Users, "Add, edit, and assign scout records."],
-  ["upload", "Registered Scout Upload", Upload, "Upload the active scout registration sheet and preserve historical lists."],
+  ["upload", "Registration & Season Import", Upload, "Import season registrations and preserve the legacy spreadsheet workflow."],
   ["rules", "Groups & Sorting Rules", Settings, "Control automatic grouping by school grade, age, and gender rules."],
   ["websiteContent", "Website Content", Image, "Edit public website text, images, leader headshots, and content blocks."],  ["documents", "Documents", Folder, "Store and prepare document publishing workflows."],
   ["reports", "Reports", Archive, "Review attendance and yearly reporting modules."],
@@ -693,6 +694,11 @@ function canOpenSection(sectionId, user) {
   const section = sections.find(([id]) => id === sectionId);
     if (!section) {
     return false;
+  }
+    if (sectionId === "registrationVerification") {
+    return canManageSystem(user)
+      || ["head", "vice"].includes(user?.chiefLevel)
+      || getCoordinatorGroupIds(user).length > 0;
   }
     if (["documents", "reports"].includes(sectionId)) {
     return canManageSystem(user) || hasChiefAccess(user);
@@ -4663,6 +4669,9 @@ export default function AdminDashboardPage({
     if (activeSection === "aiAssistant") return renderAiAssistant();
     if (activeSection === "myWork") return renderMyWork();
     if (activeSection === "myGroup") return renderMyGroup();
+    if (activeSection === "registrationVerification") {
+      return <FormsDashboard data={data} user={scopedUser} isAdmin={isAdmin} mode="registrationCenter" onRefresh={refresh} setSaveMessage={setSaveMessage} searchQuery={search} />;
+    }
     if (activeSection === "scoutingStorage") return <ScoutingStoragePanel canRequest={isAdmin || hasEffectivePermission(data.effectiveAccess, PERMISSIONS.STORAGE_REQUESTS_SUBMIT) || hasEffectivePermission(data.effectiveAccess, PERMISSIONS.STORAGE_REQUESTS_CREATE)} setSaveMessage={setSaveMessage} />;
     if (activeSection === "websiteContent") return renderWebsiteContent();
     if (activeSection === "upload") return renderUpload();

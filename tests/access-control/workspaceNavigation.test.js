@@ -6,7 +6,7 @@ import { getSafeWorkspaceSection, getWorkspaceNavigationIds, isWorkspaceSectionA
 
 test("Scouting exposes the focused service navigation only", () => {
   assert.deepEqual(getWorkspaceNavigationIds("scouting"), [
-    "overview", "aiAssistant", "myGroup", "scoutAttendance", "myForms",
+    "overview", "aiAssistant", "myGroup", "registrationVerification", "scoutAttendance", "myForms",
     "scoutingStorage", "calendar", "documents", "reports", "myWork", "notifications"
   ]);
   for (const hidden of ["chiefAttendance", "archives", "posts", "gallery", "usersPermissions"]) {

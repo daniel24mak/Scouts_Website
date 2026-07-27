@@ -115,6 +115,25 @@ test("frontend auth and bootstrap paths fail closed per authenticated user", () 
   assert.doesNotMatch(client, /\.catch\(\(\) => request\(/);
 });
 
+test("shared Supabase requests refresh expired sessions once before failing", () => {
+  const client = read("../../src/services/supabaseClient.js");
+
+  assert.match(client, /grant_type=refresh_token/);
+  assert.match(client, /refreshSessionPromise/);
+  assert.match(client, /response\.status === 401/);
+  assert.match(client, /storeSupabaseSession\(\{[\s\S]*refreshedSession/);
+});
+
+test("form drafts can be submitted even when editing submitted responses is disabled", () => {
+  const sql = read("../../database/supabase-security-hardening.sql");
+  const incremental = read("../../database/supabase-forms-posting-submission-fix.sql");
+
+  for (const migration of [sql, incremental]) {
+    assert.match(migration, /status = 'draft'/i);
+    assert.match(migration, /pf\.allow_edits/i);
+  }
+});
+
 test("Supabase invitation hashes are bridged out of HashRouter and accepted safely", () => {
   const main = read("../../src/main.jsx");
   const app = read("../../src/App.jsx");

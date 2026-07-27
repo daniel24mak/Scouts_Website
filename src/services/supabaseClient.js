@@ -4,6 +4,7 @@ const supabasePublishableKey =
   environment.VITE_SUPABASE_PUBLISHABLE_KEY ?? environment.VITE_SUPABASE_ANON_KEY;
 const storageBucket = environment.VITE_SUPABASE_STORAGE_BUCKET ?? "scouts-files";
 const sessionStorageKey = "scouts-supabase-session";
+let refreshSessionPromise = null;
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabasePublishableKey);
 
@@ -44,24 +45,76 @@ export function getCurrentSupabaseUserId() {
   return getStoredSupabaseSession()?.user?.id ?? null;
 }
 
+async function refreshStoredSupabaseSession() {
+  const currentSession = getStoredSupabaseSession();
+  if (!currentSession?.refresh_token) {
+    return null;
+  }
+
+  if (!refreshSessionPromise) {
+    refreshSessionPromise = fetch(`${supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
+      method: "POST",
+      headers: {
+        apikey: supabasePublishableKey,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ refresh_token: currentSession.refresh_token })
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          const message = (await response.text()) || `Session refresh failed: ${response.status}`;
+          if (response.status === 400 || response.status === 401) {
+            clearSupabaseSession();
+          }
+          throw new Error(message);
+        }
+
+        const refreshedSession = await response.json();
+        storeSupabaseSession({
+          ...currentSession,
+          ...refreshedSession,
+          user: refreshedSession.user ?? currentSession.user
+        });
+        return getStoredSupabaseSession();
+      })
+      .finally(() => {
+        refreshSessionPromise = null;
+      });
+  }
+
+  return refreshSessionPromise;
+}
+
 export async function supabaseRequest(path, options = {}) {
   if (!isSupabaseConfigured) {
     throw new Error("Supabase is not configured.");
   }
 
-  const accessToken = options.accessToken ?? getStoredSupabaseSession()?.access_token;
-  const authToken = accessToken ?? supabasePublishableKey;
-  const headers = {
-    apikey: supabasePublishableKey,
-    Authorization: `Bearer ${authToken}`,
-    ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
-    ...(options.headers ?? {})
+  const request = async (accessToken) => {
+    const authToken = accessToken ?? supabasePublishableKey;
+    const headers = {
+      apikey: supabasePublishableKey,
+      Authorization: `Bearer ${authToken}`,
+      ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+      ...(options.headers ?? {})
+    };
+
+    return fetch(`${supabaseUrl}${path}`, {
+      ...options,
+      headers
+    });
   };
 
-  const response = await fetch(`${supabaseUrl}${path}`, {
-    ...options,
-    headers
-  });
+  const explicitAccessToken = options.accessToken;
+  const storedSession = getStoredSupabaseSession();
+  let response = await request(explicitAccessToken ?? storedSession?.access_token);
+
+  if (response.status === 401 && !explicitAccessToken && storedSession?.refresh_token) {
+    const refreshedSession = await refreshStoredSupabaseSession();
+    if (refreshedSession?.access_token) {
+      response = await request(refreshedSession.access_token);
+    }
+  }
 
   if (!response.ok) {
     throw new Error((await response.text()) || `Supabase request failed: ${response.status}`);
@@ -159,6 +212,14 @@ export function invokeSupabaseFunction(name, payload, options = {}) {
     method: options.method ?? "POST",
     accessToken: options.accessToken,
     body: payload ? JSON.stringify(payload) : undefined
+  });
+}
+
+export function invokeSupabaseFunctionForm(name, formData, options = {}) {
+  return supabaseRequest(`/functions/v1/${name}`, {
+    method: options.method ?? "POST",
+    accessToken: options.accessToken,
+    body: formData
   });
 }
 
