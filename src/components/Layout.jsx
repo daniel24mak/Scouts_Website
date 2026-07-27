@@ -23,6 +23,7 @@ export default function Layout() {
   const lastScrollY = useRef(0);
   const isHomePage = location.pathname === "/";
   const isDashboardPage = isDashboardPath(location.pathname);
+  const isStandaloneFormPage = /^\/register\/[^/]+/.test(location.pathname);
 
   useEffect(() => {
     const updateHeader = () => {
@@ -59,8 +60,8 @@ export default function Layout() {
   };
 
   return (
-    <div className={`app-shell ${isDashboardPage ? "dashboard-shell" : ""}`}>
-      {!isDashboardPage && (
+    <div className={`app-shell ${isDashboardPage ? "dashboard-shell" : ""} ${isStandaloneFormPage ? "standalone-form-shell" : ""}`}>
+      {!isDashboardPage && !isStandaloneFormPage && (
         <header className={`site-header ${isHomePage && !isScrolled && !isMenuOpen ? "transparent" : "scrolled"} ${isHeaderHidden ? "hidden" : ""} ${isMenuOpen ? "menu-open" : ""}`}>
         <NavLink to="/" className="brand" onClick={closeMenu}>
           <img className="brand-logo" src={scoutLogo} alt="Scout of Saint Mary logo" />
@@ -122,7 +123,7 @@ export default function Layout() {
       <main>
         <Outlet />
       </main>
-      {!isDashboardPage && (
+      {!isDashboardPage && !isStandaloneFormPage && (
         <footer className="site-footer">
         <div className="footer-brand">
           <img className="footer-logo" src={scoutLogo} alt="Scout of Saint Mary logo" />

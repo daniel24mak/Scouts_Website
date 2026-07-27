@@ -8,6 +8,7 @@ import {
   updateRegistrationSubmission,
   verifyRegistrationDocument
 } from "./registrationService.js";
+import { formatPhoneAnswer } from "../forms/formModel.js";
 
 const tabs = [
   ["overview", "Overview"],
@@ -99,7 +100,9 @@ export default function RegistrationCenter({
       const value = Array.isArray(answer)
         ? answer.join(", ")
         : answer && typeof answer === "object"
-          ? JSON.stringify(answer)
+          ? ("e164" in answer || "nationalNumber" in answer)
+            ? formatPhoneAnswer(answer)
+            : JSON.stringify(answer)
           : String(answer ?? "");
       return {
         id: questionId,
