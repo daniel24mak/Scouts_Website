@@ -2,7 +2,7 @@ const COMMON_START = Object.freeze(["overview", "aiAssistant"]);
 const COMMON_END = Object.freeze(["myWork", "notifications"]);
 
 export const WORKSPACE_NAVIGATION = Object.freeze({
-  scouting: Object.freeze([...COMMON_START, "myGroup", "scoutAttendance", "myForms", "scoutingStorage", "calendar", "documents", "reports", ...COMMON_END]),
+  scouting: Object.freeze([...COMMON_START, "myGroup", "registrationVerification", "scoutAttendance", "myForms", "scoutingStorage", "calendar", "documents", "reports", ...COMMON_END]),
   admin: Object.freeze([
     ...COMMON_START,
     "usersPermissions", "approvals", "manageForms",

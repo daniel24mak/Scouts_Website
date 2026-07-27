@@ -24,6 +24,7 @@ const GalleryPage = lazy(() => import("./pages/GalleryPage.jsx"));
 const HomePage = lazy(() => import("./pages/HomePage.jsx"));
 const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage.jsx"));
+const ScoutRegistrationPage = lazy(() => import("./pages/ScoutRegistrationPage.jsx"));
 const MyWorkPage = lazy(() => import("./workspaces/MyWorkPage.jsx"));
 
 function RouteFallback() {
@@ -48,6 +49,8 @@ export default function App() {
             <Route path="gallery/:albumId" element={<AlbumDetailPage />} />
             <Route path="login" element={<LoginPage />} />
             <Route path="accept-invite" element={<AcceptInvitationPage />} />
+            <Route path="register" element={<ScoutRegistrationPage />} />
+            <Route path="register/:campaignSlug" element={<ScoutRegistrationPage />} />
             <Route
               path="chiefs"
               element={<Navigate to="/dashboard" replace />}
