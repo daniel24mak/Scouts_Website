@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CalendarDays, CheckCircle2, Clock, FileCheck2, Save, ShieldCheck, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckCircle2, Clock, FileCheck2, ShieldCheck, Users } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import BrandedLoader from "../components/BrandedLoader.jsx";
 import scoutLogo from "../assets/smscouts_logo.png";
@@ -187,7 +187,6 @@ export default function ScoutRegistrationPage() {
         <img src={scoutLogo} alt="" />
         <strong>St. Mary&apos;s Scouts</strong>
       </Link>
-      <Link to="/register" className="registration-save-exit"><Save size={17} />Save &amp; exit</Link>
     </header>
     <main className="registration-public-page registration-form-page">
       <section className="registration-public-shell">
@@ -199,11 +198,11 @@ export default function ScoutRegistrationPage() {
         </header>
         {error && <p className="form-error registration-public-error">{error}</p>}
 
-        {step === "questions" && <section className="registration-form-stage"><FormPreview form={campaign.form} answers={answers} errorQuestionIds={questionErrors} onAnswerChange={(id, value) => { setAnswers((current) => ({ ...current, [id]: value })); setQuestionErrors((current) => current.filter((questionId) => questionId !== id)); }} showHeader embeddedHeader isStarted={formStarted} onStart={() => setFormStarted(true)} onPageStateChange={handleFormPageStateChange} />{formStarted && isLastFormPage && <div className="registration-stage-actions"><button type="button" className="primary-action" onClick={continueToConsent}>Review and consent</button></div>}</section>}
+        {step === "questions" && <section className="registration-form-stage"><FormPreview form={campaign.form} answers={answers} errorQuestionIds={questionErrors} onAnswerChange={(id, value) => { setAnswers((current) => ({ ...current, [id]: value })); setQuestionErrors((current) => current.filter((questionId) => questionId !== id)); }} showHeader embeddedHeader publicMode isStarted={formStarted} onStart={() => setFormStarted(true)} onPageStateChange={handleFormPageStateChange} />{formStarted && isLastFormPage && <div className="registration-stage-actions"><button type="button" className="primary-action" onClick={continueToConsent}>Review and consent</button></div>}</section>}
 
         {step === "consent" && <section className="registration-step-card"><p className="eyebrow">Review and consent</p><h2>Confirm this registration</h2><div className="registration-privacy-copy"><ShieldCheck /><div><strong>Privacy notice</strong><p>{campaign.settings.privacyText}</p><strong>Retention</strong><p>{campaign.settings.retentionText}</p></div></div><label>Signer full name<input value={signerName} onChange={(event) => setSignerName(event.target.value)} /></label><label className="registration-honeypot" aria-hidden="true">Website<input tabIndex="-1" autoComplete="off" value={website} onChange={(event) => setWebsite(event.target.value)} /></label><label className="toggle-row registration-consent"><input type="checkbox" checked={consentAccepted} onChange={(event) => setConsentAccepted(event.target.checked)} />{campaign.settings.consentText}</label><div className="registration-stage-actions"><button type="button" className="inline-action" onClick={() => setStep("questions")}>Back</button><button type="button" className="primary-action" disabled={isBusy || !path} onClick={submit}>{isBusy ? "Submitting securely..." : "Submit registration"}</button></div></section>}
 
-        {step === "complete" && <section className="registration-complete-card"><CheckCircle2 /><p className="eyebrow">Registration received</p><h2>Thank you</h2><p>Your reference is <strong>{result?.referenceNumber}</strong>.</p><span><Clock />Status: {result?.status?.replaceAll("_", " ")}</span><Link className="primary-action" to="/">Return to website</Link></section>}
+        {step === "complete" && <section className="registration-complete-card"><CheckCircle2 /><p className="eyebrow">Registration received</p><h2>Thank you</h2><p>Your reference is <strong>{result?.referenceNumber}</strong>.</p><span><Clock />Status: {result?.status?.replaceAll("_", " ")}</span>{result?.emailDelivery?.status === "failed" && <p className="status-message error">Your registration was saved, but the response email could not be sent.</p>}<Link className="primary-action" to="/">Return to website</Link></section>}
       </section>
     </main>
     </>

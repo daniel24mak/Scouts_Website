@@ -139,6 +139,7 @@ export default function Layout() {
           <Link to="/calendar">Calendar</Link>
           <Link to="/blogs">Blogs / News</Link>
           <Link to="/gallery">Gallery</Link>
+          <Link to="/register">Public Forms</Link>
           <Link to="/login">Login</Link>
         </nav>
         <div className="footer-column footer-contact">

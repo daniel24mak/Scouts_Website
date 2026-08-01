@@ -63,12 +63,25 @@ test("public registration SQL only creates a scout profile when structured scout
   assert.match(migration, /registration_path = 'returning'\s+AND length\(btrim\(COALESCE\(person ->> 'fullName', ''\)\)\) > 0/);
 });
 
-test("registration review displays custom form answers and does not enroll generic registrations", () => {
+test("registration review displays custom answers and collects enrollment details", () => {
   const center = read("../../src/features/registration/RegistrationCenter.jsx");
 
   assert.match(center, /answersFor\(selected\)/);
   assert.match(center, /Form responses/);
-  assert.match(center, /no scout profile/);
+  assert.match(center, /Enrollment details/);
+  assert.match(center, /submissionId: selected\.id, enrollmentDetails/);
+  assert.match(center, /targetGroupId/);
+});
+
+test("registration export includes dynamic answers in Excel without dashboard links", () => {
+  const center = read("../../src/features/registration/RegistrationCenter.jsx");
+
+  assert.match(center, /questionColumns/);
+  assert.match(center, /answers_json/);
+  assert.match(center, /getOrderedFormQuestions/);
+  assert.match(center, /orderedSubmissionAnswers/);
+  assert.match(center, /Download Excel/);
+  assert.doesNotMatch(center, /Open Verification/);
 });
 
 test("upload questions retain per-question PDF and privacy controls", () => {

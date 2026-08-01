@@ -3,7 +3,7 @@
 
 BEGIN;
 
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
 INSERT INTO public.permissions (id, description, module, action, risk_level, requires_mfa, is_active)
 VALUES
@@ -344,7 +344,7 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT public.has_permission('registration.manage_all_groups')
+  SELECT public.has_permission('registration.center.view')
     OR (
       target_group_id IS NOT NULL
       AND public.has_permission_for_group('registration.verify', target_group_id)
@@ -452,7 +452,7 @@ CREATE OR REPLACE FUNCTION public.submit_public_scout_registration(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   campaign public.registration_campaigns%ROWTYPE;
@@ -627,7 +627,7 @@ CREATE POLICY "registration parents follow submission" ON public.scout_registrat
 DROP POLICY IF EXISTS "registration documents metadata reviewed" ON public.scout_registration_documents;
 CREATE POLICY "registration documents metadata reviewed" ON public.scout_registration_documents
   FOR SELECT TO authenticated
-  USING (submission_id IS NOT NULL AND public.has_permission('identity_documents.view') AND EXISTS (
+  USING (submission_id IS NOT NULL AND EXISTS (
     SELECT 1 FROM public.scout_registration_submissions submission
     WHERE submission.id = submission_id AND public.can_manage_registration_group(submission.target_group_id)
   ));

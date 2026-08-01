@@ -4,11 +4,42 @@ import {
   canShareFormRow,
   formatPhoneAnswer,
   getAnswerScalar,
+  getOrderedFormQuestions,
   moveFormQuestion,
+  normalizeFormAppearanceSettings,
+  normalizeFormResponseEmailSettings,
   normalizeFormQuestion,
+  packFormQuestionRows,
   normalizePhoneAnswer,
+  validateEmailAnswer,
+  validateFormResponseEmailSettings,
   validatePhoneAnswer
 } from "../../src/features/forms/formModel.js";
+
+test("form appearance shows question numbers for existing forms by default", () => {
+  assert.equal(normalizeFormAppearanceSettings().showQuestionNumbers, true);
+  assert.equal(normalizeFormAppearanceSettings({ accentColor: "#123456" }).showQuestionNumbers, true);
+});
+
+test("form appearance preserves an explicit choice to hide question numbers", () => {
+  assert.equal(normalizeFormAppearanceSettings({ showQuestionNumbers: false }).showQuestionNumbers, false);
+});
+
+test("form questions follow page order and then question order", () => {
+  const questions = getOrderedFormQuestions({
+    pages: [
+      { id: "page-2", order: 2 },
+      { id: "page-1", order: 1 }
+    ],
+    questions: [
+      { id: "third", pageId: "page-2", order: 0 },
+      { id: "second", pageId: "page-1", order: 1 },
+      { id: "first", pageId: "page-1", order: 0 }
+    ]
+  });
+
+  assert.deepEqual(questions.map((question) => question.id), ["first", "second", "third"]);
+});
 
 test("legacy questions remain full width and receive a stable row", () => {
   const question = normalizeFormQuestion({
@@ -19,8 +50,35 @@ test("legacy questions remain full width and receive a stable row", () => {
 
   assert.deepEqual(question.layout, {
     rowId: "row-question-1",
-    width: "full"
+    width: "full",
+    surface: "default"
   });
+});
+
+test("consecutive half-width questions automatically share a row", () => {
+  const questions = packFormQuestionRows([
+    { id: "first", pageId: "page-1", order: 0, type: "short_text", layout: { width: "half" } },
+    { id: "second", pageId: "page-1", order: 1, type: "short_text", layout: { width: "half" } }
+  ]);
+
+  assert.equal(questions[0].layout.rowId, questions[1].layout.rowId);
+  assert.equal(questions[0].layout.width, "half");
+  assert.equal(questions[1].layout.width, "half");
+});
+
+test("row packing starts a new row when the next field would exceed capacity", () => {
+  const questions = packFormQuestionRows([
+    { id: "first", pageId: "page-1", order: 0, type: "short_text", layout: { width: "two_thirds" } },
+    { id: "second", pageId: "page-1", order: 1, type: "short_text", layout: { width: "half" } }
+  ]);
+
+  assert.notEqual(questions[0].layout.rowId, questions[1].layout.rowId);
+});
+
+test("question surface style is normalized without changing legacy forms", () => {
+  assert.equal(normalizeFormQuestion({ id: "default" }).layout.surface, "default");
+  assert.equal(normalizeFormQuestion({ id: "boxed", layout: { surface: "boxed" } }).layout.surface, "boxed");
+  assert.equal(normalizeFormQuestion({ id: "plain", layout: { surface: "plain" } }).layout.surface, "plain");
 });
 
 test("long answers and uploads are always full width", () => {
@@ -117,4 +175,62 @@ test("phone validation accepts valid numbers and explains invalid input", () => 
     validatePhoneAnswer(question, { country: "AE", nationalNumber: "123" }),
     "Enter a valid phone number."
   );
+});
+
+test("email answers are stored as text and validated without restricting languages elsewhere", () => {
+  const question = normalizeFormQuestion({
+    id: "email-1",
+    type: "email",
+    required: true
+  });
+
+  assert.equal(validateEmailAnswer(question, "parent@example.com"), "");
+  assert.equal(validateEmailAnswer(question, "not-an-email"), "Enter a valid email address.");
+  assert.equal(validateEmailAnswer(question, ""), "Enter an email address.");
+  assert.equal(validateEmailAnswer({ ...question, required: false }, ""), "");
+});
+
+test("response email settings default to no delivery for existing forms", () => {
+  assert.deepEqual(normalizeFormResponseEmailSettings(), {
+    mode: "none",
+    questionId: ""
+  });
+  assert.deepEqual(normalizeFormResponseEmailSettings({
+    mode: "entered_email",
+    questionId: "email-1"
+  }), {
+    mode: "entered_email",
+    questionId: "email-1"
+  });
+});
+
+test("entered email delivery requires an email question", () => {
+  const questions = [
+    { id: "name-1", type: "short_text" },
+    { id: "email-1", type: "email" }
+  ];
+
+  assert.equal(validateFormResponseEmailSettings(
+    { mode: "entered_email", questionId: "email-1" },
+    questions,
+    { publicForm: true }
+  ), "");
+  assert.equal(validateFormResponseEmailSettings(
+    { mode: "entered_email", questionId: "name-1" },
+    questions,
+    { publicForm: false }
+  ), "Choose an Email question for the receipt recipient.");
+});
+
+test("dashboard profile delivery is rejected for public forms", () => {
+  assert.equal(validateFormResponseEmailSettings(
+    { mode: "dashboard_profile" },
+    [],
+    { publicForm: true }
+  ), "Public forms cannot send to a dashboard profile email.");
+  assert.equal(validateFormResponseEmailSettings(
+    { mode: "dashboard_profile" },
+    [],
+    { publicForm: false }
+  ), "");
 });

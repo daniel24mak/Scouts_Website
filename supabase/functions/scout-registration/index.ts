@@ -1,9 +1,25 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+import { deliverFormResponseEmail } from "../_shared/formResponseEmail.ts";
 
 const encoder = new TextEncoder();
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"]);
+
+function errorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object" && "message" in error) {
+    return String((error as { message?: unknown }).message ?? "Registration request failed.");
+  }
+  return "Registration request failed.";
+}
+
+function errorCode(error: unknown) {
+  if (error && typeof error === "object" && "code" in error) {
+    return String((error as { code?: unknown }).code ?? "");
+  }
+  return "";
+}
 
 async function hash(value: string | ArrayBuffer) {
   const bytes = typeof value === "string" ? encoder.encode(value) : value;
@@ -148,10 +164,12 @@ Deno.serve(async (req) => {
     const action = body instanceof FormData ? String(body.get("action") ?? "") : String(body.action ?? "");
 
     const since = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-    const { count } = await admin.from("registration_request_limits").select("id", { count: "exact", head: true })
+    const { count, error: limitLookupError } = await admin.from("registration_request_limits").select("id", { count: "exact", head: true })
       .eq("request_fingerprint", fingerprint).eq("action", action).gte("created_at", since);
+    if (limitLookupError) throw limitLookupError;
     if ((count ?? 0) >= (action === "submit" ? 8 : 20)) return jsonResponse(req, { error: "Too many requests. Please wait and try again." }, 429);
-    await admin.from("registration_request_limits").insert({ request_fingerprint: fingerprint, action });
+    const { error: limitInsertError } = await admin.from("registration_request_limits").insert({ request_fingerprint: fingerprint, action });
+    if (limitInsertError) throw limitInsertError;
 
     if (!(body instanceof FormData) && action === "request_verification") {
       if (!smsConfigured()) {
@@ -244,10 +262,11 @@ Deno.serve(async (req) => {
       const slug = String(body.get("slug") ?? "");
       const manifests = body.getAll("fileManifest").map((value) => JSON.parse(String(value)));
       const submittedTypes = new Set(manifests.map((manifest) => bucketAndType(String(manifest.documentType ?? "")).documentType));
-      const { data: campaignRequirements } = await admin.from("registration_campaigns")
+      const { data: campaignRequirements, error: campaignRequirementsError } = await admin.from("registration_campaigns")
         .select("require_headshot,require_id_front,require_id_back")
         .eq("slug", slug)
         .maybeSingle();
+      if (campaignRequirementsError) throw campaignRequirementsError;
       if (!campaignRequirements) return jsonResponse(req, { error: "Registration is unavailable." }, 404);
       const missingRequiredDocument = (
         (campaignRequirements.require_headshot && !submittedTypes.has("headshot"))
@@ -264,7 +283,12 @@ Deno.serve(async (req) => {
         consent_payload: { ...consent, requestFingerprint: fingerprint }
       });
       if (submitError) throw submitError;
-      const { data: submission } = await admin.from("scout_registration_submissions").select("id,campaign_id").eq("reference_number", result.referenceNumber).single();
+      const { data: submission, error: submissionLookupError } = await admin.from("scout_registration_submissions")
+        .select("id,campaign_id")
+        .eq("reference_number", result.referenceNumber)
+        .single();
+      if (submissionLookupError) throw submissionLookupError;
+      if (!submission) throw new Error("The saved registration could not be loaded for document processing.");
       const uploadedObjects: Array<{ bucket: string; path: string }> = [];
       try {
         const files = body.getAll("files").filter((value): value is File => value instanceof File);
@@ -305,10 +329,21 @@ Deno.serve(async (req) => {
         throw uploadError;
       }
       if (payload.resumeToken) await admin.from("scout_registration_drafts").delete().eq("resume_token_hash", await hash(String(payload.resumeToken)));
-      return jsonResponse(req, result);
+      const emailDelivery = await deliverFormResponseEmail(admin, {
+        sourceType: "scout_registration",
+        submissionId: submission.id
+      }).catch((error) => ({
+        status: "failed",
+        error: error instanceof Error ? error.message : "Email delivery failed"
+      }));
+      return jsonResponse(req, { ...result, emailDelivery });
     }
     return jsonResponse(req, { error: "Unsupported registration action." }, 400);
   } catch (error) {
-    return jsonResponse(req, { error: error instanceof Error ? error.message : "Registration request failed." }, 400);
+    console.error("Scout registration request failed", error);
+    return jsonResponse(req, {
+      error: errorMessage(error),
+      ...(errorCode(error) ? { code: errorCode(error) } : {})
+    }, 400);
   }
 });

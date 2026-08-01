@@ -10,6 +10,41 @@ export const FORM_FIELD_WIDTHS = [
   ["two_thirds", "Two thirds"]
 ];
 
+export const FORM_QUESTION_SURFACES = [
+  ["default", "Form default"],
+  ["boxed", "In a box"],
+  ["plain", "No box"]
+];
+
+export function normalizeFormAppearanceSettings(settings = {}) {
+  return {
+    ...settings,
+    showQuestionNumbers: settings.showQuestionNumbers !== false
+  };
+}
+
+export function getOrderedFormQuestions(schema = {}) {
+  const questions = Array.isArray(schema.questions) ? schema.questions : [];
+  const pages = (Array.isArray(schema.pages) ? schema.pages : [])
+    .map((page, index) => ({ page, index }))
+    .sort((a, b) => (Number(a.page.order) || 0) - (Number(b.page.order) || 0) || a.index - b.index)
+    .map(({ page }) => page);
+  const pageIds = new Set(pages.map((page) => page.id));
+  const byQuestionOrder = (a, b) =>
+    (Number(a.question.order) || 0) - (Number(b.question.order) || 0)
+    || a.index - b.index;
+  const indexedQuestions = questions.map((question, index) => ({ question, index }));
+
+  return [
+    ...pages.flatMap((page) => indexedQuestions
+      .filter(({ question }) => question.pageId === page.id)
+      .sort(byQuestionOrder)),
+    ...indexedQuestions
+      .filter(({ question }) => !pageIds.has(question.pageId))
+      .sort(byQuestionOrder)
+  ].map(({ question }) => question);
+}
+
 const widthUnits = {
   full: 12,
   half: 6,
@@ -23,6 +58,12 @@ const forcedFullWidthTypes = new Set([
   "image_upload",
   "protected_document_upload",
   "scout_headshot_upload"
+]);
+
+const responseEmailModes = new Set([
+  "none",
+  "entered_email",
+  "dashboard_profile"
 ]);
 
 function safeCountry(country, fallback = "AE") {
@@ -53,7 +94,10 @@ export function normalizeFormQuestion(question = {}) {
     : "full";
   const layout = {
     rowId: question.layout?.rowId || `row-${id}`,
-    width: forcedFullWidthTypes.has(type) ? "full" : requestedWidth
+    width: forcedFullWidthTypes.has(type) ? "full" : requestedWidth,
+    surface: ["boxed", "plain"].includes(question.layout?.surface)
+      ? question.layout.surface
+      : "default"
   };
 
   return {
@@ -77,6 +121,28 @@ export function canShareFormRow(existingQuestions = [], candidateQuestion) {
     .reduce((total, question) => total + getFormWidthUnits(question.layout.width), 0);
   const candidate = normalizeFormQuestion(candidateQuestion);
   return used + getFormWidthUnits(candidate.layout.width) <= 12;
+}
+
+export function packFormQuestionRows(questions = []) {
+  const rowsByPage = new Map();
+  return questions.map(normalizeFormQuestion).map((question) => {
+    const pageKey = question.pageId || "__default";
+    const units = getFormWidthUnits(question.layout.width);
+    const currentRow = rowsByPage.get(pageKey);
+    const startsNewRow = !currentRow || units === 12 || currentRow.units + units > 12;
+    const row = startsNewRow
+      ? { id: `row-${question.id}`, units }
+      : { id: currentRow.id, units: currentRow.units + units };
+
+    rowsByPage.set(pageKey, units === 12 ? null : row);
+    return {
+      ...question,
+      layout: {
+        ...question.layout,
+        rowId: row.id
+      }
+    };
+  });
 }
 
 export function moveFormQuestion(schema, sourceQuestionId, targetQuestionId) {
@@ -182,6 +248,46 @@ export function validatePhoneAnswer(question, value) {
     answer.country
   );
   return parsed?.isValid() ? "" : "Enter a valid phone number.";
+}
+
+export function validateEmailAnswer(question, value) {
+  const answer = String(value ?? "").trim();
+  if (!answer) return question?.required ? "Enter an email address." : "";
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(answer)
+    ? ""
+    : "Enter a valid email address.";
+}
+
+export function normalizeFormResponseEmailSettings(settings = {}) {
+  const mode = responseEmailModes.has(settings?.mode)
+    ? settings.mode
+    : "none";
+  return {
+    mode,
+    questionId: mode === "entered_email"
+      ? String(settings?.questionId ?? "")
+      : ""
+  };
+}
+
+export function validateFormResponseEmailSettings(
+  settings,
+  questions = [],
+  { publicForm = false } = {}
+) {
+  const normalized = normalizeFormResponseEmailSettings(settings);
+  if (normalized.mode === "none") return "";
+  if (normalized.mode === "dashboard_profile") {
+    return publicForm
+      ? "Public forms cannot send to a dashboard profile email."
+      : "";
+  }
+  const recipientQuestion = questions.find(
+    (question) => question.id === normalized.questionId
+  );
+  return recipientQuestion?.type === "email"
+    ? ""
+    : "Choose an Email question for the receipt recipient.";
 }
 
 export function formatPhoneAnswer(value) {

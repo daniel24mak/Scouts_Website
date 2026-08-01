@@ -4,6 +4,18 @@ import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 const reviewDecisions = new Set(["approved", "rejected", "needs_changes", "verified"]);
 const duplicateDecisions = new Set(["same_person", "different_person", "defer"]);
 
+function calculateAge(dateOfBirth: string | null) {
+  if (!dateOfBirth) return null;
+  const birthDate = new Date(`${dateOfBirth}T00:00:00Z`);
+  if (Number.isNaN(birthDate.getTime())) return null;
+  const today = new Date();
+  let age = today.getUTCFullYear() - birthDate.getUTCFullYear();
+  const birthdayHasPassed = today.getUTCMonth() > birthDate.getUTCMonth()
+    || (today.getUTCMonth() === birthDate.getUTCMonth() && today.getUTCDate() >= birthDate.getUTCDate());
+  if (!birthdayHasPassed) age -= 1;
+  return age >= 0 ? age : null;
+}
+
 async function requireRegistrationScope(context: Awaited<ReturnType<typeof requireDashboardPermission>>, groupId: string | null) {
   const { data, error } = await context.userClient.rpc("can_manage_registration_group", {
     target_group_id: groupId
@@ -124,7 +136,13 @@ Deno.serve(async (req) => {
       .select("*,scout_registration_people(*),scout_registration_parent_contacts(*)")
       .eq("id", submissionId).maybeSingle();
     if (submissionError || !submission) throw new AuthorizationError("Registration submission was not found", 404);
-    await requireRegistrationScope(context, submission.target_group_id);
+    const enrollmentDetails = body.enrollmentDetails && typeof body.enrollmentDetails === "object"
+      ? body.enrollmentDetails as Record<string, unknown>
+      : {};
+    const requestedEnrollmentGroupId = action === "enroll_submission"
+      ? String(enrollmentDetails.targetGroupId ?? submission.target_group_id ?? "").trim() || null
+      : submission.target_group_id;
+    await requireRegistrationScope(context, requestedEnrollmentGroupId);
 
     if (action === "review_submission") {
       const decision = String(body.decision ?? "");
@@ -234,8 +252,30 @@ Deno.serve(async (req) => {
 
     if (action === "enroll_submission") {
       if (!["approved", "verified"].includes(submission.status)) throw new AuthorizationError("Approve the registration before enrollment", 409);
-      const person = Array.isArray(submission.scout_registration_people) ? submission.scout_registration_people[0] : submission.scout_registration_people;
-      if (!person || !submission.target_group_id) throw new AuthorizationError("Scout and target group details are required", 400);
+      const existingPerson = Array.isArray(submission.scout_registration_people) ? submission.scout_registration_people[0] : submission.scout_registration_people;
+      const targetGroupId = String(enrollmentDetails.targetGroupId ?? submission.target_group_id ?? existingPerson?.requested_group_id ?? "").trim();
+      const fullName = String(enrollmentDetails.fullName ?? existingPerson?.full_name ?? "").trim();
+      if (!fullName || !targetGroupId) throw new AuthorizationError("Enter the scout's full name and target group before enrollment", 400);
+      const rawDateOfBirth = String(enrollmentDetails.dateOfBirth ?? existingPerson?.date_of_birth ?? "").trim();
+      const dateOfBirth = /^\d{4}-\d{2}-\d{2}$/.test(rawDateOfBirth) ? rawDateOfBirth : null;
+      const now = new Date().toISOString();
+      const { data: person, error: personError } = await context.adminClient.from("scout_registration_people").upsert({
+        submission_id: submissionId,
+        full_name: fullName,
+        date_of_birth: dateOfBirth,
+        gender: String(enrollmentDetails.gender ?? existingPerson?.gender ?? "").trim() || null,
+        school_name: String(enrollmentDetails.schoolName ?? existingPerson?.school_name ?? "").trim() || null,
+        school_grade: String(enrollmentDetails.schoolGrade ?? existingPerson?.school_grade ?? "").trim() || null,
+        calculated_age: calculateAge(dateOfBirth) ?? existingPerson?.calculated_age ?? null,
+        requested_group_id: targetGroupId,
+        updated_at: now
+      }, { onConflict: "submission_id" }).select("*").single();
+      if (personError || !person) throw new AuthorizationError(personError?.message ?? "Scout enrollment details could not be saved", 400);
+      const { error: groupUpdateError } = await context.adminClient.from("scout_registration_submissions").update({
+        target_group_id: targetGroupId,
+        updated_at: now
+      }).eq("id", submissionId);
+      if (groupUpdateError) throw new AuthorizationError(groupUpdateError.message, 400);
       const { data: campaign, error: campaignError } = await context.adminClient.from("registration_campaigns")
         .select("scout_year_id").eq("id", submission.campaign_id).single();
       if (campaignError || !campaign) throw new AuthorizationError("Registration campaign was not found", 404);
@@ -249,7 +289,7 @@ Deno.serve(async (req) => {
           age: person.calculated_age,
           gender: person.gender,
           school: person.school_name,
-          group_id: submission.target_group_id,
+          group_id: targetGroupId,
           parent_name: parent?.full_name ?? null,
           parent_phone: parent?.phone ?? null,
           source: "registration"
@@ -261,19 +301,19 @@ Deno.serve(async (req) => {
         scout_id: scoutId,
         scout_year_id: campaign.scout_year_id,
         registration_submission_id: submissionId,
-        group_id: submission.target_group_id,
+        group_id: targetGroupId,
         status: "active",
         enrolled_by: context.callerId,
-        enrolled_at: new Date().toISOString()
+        enrolled_at: now
       }, { onConflict: "scout_id,scout_year_id" });
       if (enrollmentError) throw new AuthorizationError(enrollmentError.message, 400);
       await context.adminClient.from("scout_registration_submissions").update({
-        status: "enrolled", matched_scout_id: scoutId, enrolled_at: new Date().toISOString(), updated_at: new Date().toISOString()
+        status: "enrolled", matched_scout_id: scoutId, target_group_id: targetGroupId, enrolled_at: now, updated_at: now
       }).eq("id", submissionId);
       await auditRegistrationAction(context, "registration.enrolled", submissionId, {
         scoutId,
         scoutYearId: campaign.scout_year_id,
-        groupId: submission.target_group_id
+        groupId: targetGroupId
       });
       return jsonResponse(req, { success: true, scoutId, status: "enrolled" });
     }
