@@ -10013,6 +10013,19 @@ textarea:focus-visible {
   align-items: center;
 }
 
+.forms-builder-settings-card .toggle-row > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.forms-builder-settings-card .toggle-row > span small {
+  color: var(--dashboard-muted, #667085);
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
 .forms-builder-preview {
   position: sticky;
   top: 18px;
@@ -10353,6 +10366,33 @@ textarea:focus-visible {
   display: grid;
   gap: 14px;
   min-width: 0;
+}
+
+.forms-response-email-settings {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--dashboard-line, #d9e1ee);
+  border-radius: 12px;
+  background: var(--dashboard-surface, #fff);
+}
+
+.forms-response-email-settings.has-error {
+  border-color: var(--dashboard-danger, #b84a50);
+}
+
+.forms-response-email-settings label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.forms-email-delivery-warning {
+  padding: 11px 13px;
+  border: 1px solid color-mix(in srgb, var(--dashboard-warning, #b7791f) 42%, transparent);
+  border-radius: 8px;
+  color: var(--dashboard-text, #182033);
+  background: color-mix(in srgb, var(--dashboard-warning, #b7791f) 10%, transparent);
 }
 
 .forms-question-card {
@@ -17183,6 +17223,22 @@ span,
   box-shadow: none;
 }
 
+.premium-question-card.question-surface-plain {
+  gap: 12px;
+  padding: 12px 2px 22px;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--dashboard-line, #dce3ee) 82%, transparent);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transition: border-color 180ms ease;
+}
+
+.premium-question-card.question-surface-plain:focus-within {
+  border-bottom-color: color-mix(in srgb, var(--form-accent, #4055a6) 58%, var(--dashboard-line, #dce3ee));
+  box-shadow: none;
+}
+
 .forms-preview-questions.premium-question-stack {
   display: grid;
   gap: 16px;
@@ -17222,7 +17278,7 @@ span,
 }
 
 .forms-question-header {
-  grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(150px, 1fr));
+  grid-template-columns: minmax(220px, 2fr) repeat(4, minmax(140px, 1fr));
 }
 
 .forms-phone-settings {
@@ -17408,9 +17464,24 @@ span,
 
 .premium-question-heading {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
   align-items: start;
+}
+
+.google-form-canvas.hide-question-numbers .premium-question-heading {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.premium-question-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+}
+
+.premium-question-label .formatted-text {
+  min-width: 0;
 }
 
 .premium-question-heading .formatted-text,
@@ -17424,10 +17495,12 @@ span,
 
 .premium-question-required {
   color: #c4323d;
-  font-size: 1rem;
+  flex: 0 0 auto;
+  margin-top: -1px;
+  font-size: 1.05rem;
   font-style: normal;
   font-weight: 900;
-  line-height: 1.4;
+  line-height: 1;
 }
 
 .forms-page-stepper button.active small {
@@ -19347,7 +19420,7 @@ textarea:focus,
   z-index: 45;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   min-height: 68px;
   padding: 10px max(20px, calc((100vw - 1120px) / 2));
   border-bottom: 1px solid var(--dashboard-line, #dce3ee);
@@ -19572,8 +19645,25 @@ textarea:focus,
   background: transparent;
 }
 
+.registration-form-stage .premium-question-card.question-surface-boxed {
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--form-accent, #4055a6) 12%, var(--dashboard-line, #dce3ee));
+  border-radius: 14px;
+  background: var(--dashboard-surface, #ffffff);
+  box-shadow: 0 12px 28px rgb(15 23 42 / 0.05);
+}
+
+.registration-form-stage .premium-question-card.question-surface-boxed:focus-within {
+  border-color: color-mix(in srgb, var(--form-accent, #4055a6) 42%, var(--dashboard-line, #dce3ee));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--form-accent, #4055a6) 10%, transparent);
+}
+
 .registration-form-stage .premium-question-heading {
-  grid-template-columns: 32px minmax(0, 1fr) auto;
+  grid-template-columns: 32px minmax(0, 1fr);
+}
+
+.registration-form-stage .google-form-canvas.hide-question-numbers .premium-question-heading {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .registration-form-stage .premium-question-number {
@@ -19717,6 +19807,13 @@ textarea:focus,
   border: 0;
 }
 
+.registration-center {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+}
+
 .registration-section-heading {
   display: flex;
   align-items: flex-end;
@@ -19733,6 +19830,10 @@ textarea:focus,
 .registration-section-heading > p {
   max-width: 600px;
   color: var(--muted-text, #697386);
+}
+
+.registration-section-heading > * {
+  min-width: 0;
 }
 
 .registration-campaign-grid {
@@ -19836,7 +19937,7 @@ textarea:focus,
 }
 
 .registration-center-tabs button {
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 14px;
   border: 0;
   border-radius: 8px;
@@ -20020,7 +20121,16 @@ textarea:focus,
 
 .registration-center-toolbar input {
   width: 100%;
+  min-width: 0;
   border: 0;
+}
+
+.registration-center-toolbar select {
+  min-height: 44px;
+}
+
+.registration-center-toolbar > * {
+  min-width: 0;
 }
 
 .registration-submission-list {
@@ -20144,6 +20254,57 @@ textarea:focus,
   padding: 22px;
 }
 
+.registration-review-columns > section {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.registration-enrollment-details {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 22px;
+  padding: 16px;
+  border: 1px solid var(--dashboard-line, #dce3ee);
+  border-radius: 10px;
+  background: var(--dashboard-soft-surface, #f2f5fa);
+}
+
+.registration-enrollment-details h3,
+.registration-enrollment-details p {
+  margin: 0;
+}
+
+.registration-enrollment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.registration-enrollment-grid label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--muted-text, #697386);
+  font-size: 0.84rem;
+}
+
+.registration-enrollment-grid label > span strong {
+  color: #b4232d;
+}
+
+.registration-enrollment-grid input,
+.registration-enrollment-grid select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  color: var(--text-color, #172033);
+  background: var(--dashboard-surface, #fff);
+}
+
+.registration-enrollment-wide {
+  grid-column: 1 / -1;
+}
+
 .registration-detail-list {
   display: grid;
   gap: 1px;
@@ -20157,6 +20318,13 @@ textarea:focus,
   gap: 14px;
   padding: 12px;
   background: var(--dashboard-soft-surface, #f2f5fa);
+}
+
+.registration-detail-list dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
 }
 
 .registration-detail-list dt {
@@ -20218,6 +20386,26 @@ textarea:focus,
   gap: 8px;
 }
 
+@media (max-width: 1100px) {
+  .registration-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .registration-submission-open {
+    grid-template-columns: 150px minmax(180px, 1.2fr) minmax(160px, 1fr) auto;
+  }
+}
+
+@media (max-width: 920px) {
+  .registration-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .registration-review-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
 .registration-honeypot {
   position: absolute !important;
   left: -10000px !important;
@@ -20227,6 +20415,21 @@ textarea:focus,
 }
 
 @media (max-width: 800px) {
+  .registration-center {
+    min-width: 0;
+    overflow-x: clip;
+  }
+
+  .registration-center-tabs {
+    margin-inline: -4px;
+    padding-inline: 4px;
+    scroll-snap-type: x proximity;
+  }
+
+  .registration-center-tabs button {
+    scroll-snap-align: start;
+  }
+
   .registration-campaign-list,
   .registration-path-grid,
   .registration-campaign-grid,
@@ -20284,10 +20487,28 @@ textarea:focus,
 
   .registration-review-drawer {
     width: 100%;
+    max-width: 100%;
   }
 
   .registration-review-columns {
     overflow-y: auto;
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .registration-review-drawer > header,
+  .registration-review-drawer > footer {
+    padding: 14px 16px;
+  }
+
+  .registration-review-drawer > header > div {
+    min-width: 0;
+  }
+
+  .registration-review-drawer > header h2 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
@@ -20302,16 +20523,91 @@ textarea:focus,
   }
 
   .registration-metrics {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
+  }
+
+  .registration-metrics article {
+    padding: 13px 14px;
+  }
+
+  .registration-center-toolbar,
+  .registration-bulk-toolbar {
+    width: 100%;
+  }
+
+  .registration-center-toolbar label,
+  .registration-center-toolbar select,
+  .registration-bulk-toolbar .inline-action,
+  .registration-bulk-toolbar .primary-action {
+    width: 100%;
+  }
+
+  .registration-bulk-toolbar > span {
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .registration-submission-row {
+    align-items: start;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .registration-submission-open {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 9px;
+  }
+
+  .registration-submission-open .registration-status {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .registration-detail-list div {
+    display: grid;
+    gap: 5px;
+  }
+
+  .registration-detail-list dd {
+    text-align: left;
+  }
+
+  .registration-document-actions .inline-action,
+  .registration-duplicate-actions .inline-action {
+    flex-basis: calc(50% - 4px);
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .registration-review-drawer > footer {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+
+  .registration-review-drawer > footer > button {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+  }
+
+  .registration-review-drawer > footer > .primary-action {
+    grid-column: 1 / -1;
+  }
+
+  .registration-enrollment-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .registration-enrollment-wide {
+    grid-column: auto;
   }
 
   .registration-campaign-card dl {
     grid-template-columns: 1fr;
   }
 
-  .registration-review-drawer > footer > button {
-    flex: 1 1 44%;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

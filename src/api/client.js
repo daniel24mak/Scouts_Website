@@ -61,7 +61,7 @@ import {
   updateLeader
 } from "../services/siteContentService.js";
 import { adminResetUserPassword, createDashboardUser, createProfile, deleteDashboardUser, getProfiles, reviewProfileChangeRequest, submitProfileChangeRequest, updateProfile } from "../services/userService.js";
-import { closePostedForm, deleteFormTemplateCascade, deletePostedFormCascade, getFormsData, reopenPostedForm, saveFormSubmission, saveFormTemplate, savePostedForm, saveReimbursementFormDraft, submitReimbursementForm, updatePostedFormReview } from "../services/formService.js";
+import { closePostedForm, deleteFormTemplateCascade, deletePostedFormCascade, getFormsData, reopenPostedForm, saveFormSubmission, saveFormTemplate, savePostedForm, saveReimbursementFormDraft, sendFormResponseEmail, submitReimbursementForm, updatePostedFormReview } from "../services/formService.js";
 import { deleteNotification, getNotifications, markAllNotificationsRead, markNotificationRead, markNotificationsDoneForEntity } from "../services/notificationService.js";
 import { getWebsiteContentRevisions, reviewWebsiteContentRevision, submitWebsiteContentRevision } from "../services/websiteContentRevisionService.js";
 import {
@@ -703,6 +703,12 @@ export async function saveDashboardFormSubmission(payload) {
 
 export function readDashboardNotification(notificationId) {
   return isSupabaseConfigured ? markNotificationRead(notificationId) : Promise.resolve([]);
+}
+
+export function sendDashboardFormResponseEmail(submissionId) {
+  return isSupabaseConfigured
+    ? sendFormResponseEmail(submissionId)
+    : Promise.resolve({ status: "skipped", reason: "local_mode" });
 }
 
 export async function submitDashboardReimbursement(payload) {

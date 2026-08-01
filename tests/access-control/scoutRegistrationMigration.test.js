@@ -65,6 +65,14 @@ test("public registration uses RPC contracts rather than anonymous table grants"
   assert.doesNotMatch(sql, /GRANT\s+(?:SELECT|INSERT|UPDATE|DELETE)[\s\S]{0,100}TO\s+anon/i);
 });
 
+test("public registration can resolve pgcrypto consent hashing", () => {
+  assert.match(sql, /CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions/i);
+  assert.match(
+    sql,
+    /FUNCTION public\.submit_public_scout_registration[\s\S]*?SET search_path = public, extensions[\s\S]*?digest\(campaign\.consent_text, 'sha256'\)/i
+  );
+});
+
 test("registration storage access is short lived and audited", () => {
   const edge = fs.readFileSync(new URL("../../supabase/functions/scout-registration-admin/index.ts", import.meta.url), "utf8");
   assert.match(edge, /createSignedUrl\(document\.object_path,\s*60\)/);
@@ -73,6 +81,26 @@ test("registration storage access is short lived and audited", () => {
   assert.match(edge, /action === "delete_document"/);
   assert.match(edge, /\.remove\(\[document\.object_path\]\)/);
   assert.match(edge, /verification_status:\s*"deleted"/);
+});
+
+test("registration enrollment can save reviewer-supplied scout and group details", () => {
+  const edge = fs.readFileSync(new URL("../../supabase/functions/scout-registration-admin/index.ts", import.meta.url), "utf8");
+
+  assert.match(edge, /enrollmentDetails/);
+  assert.match(edge, /scout_registration_people/);
+  assert.match(edge, /targetGroupId/);
+  assert.match(edge, /requested_group_id/);
+});
+
+test("registration reviewers can list document metadata without bypassing protected reveal", () => {
+  const edge = fs.readFileSync(new URL("../../supabase/functions/scout-registration-admin/index.ts", import.meta.url), "utf8");
+  const metadataPolicy = sql.match(
+    /CREATE POLICY "registration documents metadata reviewed"[\s\S]*?\);\s*DROP POLICY/i
+  )?.[0] ?? "";
+
+  assert.match(metadataPolicy, /can_manage_registration_group/i);
+  assert.doesNotMatch(metadataPolicy, /identity_documents\.view/i);
+  assert.match(edge, /reveal_document[\s\S]{0,180}identity_documents\.view/i);
 });
 
 test("registration storage usage is calculated server-side for authorized users", () => {

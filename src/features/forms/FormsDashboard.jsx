@@ -24,6 +24,7 @@ import {
   deleteDashboardPostedForm,
   reopenDashboardPostedForm,
   saveDashboardFormSubmission,
+  sendDashboardFormResponseEmail,
   saveDashboardReimbursementDraft,
   submitDashboardReimbursement,
   saveDashboardFormTemplate,
@@ -32,19 +33,28 @@ import {
 import FormattedText from "../../components/FormattedText.jsx";
 import RichTextEditor from "../../components/RichTextEditor.jsx";
 import { blankFormSchema, formQuestionTypes } from "../../services/formService.js";
+import { downloadExcelFile } from "../../utils/excelExport.js";
 import RegistrationCampaignSettings from "../registration/RegistrationCampaignSettings.jsx";
 import RegistrationCampaigns from "../registration/RegistrationCampaigns.jsx";
 import RegistrationCenter from "../registration/RegistrationCenter.jsx";
 import UploadQuestionSettings from "../registration/UploadQuestionSettings.jsx";
 import PhoneNumberInput from "./PhoneNumberInput.jsx";
 import {
+  canShareFormRow,
   FORM_FIELD_WIDTHS,
+  FORM_QUESTION_SURFACES,
+  getOrderedFormQuestions,
   formatPhoneAnswer,
   getAnswerScalar,
   getCountryName,
   getFormWidthUnits,
   moveFormQuestion,
+  normalizeFormAppearanceSettings,
+  normalizeFormResponseEmailSettings,
   normalizeFormQuestion,
+  packFormQuestionRows,
+  validateEmailAnswer,
+  validateFormResponseEmailSettings,
   validatePhoneAnswer
 } from "./formModel.js";
 import {
@@ -79,7 +89,8 @@ const defaultFormSettings = {
     fontStyle: "system",
     cornerRadius: "medium",
     shadowStrength: "soft",
-    headerMode: "compact_later"
+    headerMode: "compact_later",
+    showQuestionNumbers: true
   },
   startScreen: {
     enabled: true,
@@ -88,6 +99,10 @@ const defaultFormSettings = {
     notice: "Your response is saved securely and can only be viewed by authorized leaders.",
     requireConfirmation: false,
     confirmationLabel: "I have read the instructions and understand this form."
+  },
+  responseEmail: {
+    mode: "none",
+    questionId: ""
   },
   behavior: {
     requiredNotice: true,
@@ -109,8 +124,12 @@ const defaultFormSettings = {
 function normalizeFormSettings(settings = {}) {
   const behavior = { ...defaultFormSettings.behavior, ...(settings.behavior ?? {}) };
   return {
-    appearance: { ...defaultFormSettings.appearance, ...(settings.appearance ?? {}) },
+    appearance: normalizeFormAppearanceSettings({
+      ...defaultFormSettings.appearance,
+      ...(settings.appearance ?? {})
+    }),
     startScreen: { ...defaultFormSettings.startScreen, ...(settings.startScreen ?? {}) },
+    responseEmail: normalizeFormResponseEmailSettings(settings.responseEmail),
     behavior: {
       ...behavior,
       registration: normalizeRegistrationSettings(behavior.registration)
@@ -162,7 +181,7 @@ function makeQuestion(type = "short_text", pageId = null, order = 0) {
     placeholder: "",
     required: false,
     options: optionQuestionTypes.has(type) ? ["Option 1"] : [],
-    layout: { rowId: `row-${id}`, width: "full" },
+    layout: { rowId: `row-${id}`, width: "full", surface: "default" },
     ...(type === "phone" ? {
       phoneSettings: {
         countryMode: "all",
@@ -229,7 +248,7 @@ function safeSchema(schema) {
 
 function getOrderedQuestions(schema) {
   const normalized = safeSchema(schema);
-  return normalized.pages.flatMap((page) => normalized.questions.filter((question) => question.pageId === page.id).sort((a, b) => a.order - b.order));
+  return getOrderedFormQuestions(normalized);
 }
 
 function getQuestionsForPage(schema, pageId) {
@@ -336,6 +355,7 @@ function matchesSearch(item, query, fields) {
 
 function getQuestionPlaceholder(question) {
   if (question.placeholder) return question.placeholder;
+  if (question.type === "email") return "name@example.com";
   if (question.type === "number") return "Enter a number";
   if (question.type === "date") return "Select a date";
   if (question.type === "dropdown") return "Select an option";
@@ -349,12 +369,14 @@ function getQuestionHelper(question) {
   if (question.type === "rating") return "Choose one rating from 1 to 5.";
   if (question.type === "checkboxes") return "Select all options that apply.";
   if (question.type === "multiple_choice") return "Select one option.";
+  if (question.type === "email") return "Enter a valid email address.";
   return "";
 }
 
 function getQuestionValidationError(question, value) {
-  if (question.required && !isAnswerFilled(value)) return "This question is required.";
   if (question.type === "phone") return validatePhoneAnswer(question, value);
+  if (question.type === "email") return validateEmailAnswer(question, value);
+  if (question.required && !isAnswerFilled(value)) return "This question is required.";
   return "";
 }
 
@@ -395,7 +417,7 @@ function answerToText(value) {
   return value ?? "";
 }
 
-function downloadCsv({ form, submissions, users, groups }) {
+function downloadExcel({ form, submissions, users, groups }) {
   const questions = getOrderedQuestions(form.schemaJson);
   const headers = ["Name", "Group", "Submitted At", "Edited At", "Submission Status", ...questions.map((question) => question.text || "Untitled question")];
   const rows = submissions.map((submission) => {
@@ -410,15 +432,12 @@ function downloadCsv({ form, submissions, users, groups }) {
       ...questions.map((question) => visibleIds.has(question.id) ? answerToText(submission.answersJson?.[question.id]) : "")
     ];
   });
-  const escapeCell = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
-  const csv = [headers, ...rows].map((row) => row.map(escapeCell).join(",")).join("\r\n");
-  const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${form.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-responses.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
+  downloadExcelFile({
+    fileName: `${form.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-responses.xls`,
+    sheetName: form.title || "Responses",
+    headers,
+    rows
+  });
 }
 
 function QuestionInput({ question, value, onChange, disabled = false, showError = false }) {
@@ -453,6 +472,7 @@ function QuestionInput({ question, value, onChange, disabled = false, showError 
     return <div className="forms-premium-rich-input"><RichTextEditor value={value ?? ""} onChange={onChange} minHeight={150} placeholder={placeholder} /></div>;
   }
   if (question.type === "number") return <input className="forms-premium-input" disabled={disabled} type="number" value={value ?? ""} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />;
+  if (question.type === "email") return <input className="forms-premium-input" disabled={disabled} type="email" inputMode="email" autoComplete="email" value={value ?? ""} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />;
   if (question.type === "rating") {
     return <div className="forms-rating-control premium" role="radiogroup" aria-label={question.text}>{[1, 2, 3, 4, 5].map((rating) => <button type="button" key={rating} disabled={disabled} className={String(value ?? "") === String(rating) ? "selected" : ""} onClick={() => onChange(rating)} aria-label={`${rating} out of 5`}><Star size={19} fill={String(value ?? "") === String(rating) ? "currentColor" : "none"} /><span>{rating}</span></button>)}</div>;
   }
@@ -525,7 +545,7 @@ function FormReviewAnswerGroups({ form, answers }) {
   );
 }
 
-export function FormPreview({ form, answers = {}, onAnswerChange = null, disabled = false, errorQuestionIds = [], meta = null, showHeader = true, isStarted = null, onStart = null, embeddedHeader = false, onPageStateChange = null }) {
+export function FormPreview({ form, answers = {}, onAnswerChange = null, disabled = false, errorQuestionIds = [], meta = null, showHeader = true, isStarted = null, onStart = null, embeddedHeader = false, onPageStateChange = null, publicMode = false }) {
   const schema = safeSchema(form.schemaJson);
   const settings = getFormSettings(schema);
   const themeStyle = getFormThemeStyle(settings);
@@ -544,7 +564,9 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
   const combinedErrors = [...new Set([...errorQuestionIds, ...pageErrors])];
   const started = !showStartScreen || (isStarted ?? internalStarted);
   const startDisabled = settings.startScreen.requireConfirmation && !confirmedStart;
-  const progressPercent = stats.percent;
+  const progressPercent = publicMode && visiblePages.length
+    ? Math.round(((currentPageIndex + 1) / visiblePages.length) * 100)
+    : stats.percent;
   const progressDisplay = settings.behavior.progressDisplay;
   const showProgressBar = visiblePages.length > 1 && progressDisplay !== "minimal" && progressDisplay !== "dots";
   const showProgressDots = visiblePages.length > 1 && (progressDisplay === "dots" || (progressDisplay === "bar" && visiblePages.length <= 5));
@@ -632,7 +654,7 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
   }
 
   return (
-    <article className="forms-preview-card premium-form-card google-form-canvas" style={themeStyle} ref={formTopRef}>
+    <article className={`forms-preview-card premium-form-card google-form-canvas ${settings.appearance.showQuestionNumbers ? "show-question-numbers" : "hide-question-numbers"}`} style={themeStyle} ref={formTopRef}>
       {!embeddedHeader && (settings.appearance.headerMode === "repeat" || currentPageIndex === 0 || settings.appearance.headerMode === "compact_later") && (
         <FormBrandHeader form={form} settings={settings} compact={currentPageIndex > 0 && settings.appearance.headerMode === "compact_later"} meta={meta} />
       )}
@@ -659,11 +681,13 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
           const index = stats.questions.findIndex((item) => item.id === question.id);
           const error = combinedErrors.includes(question.id) ? getQuestionValidationError(question, answers[question.id]) || "This question is required." : "";
           return (
-          <section className={`forms-fill-question premium-question-card ${error ? "has-error" : ""}`} key={question.id} data-question-id={question.id} style={{ "--form-field-span": normalizeFormQuestion(question).layout.width === "half" ? 6 : normalizeFormQuestion(question).layout.width === "one_third" ? 4 : normalizeFormQuestion(question).layout.width === "two_thirds" ? 8 : 12 }}>
+          <section className={`forms-fill-question premium-question-card question-surface-${normalizeFormQuestion(question).layout.surface} ${error ? "has-error" : ""}`} key={question.id} data-question-id={question.id} style={{ "--form-field-span": normalizeFormQuestion(question).layout.width === "half" ? 6 : normalizeFormQuestion(question).layout.width === "one_third" ? 4 : normalizeFormQuestion(question).layout.width === "two_thirds" ? 8 : 12 }}>
             <div className="premium-question-heading">
-              <span className="premium-question-number">{String(index + 1).padStart(2, "0")}</span>
-              <FormattedText text={question.text} className="premium-question-title" fallback="Untitled question" />
-              {question.required && <em className="premium-question-required" aria-label="Required">*</em>}
+              {settings.appearance.showQuestionNumbers && <span className="premium-question-number">{String(index + 1).padStart(2, "0")}</span>}
+              <div className="premium-question-label">
+                <FormattedText text={question.text} className="premium-question-title" fallback="Untitled question" />
+                {question.required && <em className="premium-question-required" aria-label="Required">*</em>}
+              </div>
             </div>
             <div className="forms-question-control">
               {question.description && <FormattedText text={question.description} className="premium-question-description" />}
@@ -678,7 +702,7 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
       </div>
       {visiblePages.length > 1 && <div className="forms-page-navigation">
         <button type="button" className="inline-action" disabled={currentPageIndex <= 0} onClick={() => goToPage(-1)}>Previous</button>
-        <span>{stats.percent}% complete</span>
+        <span>{publicMode ? `Section ${currentPageIndex + 1} of ${visiblePages.length}` : `${stats.percent}% complete`}</span>
         <button type="button" className="primary-action" disabled={currentPageIndex >= visiblePages.length - 1} onClick={() => goToPage(1)}>Next</button>
       </div>}
     </article>
@@ -789,6 +813,19 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
         issues.push({ id: `question-${question.id}`, step: 1, label: `Question ${index + 1}`, message: "Add question text." });
       }
     });
+    const responseEmailError = validateFormResponseEmailSettings(
+      formSettings.responseEmail,
+      orderedQuestions,
+      { publicForm: formSettings.behavior.formKind === "scout_registration" }
+    );
+    if (responseEmailError) {
+      issues.push({
+        id: "response-email",
+        step: 2,
+        label: "Response email",
+        message: responseEmailError
+      });
+    }
     if (formSettings.behavior.formKind === "scout_registration") {
       const registration = formSettings.behavior.registration;
       const uploadCategories = new Set(
@@ -806,7 +843,7 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
       if (registration.requireIdBack && !uploadCategories.has("identity_back")) issues.push({ id: "registration-id-back", step: 1, label: "Identity back", message: "Add an identity-back upload question or turn off the requirement." });
     }
     return issues;
-  }, [description, formSettings.behavior.formKind, formSettings.behavior.registration, orderedQuestions, schemaJson.pages, title]);
+  }, [description, formSettings.behavior.formKind, formSettings.behavior.registration, formSettings.responseEmail, orderedQuestions, schemaJson.pages, title]);
   const builderIssueIds = new Set(builderIssues.map((issue) => issue.id));
   const updateSettings = (patch) => setSchemaJson((current) => {
     const schema = safeSchema(current);
@@ -814,9 +851,28 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
   });
   const updateAppearance = (patch) => updateSettings({ appearance: { ...formSettings.appearance, ...patch } });
   const updateStartScreen = (patch) => updateSettings({ startScreen: { ...formSettings.startScreen, ...patch } });
+  const updateResponseEmail = (patch) => updateSettings({ responseEmail: normalizeFormResponseEmailSettings({ ...formSettings.responseEmail, ...patch }) });
   const updateBehavior = (patch) => updateSettings({ behavior: { ...formSettings.behavior, ...patch } });
   const updatePage = (id, patch) => setSchemaJson((current) => safeSchema({ ...current, pages: current.pages.map((page) => page.id === id ? { ...page, ...patch } : page) }));
   const updateQuestion = (id, patch) => setSchemaJson((current) => safeSchema({ ...current, questions: current.questions.map((question) => question.id === id ? { ...question, ...patch } : question) }));
+  const updateQuestionWidth = (id, width) => setSchemaJson((current) => {
+    const schema = safeSchema(current);
+    const updatedQuestions = schema.questions.map((question) => question.id === id
+      ? normalizeFormQuestion({ ...question, layout: { ...question.layout, width } })
+      : question);
+    const changedQuestion = updatedQuestions.find((question) => question.id === id);
+    if (!changedQuestion) return schema;
+    const packedPageQuestions = packFormQuestionRows(
+      updatedQuestions
+        .filter((question) => question.pageId === changedQuestion.pageId)
+        .sort((a, b) => a.order - b.order)
+    );
+    const packedById = new Map(packedPageQuestions.map((question) => [question.id, question]));
+    return safeSchema({
+      ...schema,
+      questions: updatedQuestions.map((question) => packedById.get(question.id) ?? question)
+    });
+  });
   const movePage = (index, direction) => setSchemaJson((current) => {
     const schema = safeSchema(current);
     const pages = [...schema.pages];
@@ -992,6 +1048,7 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
                 <label>Dark logo URL<input value={formSettings.appearance.darkLogoUrl} onChange={(event) => updateAppearance({ darkLogoUrl: event.target.value })} placeholder="Optional dark-mode logo" /></label>
                 <label className="wide">Banner image URL<input value={formSettings.appearance.headerImageUrl} onChange={(event) => updateAppearance({ headerImageUrl: event.target.value })} placeholder="Optional header or cover image URL" /></label>
               </div>
+              <label className="toggle-row"><input type="checkbox" checked={formSettings.appearance.showQuestionNumbers} onChange={(event) => updateAppearance({ showQuestionNumbers: event.target.checked })} /><span><strong>Show question numbers</strong><small>Turn this off to hide numbers everywhere this form is displayed.</small></span></label>
             </section>
 
             <section className="forms-builder-settings-card">
@@ -1054,7 +1111,7 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
                   <label>Page instructions<textarea value={page.description} onChange={(event) => updatePage(page.id, { description: event.target.value })} placeholder="Tell users what to do on this page" /></label>
                 </div>
                 <ConditionalLogicEditor label="Show this page when..." item={page} questions={orderedQuestions} onChange={(rule) => updatePage(page.id, { conditionalLogic: rule })} helper="This page appears only when the selected answer matches." disabled={pageIndex === 0} disabledReason="The first page always remains available so users can start the form." />
-                <p className="forms-layout-hint">Choose field widths, then drag a compatible field onto another to place them in the same row. Mobile forms stack fields automatically.</p>
+                <p className="forms-layout-hint">Consecutive half-width fields share a row automatically. Drag fields to fine-tune the order; mobile forms always stack safely.</p>
                 <SortableContext items={pageQuestions.map((question) => question.id)} strategy={rectSortingStrategy}>
                 <div className="forms-question-list">{pageQuestions.map((question, index) => {
                   const normalizedQuestion = normalizeFormQuestion(question);
@@ -1064,7 +1121,13 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
                     .reduce((total, candidate) => total + getFormWidthUnits(normalizeFormQuestion(candidate).layout.width), 0);
                   return <SortableQuestionCard question={question} columnStart={columnStart} hasError={builderIssueIds.has(`question-${question.id}`)} key={question.id}>{({ attributes, listeners }) => <>
                   <div className="forms-question-card-topline"><button type="button" className="forms-drag-handle" title="Drag to reorder" aria-label={`Move question ${index + 1}`} {...attributes} {...listeners}><GripVertical size={20} /></button><span className="forms-question-number">Question {index + 1}</span><div className="forms-question-icon-actions"><button type="button" className="icon-button" title="Move up" disabled={index === 0} onClick={() => moveQuestion(page.id, index, -1)}><ArrowUp size={16} /></button><button type="button" className="icon-button" title="Move down" disabled={index === pageQuestions.length - 1} onClick={() => moveQuestion(page.id, index, 1)}><ArrowDown size={16} /></button><button type="button" className="icon-button" title="Duplicate" onClick={() => duplicateQuestion(page.id, index)}><Copy size={16} /></button><button type="button" className="icon-button danger-action" title="Delete" onClick={() => deleteQuestion(question.id)} disabled={schemaJson.questions.length === 1}><Trash2 size={16} /></button></div></div>
-                  <div className="forms-question-header"><label>Question<input value={question.text} onChange={(event) => updateQuestion(question.id, { text: event.target.value })} placeholder="Write the question" />{builderIssueIds.has(`question-${question.id}`) && <small className="forms-field-error">Question text is required before posting.</small>}</label><label>Answer type<select value={question.type} onChange={(event) => { const type = event.target.value; updateQuestion(question.id, uploadQuestionTypes.has(type) ? { type, options: [], ...normalizeUploadQuestion({ ...question, type }) } : { type, options: optionQuestionTypes.has(type) ? (question.options.length ? question.options : ["Option 1"]) : [] }); }}>{formQuestionTypes.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label><label>Field width<select value={normalizeFormQuestion(question).layout.width} onChange={(event) => updateQuestion(question.id, { layout: { ...normalizeFormQuestion(question).layout, width: event.target.value, rowId: `row-${question.id}` } })}>{FORM_FIELD_WIDTHS.map(([id, label]) => <option key={id} value={id} disabled={normalizeFormQuestion({ ...question, layout: { ...question.layout, width: id } }).layout.width !== id}>{label}</option>)}</select></label><label>Page<select value={question.pageId} onChange={(event) => updateQuestion(question.id, { pageId: event.target.value, order: getQuestionsForPage(schemaJson, event.target.value).length, layout: { ...normalizeFormQuestion(question).layout, rowId: `row-${question.id}` } })}>{schemaJson.pages.map((schemaPage) => <option key={schemaPage.id} value={schemaPage.id}>{schemaPage.title || `Page ${schemaPage.order + 1}`}</option>)}</select></label></div>
+                  <div className="forms-question-header">
+                    <label>Question<input value={question.text} onChange={(event) => updateQuestion(question.id, { text: event.target.value })} placeholder="Write the question" />{builderIssueIds.has(`question-${question.id}`) && <small className="forms-field-error">Question text is required before posting.</small>}</label>
+                    <label>Answer type<select value={question.type} onChange={(event) => { const type = event.target.value; updateQuestion(question.id, uploadQuestionTypes.has(type) ? { type, options: [], ...normalizeUploadQuestion({ ...question, type }) } : { type, options: optionQuestionTypes.has(type) ? (question.options.length ? question.options : ["Option 1"]) : [] }); }}>{formQuestionTypes.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+                    <label>Field width<select value={normalizeFormQuestion(question).layout.width} onChange={(event) => updateQuestionWidth(question.id, event.target.value)}>{FORM_FIELD_WIDTHS.map(([id, label]) => <option key={id} value={id} disabled={normalizeFormQuestion({ ...question, layout: { ...question.layout, width: id } }).layout.width !== id}>{label}</option>)}</select></label>
+                    <label>Question container<select value={normalizeFormQuestion(question).layout.surface} onChange={(event) => updateQuestion(question.id, { layout: { ...normalizeFormQuestion(question).layout, surface: event.target.value } })}>{FORM_QUESTION_SURFACES.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+                    <label>Page<select value={question.pageId} onChange={(event) => updateQuestion(question.id, { pageId: event.target.value, order: getQuestionsForPage(schemaJson, event.target.value).length, layout: { ...normalizeFormQuestion(question).layout, rowId: `row-${question.id}` } })}>{schemaJson.pages.map((schemaPage) => <option key={schemaPage.id} value={schemaPage.id}>{schemaPage.title || `Page ${schemaPage.order + 1}`}</option>)}</select></label>
+                  </div>
                   <details className="forms-question-advanced">
                     <summary>Question guidance and placeholder</summary>
                     <div className="forms-question-support-grid">
@@ -1093,6 +1156,12 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
           <div className="forms-section-heading"><div><p className="eyebrow">Step 3</p><h2>Posting settings and review</h2></div></div>
           {canPostForms ? <div className="forms-posting-settings"><div className="inline-editor-grid"><label>Audience<select value={targetType} onChange={(event) => setTargetType(event.target.value)}><option value="all_chiefs">All chiefs</option><option value="groups">Selected groups</option></select></label><label>Due date<input type="date" value={dueDate ?? ""} onChange={(event) => setDueDate(event.target.value)} /></label><label>Linked calendar event<select value={linkedEventId ?? ""} onChange={(event) => setLinkedEventId(event.target.value)}><option value="">None</option>{(data.plannedEvents ?? []).map((event) => <option key={event.id} value={event.id}>{event.title}</option>)}</select></label></div>
             {targetType === "groups" && <div className="forms-group-picker">{(data.groups ?? []).map((group) => <label key={group.id}><input type="checkbox" checked={targetGroupIds.includes(group.id)} onChange={(event) => setTargetGroupIds((current) => event.target.checked ? [...current, group.id] : current.filter((id) => id !== group.id))} />{group.name}</label>)}</div>}
+            <section className={`forms-response-email-settings ${builderIssueIds.has("response-email") ? "has-error" : ""}`} data-builder-field="response-email">
+              <div className="forms-section-heading compact"><div><p className="eyebrow">Response receipt</p><h3>Email a copy of the submitted response</h3></div></div>
+              <label>Delivery<select value={formSettings.responseEmail.mode} onChange={(event) => updateResponseEmail({ mode: event.target.value, questionId: "" })}><option value="none">Do not send an email</option><option value="entered_email">Send to an email entered in this form</option>{formSettings.behavior.formKind !== "scout_registration" && <option value="dashboard_profile">Send to the dashboard respondent</option>}</select></label>
+              {formSettings.responseEmail.mode === "entered_email" && <label>Recipient email question<select value={formSettings.responseEmail.questionId} onChange={(event) => updateResponseEmail({ questionId: event.target.value })}><option value="">Choose an Email question</option>{orderedQuestions.filter((question) => question.type === "email").map((question) => <option key={question.id} value={question.id}>{question.text || "Untitled email question"}</option>)}</select></label>}
+              <p className="helper-text">The response is always stored normally. Email is sent only after final submission and never for drafts.</p>
+            </section>
             <label className="toggle-row"><input type="checkbox" checked={allowEdits} onChange={(event) => setAllowEdits(event.target.checked)} />Allow chiefs to edit submitted responses while open</label><label className="toggle-row forms-coming-soon-toggle"><input type="checkbox" checked={generateAiSummary} onChange={(event) => setGenerateAiSummary(event.target.checked)} />Generate AI summary <span>Coming Soon</span></label></div> : <p className="helper-text">Posting requires the Post Forms permission.</p>}
           <article className="forms-final-review"><div><p className="eyebrow">Final review</p><h3>{title || "Untitled form"}</h3><FormattedText text={description} fallback="No description provided." /></div><div className="forms-review-stat"><strong>{schemaJson.pages.length}</strong><span>Pages</span></div><div className="forms-review-stat"><strong>{schemaJson.questions.length}</strong><span>Questions</span></div><div className="forms-review-stat"><strong>{schemaJson.questions.filter((question) => question.required).length}</strong><span>Required</span></div></article>
           {builderIssues.length ? <article className="forms-review-warning forms-builder-review-warning"><strong>Fix before posting</strong>{builderIssues.map((issue) => <button type="button" key={issue.id} onClick={() => jumpToBuilderIssue(issue)}>{issue.label}: {issue.message}</button>)}</article> : <article className="forms-review-ready"><CheckCircle2 size={22} /><span>This form is ready to post.</span></article>}
@@ -1255,12 +1324,21 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
         setSubmitProgress({ percent: 48, label: "Saving answers securely..." });
         setSaveMessage("Saving answers securely...");
       }
+      let savedSubmission = null;
       if (status === "draft" && activeForm.formKind === "reimbursement") {
-        await saveDashboardReimbursementDraft({ postedFormId: activeForm.id, submittedBy: user.id, groupId: user.groupId, answersJson: answers });
+        savedSubmission = await saveDashboardReimbursementDraft({ postedFormId: activeForm.id, submittedBy: user.id, groupId: user.groupId, answersJson: answers });
       } else if (status === "submitted" && activeForm.formKind === "reimbursement") {
-        await submitDashboardReimbursement({ postedFormId: activeForm.id, submittedBy: user.id, groupId: user.groupId, answersJson: answers });
+        savedSubmission = await submitDashboardReimbursement({ postedFormId: activeForm.id, submittedBy: user.id, groupId: user.groupId, answersJson: answers });
       } else {
-        await saveDashboardFormSubmission({ postedFormId: activeForm.id, submittedBy: user.id, groupId: user.groupId, answersJson: answers, status });
+        savedSubmission = await saveDashboardFormSubmission({ postedFormId: activeForm.id, submittedBy: user.id, groupId: user.groupId, answersJson: answers, status });
+      }
+      let emailDelivery = null;
+      const submissionId = savedSubmission?.id
+        ?? savedSubmission?.formSubmissionId
+        ?? savedSubmission?.form_submission_id;
+      if (status === "submitted" && submissionId) {
+        emailDelivery = await sendDashboardFormResponseEmail(submissionId)
+          .catch((error) => ({ status: "failed", error: error.message }));
       }
       if (!quiet) {
         setSubmitProgress({ percent: 82, label: "Refreshing..." });
@@ -1270,11 +1348,22 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
       if (!quiet) setSubmitProgress({ percent: 100, label: "Complete" });
       if (status === "submitted") {
         setIsReviewingForm(false);
-        setSubmittedSuccess({ title: activeForm.title, timestamp: new Date().toISOString(), locked: !activeForm.allowEdits });
+        setSubmittedSuccess({
+          title: activeForm.title,
+          timestamp: new Date().toISOString(),
+          locked: !activeForm.allowEdits,
+          emailDelivery
+        });
       } else if (!keepOpen) {
         setActiveFormId(null);
       }
-      if (!quiet) setSaveMessage(status === "draft" ? "Form draft saved." : "Form submitted.");
+      if (!quiet) {
+        setSaveMessage(status === "draft"
+          ? "Form draft saved."
+          : emailDelivery?.status === "failed"
+            ? "Form submitted. The response email could not be sent."
+            : "Form submitted.");
+      }
     } catch (error) {
       if (!quiet) {
         setSubmitProgress(null);
@@ -1316,7 +1405,7 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
     };
 
     if (submittedSuccess) {
-      return createPortal(<div className="forms-fill-shell premium-completion-shell"><article className="forms-submission-success-card"><div className="forms-success-icon"><CheckCircle2 size={42} /></div><p className="eyebrow">Submission complete</p><h2>{submittedSuccess.title}</h2><p>Your response was submitted successfully and saved securely.</p><div className="premium-form-meta-grid"><span><CalendarDays size={16} />Submitted <strong>{formatDate(submittedSuccess.timestamp)}</strong></span><span><ShieldCheck size={16} />Editing <strong>{submittedSuccess.locked ? "Locked" : "Available while open"}</strong></span></div><button type="button" className="primary-action" onClick={returnToForms}>Return to My Forms</button></article></div>, document.body);
+      return createPortal(<div className="forms-fill-shell premium-completion-shell"><article className="forms-submission-success-card"><div className="forms-success-icon"><CheckCircle2 size={42} /></div><p className="eyebrow">Submission complete</p><h2>{submittedSuccess.title}</h2><p>Your response was submitted successfully and saved securely.</p>{submittedSuccess.emailDelivery?.status === "failed" && <p className="forms-email-delivery-warning">The response email could not be sent. Your saved submission is not affected.</p>}<div className="premium-form-meta-grid"><span><CalendarDays size={16} />Submitted <strong>{formatDate(submittedSuccess.timestamp)}</strong></span><span><ShieldCheck size={16} />Editing <strong>{submittedSuccess.locked ? "Locked" : "Available while open"}</strong></span></div><button type="button" className="primary-action" onClick={returnToForms}>Return to My Forms</button></article></div>, document.body);
     }
 
     if (isReviewingForm) {
@@ -1356,7 +1445,7 @@ export default function FormsDashboard({ data, user, isAdmin, mode = "myForms", 
     <div className="forms-dashboard cms-panel-stack">
       {tabs.length > 0 && <div className="approval-type-tabs forms-section-tabs" role="tablist" aria-label="Forms sections">{tabs.map(([id, label]) => <button type="button" key={id} className={view === id ? "active" : ""} onClick={() => setView(id)}>{label}</button>)}</div>}
       {view === "formTemplates" && <div className="forms-management-grid">{templates.length ? templates.map((template) => <article className="forms-management-card" key={template.id}><div className="forms-card-heading"><FileText size={22} /><span className="forms-count-badge">{safeSchema(template.schemaJson).pages.length} pages / {getOrderedQuestions(template.schemaJson).length} questions</span></div><div><p className="eyebrow">{template.status}</p><h3>{template.title}</h3><FormattedText text={template.description} fallback="No description." /></div><small>Last edited {formatDate(template.updatedAt)}</small><div className="action-row"><button type="button" className="primary-action" onClick={() => { setBuilderTemplate(template); setView("formsCreate"); }}>Use Template</button><button type="button" className="inline-action" onClick={async () => { await saveDashboardFormTemplate({ title: `${template.title} copy`, description: template.description, schemaJson: template.schemaJson, status: "active" }); setSaveMessage("Template duplicated."); await onRefresh(); }}>Save as New Template</button><button type="button" className="icon-button danger-action" title="Delete template" onClick={async () => { if (window.confirm("Delete this reusable template? Posted forms using it will remain available.")) { await deleteDashboardFormTemplate(template.id); setSaveMessage("Form template deleted."); await onRefresh(); } }}><Trash2 size={17} /></button></div></article>) : <EmptyFormsState title="No templates yet" text="Create a reusable form template to start." />}</div>}
-      {view === "postedForms" && <div className="forms-management-grid">{visiblePostedForms.length ? visiblePostedForms.map((form) => { const formSubmissions = submissions.filter((submission) => submission.postedFormId === form.id); const eligible = (data.users ?? []).filter((profile) => (profile.role === "chief" || profile.roles?.includes?.("chief") || profile.assignedGroupIds?.length || profile.coordinatorGroupIds?.length) && isTargetedToUser(form, profile)).length; return <article className="forms-management-card" key={form.id}><div className="forms-card-heading"><span className={`forms-status-pill ${form.approvalStatus}`}>{form.approvalStatus}</span><small>{form.targetType === "groups" ? form.targetGroupIds.map((id) => getGroupName(data.groups, id)).join(", ") : "All chiefs"}</small></div><div><h3>{form.title}</h3><p className="forms-response-count"><Users size={16} />{formSubmissions.length}{eligible ? ` of ${eligible}` : ""} responded</p><p className="helper-text"><CalendarDays size={15} />Due {formatDate(form.dueDate)}</p></div><div className="action-row"><button type="button" className="inline-action" onClick={() => setBuilderPostedForm(form)}>Edit copy</button><button type="button" className="inline-action" onClick={() => openForm(form)}>Preview</button>{form.approvalStatus === "open" ? <button type="button" className="inline-action" onClick={async () => { if (window.confirm("Close this form? Chiefs will no longer be able to submit or edit responses.")) { await closeDashboardPostedForm(form.id); setSaveMessage("Form closed. Exports are now available."); await onRefresh(); } }}>Close</button> : <button type="button" className="inline-action" disabled={form.approvalStatus !== "closed"} onClick={async () => { if (window.confirm("Reopen this form? Targeted chiefs will be able to submit or edit again.")) { await reopenDashboardPostedForm(form.id); setSaveMessage("Form reopened."); await onRefresh(); } }}>Reopen</button>}<button type="button" className="inline-action" disabled={form.approvalStatus !== "closed"} onClick={() => downloadCsv({ form, submissions: formSubmissions, users: data.users, groups: data.groups })}>Export CSV</button><button type="button" className="icon-button danger-action" title="Delete posted form" onClick={async () => { if (window.confirm("Permanently delete this posted form and all responses? Its reusable template will be preserved.")) { await deleteDashboardPostedForm(form.id); setSaveMessage("Posted form deleted."); await onRefresh(); } }}><Trash2 size={17} /></button></div></article>; }) : <EmptyFormsState title="No posted forms yet" text="Posted and pending forms will appear here." />}</div>}
+      {view === "postedForms" && <div className="forms-management-grid">{visiblePostedForms.length ? visiblePostedForms.map((form) => { const formSubmissions = submissions.filter((submission) => submission.postedFormId === form.id); const eligible = (data.users ?? []).filter((profile) => (profile.role === "chief" || profile.roles?.includes?.("chief") || profile.assignedGroupIds?.length || profile.coordinatorGroupIds?.length) && isTargetedToUser(form, profile)).length; return <article className="forms-management-card" key={form.id}><div className="forms-card-heading"><span className={`forms-status-pill ${form.approvalStatus}`}>{form.approvalStatus}</span><small>{form.targetType === "groups" ? form.targetGroupIds.map((id) => getGroupName(data.groups, id)).join(", ") : "All chiefs"}</small></div><div><h3>{form.title}</h3><p className="forms-response-count"><Users size={16} />{formSubmissions.length}{eligible ? ` of ${eligible}` : ""} responded</p><p className="helper-text"><CalendarDays size={15} />Due {formatDate(form.dueDate)}</p></div><div className="action-row"><button type="button" className="inline-action" onClick={() => setBuilderPostedForm(form)}>Edit copy</button><button type="button" className="inline-action" onClick={() => openForm(form)}>Preview</button>{form.approvalStatus === "open" ? <button type="button" className="inline-action" onClick={async () => { if (window.confirm("Close this form? Chiefs will no longer be able to submit or edit responses.")) { await closeDashboardPostedForm(form.id); setSaveMessage("Form closed. Exports are now available."); await onRefresh(); } }}>Close</button> : <button type="button" className="inline-action" disabled={form.approvalStatus !== "closed"} onClick={async () => { if (window.confirm("Reopen this form? Targeted chiefs will be able to submit or edit again.")) { await reopenDashboardPostedForm(form.id); setSaveMessage("Form reopened."); await onRefresh(); } }}>Reopen</button>}<button type="button" className="inline-action" disabled={form.approvalStatus !== "closed"} onClick={() => downloadExcel({ form, submissions: formSubmissions, users: data.users, groups: data.groups })}>Download Excel</button><button type="button" className="icon-button danger-action" title="Delete posted form" onClick={async () => { if (window.confirm("Permanently delete this posted form and all responses? Its reusable template will be preserved.")) { await deleteDashboardPostedForm(form.id); setSaveMessage("Posted form deleted."); await onRefresh(); } }}><Trash2 size={17} /></button></div></article>; }) : <EmptyFormsState title="No posted forms yet" text="Posted and pending forms will appear here." />}</div>}
       {view === "registrationCampaigns" && <RegistrationCampaigns campaigns={data.registrationCampaigns ?? []} postedForms={postedForms} scoutYears={data.scoutYears ?? []} searchQuery={searchQuery} onEdit={(form) => { setBuilderPostedForm(form); setView("formsCreate"); }} onRefresh={onRefresh} setSaveMessage={setSaveMessage} />}
       {view === "registrationCenter" && <RegistrationCenter data={{ submissions: data.registrationSubmissions, people: data.registrationPeople, parents: data.registrationParents, documents: data.registrationDocuments, duplicates: data.registrationDuplicates, reviews: data.registrationReviews, enrollments: data.scoutSeasonEnrollments, scouts: data.scouts, storageSummary: data.registrationStorageSummary }} groups={data.groups ?? []} scoutYears={data.scoutYears ?? []} searchQuery={searchQuery} onRefresh={onRefresh} setSaveMessage={setSaveMessage} viewerName={user?.fullName ?? user?.name ?? "Authorised reviewer"} canManageRetention={isAdmin} />}
       {view === "formResponses" && <div className="forms-submissions-view"><div className="forms-filter-bar"><label><Search size={16} /><select value={submissionFormFilter} onChange={(event) => setSubmissionFormFilter(event.target.value)}><option value="all">All forms</option>{postedForms.map((form) => <option value={form.id} key={form.id}>{form.title}</option>)}</select></label><label><Users size={16} /><select value={submissionGroupFilter} onChange={(event) => setSubmissionGroupFilter(event.target.value)}><option value="all">All groups</option>{(data.groups ?? []).map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}</select></label><label>Date from<input type="date" value={submissionDateFrom} onChange={(event) => setSubmissionDateFrom(event.target.value)} /></label><label>Date to<input type="date" value={submissionDateTo} onChange={(event) => setSubmissionDateTo(event.target.value)} /></label></div><div className="table-panel forms-submissions-table"><table className="editable-table"><thead><tr><th>Select</th><th>Form</th><th>Submitted by</th><th>Group</th><th>Status</th><th>Submitted</th></tr></thead><tbody>{filteredSubmissions.length ? filteredSubmissions.map((submission) => { const form = postedForms.find((item) => item.id === submission.postedFormId); const submitter = (data.users ?? []).find((item) => item.id === submission.submittedBy); return <tr key={submission.id}><td><input type="checkbox" checked={selectedSubmissionIds.includes(submission.id)} onChange={(event) => setSelectedSubmissionIds((current) => event.target.checked ? [...current, submission.id] : current.filter((id) => id !== submission.id))} /></td><td>{form?.title ?? "Unknown form"}</td><td>{submitter?.name ?? "Unknown user"}</td><td>{getGroupName(data.groups, submission.groupId ?? submitter?.groupId)}</td><td><span className={`forms-status-pill ${submission.approvalStatus}`}>{submission.approvalStatus}</span></td><td>{formatDate(submission.submittedAt ?? submission.updatedAt)}</td></tr>; }) : <tr><td colSpan="6">No submissions match these filters.</td></tr>}</tbody></table></div><article className="forms-ai-summary-card"><div className="forms-section-heading"><div><p className="eyebrow">Response analysis</p><h3>AI Summary</h3></div><span className="forms-coming-soon-badge">Coming Soon</span></div><p>{selectedSubmissionIds.length ? `${selectedSubmissionIds.length} responses selected.` : "Select responses above to prepare a future summary."}</p><div className="forms-ai-sections">{aiSummarySections.map((section) => <span key={section}>{section}</span>)}</div><button type="button" className="primary-action" disabled>Generate AI Summary</button></article></div>}

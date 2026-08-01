@@ -8,7 +8,9 @@ import {
   updateRegistrationSubmission,
   verifyRegistrationDocument
 } from "./registrationService.js";
-import { formatPhoneAnswer } from "../forms/formModel.js";
+import { formatPhoneAnswer, getOrderedFormQuestions } from "../forms/formModel.js";
+import { downloadExcelFile } from "../../utils/excelExport.js";
+import { richTextToPlainText } from "../../utils/richText.js";
 
 const tabs = [
   ["overview", "Overview"],
@@ -24,10 +26,6 @@ const tabs = [
 
 const readyStatuses = new Set(["verified", "approved"]);
 const pendingStatuses = new Set(["submitted", "pending_group_verification", "needs_changes"]);
-
-function csvCell(value) {
-  return `"${String(value ?? "").replaceAll("\"", "\"\"")}"`;
-}
 
 function formatDate(value) {
   if (!value) return "Not recorded";
@@ -54,8 +52,50 @@ function classification(submission, hasDuplicate, hasScoutProfile = true) {
   return submission.registration_path === "returning" ? "Confirmed Returning Scout" : "New Scout";
 }
 
+function submissionSchema(submission) {
+  return submission?.source_snapshot_json?.form?.schemaJson
+    ?? submission?.source_snapshot_json?.schemaJson
+    ?? {};
+}
+
+function formatAnswer(answer) {
+  if (Array.isArray(answer)) return answer.join(", ");
+  if (answer && typeof answer === "object") {
+    if ("e164" in answer || "nationalNumber" in answer) return formatPhoneAnswer(answer);
+    if (answer.name || answer.originalName) return answer.name ?? answer.originalName;
+    return JSON.stringify(answer);
+  }
+  return String(answer ?? "");
+}
+
+function questionLabel(question, fallback) {
+  return richTextToPlainText(question?.text || question?.title || question?.label) || fallback;
+}
+
+function orderedSubmissionAnswers(submission) {
+  const answers = submission?.answers_json && typeof submission.answers_json === "object"
+    ? submission.answers_json
+    : {};
+  const questions = getOrderedFormQuestions(submissionSchema(submission));
+  const knownQuestionIds = new Set(questions.map((question) => question.id));
+  const ordered = questions.map((question, index) => ({
+    id: question.id,
+    label: questionLabel(question, `Question ${index + 1}`),
+    value: formatAnswer(answers[question.id]) || "Not provided"
+  }));
+  const unknown = Object.entries(answers)
+    .filter(([questionId]) => !knownQuestionIds.has(questionId))
+    .map(([questionId, answer], index) => ({
+      id: questionId,
+      label: `Question ${ordered.length + index + 1}`,
+      value: formatAnswer(answer) || "Not provided"
+    }));
+
+  return [...ordered, ...unknown];
+}
+
 export default function RegistrationCenter({
-  data,
+  data = {},
   groups = [],
   scoutYears = [],
   searchQuery = "",
@@ -72,6 +112,14 @@ export default function RegistrationCenter({
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
   const [revealedDocument, setRevealedDocument] = useState(null);
+  const [enrollmentDetails, setEnrollmentDetails] = useState({
+    fullName: "",
+    targetGroupId: "",
+    dateOfBirth: "",
+    gender: "",
+    schoolName: "",
+    schoolGrade: ""
+  });
   const submissions = Array.isArray(data.submissions) ? data.submissions : [];
   const people = Array.isArray(data.people) ? data.people : [];
   const parents = Array.isArray(data.parents) ? data.parents : [];
@@ -89,28 +137,7 @@ export default function RegistrationCenter({
   const duplicatesFor = (id) => duplicates.filter((item) => item.submission_id === id && !item.decision);
   const scoutFor = (id) => scouts.find((item) => item.id === id);
   const groupName = (id) => groups.find((group) => group.id === id)?.name ?? "Unassigned";
-  const answersFor = (submission) => {
-    const answers = submission?.answers_json && typeof submission.answers_json === "object"
-      ? submission.answers_json
-      : {};
-    const schema = submission?.source_snapshot_json?.form?.schemaJson ?? {};
-    const questions = Array.isArray(schema.questions) ? schema.questions : [];
-    return Object.entries(answers).map(([questionId, answer], index) => {
-      const question = questions.find((item) => item.id === questionId);
-      const value = Array.isArray(answer)
-        ? answer.join(", ")
-        : answer && typeof answer === "object"
-          ? ("e164" in answer || "nationalNumber" in answer)
-            ? formatPhoneAnswer(answer)
-            : JSON.stringify(answer)
-          : String(answer ?? "");
-      return {
-        id: questionId,
-        label: question?.text || question?.title || question?.label || `Question ${index + 1}`,
-        value: value || "Not provided"
-      };
-    });
-  };
+  const answersFor = orderedSubmissionAnswers;
   const search = `${searchQuery} ${localSearch}`.trim().toLowerCase();
 
   useEffect(() => {
@@ -118,6 +145,28 @@ export default function RegistrationCenter({
     const timeout = window.setTimeout(() => setRevealedDocument(null), Math.max(0, revealedDocument.expiresAt - Date.now()));
     return () => window.clearTimeout(timeout);
   }, [revealedDocument]);
+
+  useEffect(() => {
+    if (!selected) return;
+    const person = personFor(selected.id);
+    const answers = answersFor(selected);
+    const answerMatching = (...patterns) => answers.find((answer) => {
+      const label = answer.label.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      return patterns.some((pattern) => pattern.test(label));
+    })?.value ?? "";
+    const groupAnswer = answerMatching(/^(requested )?(scout )?group$/, /^group preference$/);
+    const inferredGroup = groups.find((group) =>
+      String(group.id) === groupAnswer || String(group.name ?? "").toLowerCase() === groupAnswer.toLowerCase()
+    );
+    setEnrollmentDetails({
+      fullName: person?.full_name ?? answerMatching(/^(scout|child|participant)( s)? (full )?name$/, /^full name$/),
+      targetGroupId: selected.target_group_id ?? person?.requested_group_id ?? inferredGroup?.id ?? "",
+      dateOfBirth: person?.date_of_birth ?? answerMatching(/^date of birth$/, /^birth date$/),
+      gender: person?.gender ?? answerMatching(/^gender$/, /^sex$/),
+      schoolName: person?.school_name ?? answerMatching(/^school( name)?$/),
+      schoolGrade: person?.school_grade ?? answerMatching(/^school grade$/, /^grade$/)
+    });
+  }, [selectedId, people, groups]);
 
   const visible = useMemo(() => submissions.filter((submission) => {
     const person = personFor(submission.id);
@@ -225,35 +274,55 @@ export default function RegistrationCenter({
     }
   };
 
-  const exportCsv = () => {
-    const header = ["Reference", "Name", "Classification", "Status", "Group", "Submitted", "Open Verification"];
+  const exportExcel = () => {
+    const questionColumns = new Map();
+    visible.forEach((submission) => {
+      const questions = getOrderedFormQuestions(submissionSchema(submission));
+      questions.forEach((question) => {
+        if (question?.id && !questionColumns.has(question.id)) {
+          questionColumns.set(question.id, questionLabel(question, "Untitled question"));
+        }
+      });
+      Object.keys(submission?.answers_json ?? {}).forEach((questionId) => {
+        if (!questionColumns.has(questionId)) questionColumns.set(questionId, `Question ${questionColumns.size + 1}`);
+      });
+    });
+    const headers = ["Reference", "Name", "Classification", "Status", "Group", "Submitted At", ...questionColumns.values()];
     const rows = visible.map((submission) => {
       const person = personFor(submission.id);
+      const answers = submission?.answers_json && typeof submission.answers_json === "object" ? submission.answers_json : {};
       return [
         submission.reference_number,
-        person?.full_name,
+        person?.full_name ?? "",
         classification(submission, duplicatesFor(submission.id).length > 0, Boolean(person)),
         submission.status,
         groupName(submission.target_group_id),
         formatDate(submission.submitted_at),
-        `${window.location.origin}${import.meta.env.BASE_URL}#/dashboard/admin/registration-center?registration=${submission.id}`
+        ...questionColumns.keys().map((questionId) => {
+          const value = answers[questionId];
+          if (Array.isArray(value)) return value.join("; ");
+          if (value && typeof value === "object") {
+            if ("e164" in value || "nationalNumber" in value) return formatPhoneAnswer(value);
+            if (value.name || value.originalName) return value.name ?? value.originalName;
+            return JSON.stringify(value);
+          }
+          return value ?? "";
+        })
       ];
     });
-    const blob = new Blob([`\uFEFF${[header, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n")}`], {
-      type: "text/csv;charset=utf-8"
+    downloadExcelFile({
+      fileName: "scout-registration-submissions.xls",
+      sheetName: "Registration responses",
+      headers,
+      rows
     });
-    const anchor = document.createElement("a");
-    anchor.href = URL.createObjectURL(blob);
-    anchor.download = "scout-registration-export.csv";
-    anchor.click();
-    URL.revokeObjectURL(anchor.href);
   };
 
   return (
     <section className="registration-center">
       <div className="registration-section-heading">
         <div><p className="eyebrow">Season intake</p><h2>Registration Center</h2></div>
-        <button type="button" className="inline-action" onClick={exportCsv}><Download size={16} />Export CSV</button>
+        <button type="button" className="inline-action" onClick={exportExcel}><Download size={16} />Download Excel</button>
       </div>
       <div className="registration-center-tabs" role="tablist">
         {tabs.map(([id, label]) => <button type="button" role="tab" aria-selected={tab === id} className={tab === id ? "active" : ""} key={id} onClick={() => setTab(id)}>{label}</button>)}
@@ -327,12 +396,43 @@ export default function RegistrationCenter({
               </>}
             </section>
             <section>
+              <div className="registration-enrollment-details">
+                <div>
+                  <p className="eyebrow">Season record</p>
+                  <h3>Enrollment details</h3>
+                  <p className="helper-text">Confirm the scout name and destination group before adding this registration to the season.</p>
+                </div>
+                <div className="registration-enrollment-grid">
+                  <label className="registration-enrollment-wide">
+                    <span>Scout full name <strong aria-hidden="true">*</strong></span>
+                    <input
+                      value={enrollmentDetails.fullName}
+                      onChange={(event) => setEnrollmentDetails((current) => ({ ...current, fullName: event.target.value }))}
+                      placeholder="Enter the scout's full name"
+                    />
+                  </label>
+                  <label className="registration-enrollment-wide">
+                    <span>Target group <strong aria-hidden="true">*</strong></span>
+                    <select
+                      value={enrollmentDetails.targetGroupId}
+                      onChange={(event) => setEnrollmentDetails((current) => ({ ...current, targetGroupId: event.target.value }))}
+                    >
+                      <option value="">Choose a scout group</option>
+                      {groups.map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}
+                    </select>
+                  </label>
+                  <label><span>Date of birth</span><input type="date" value={enrollmentDetails.dateOfBirth} onChange={(event) => setEnrollmentDetails((current) => ({ ...current, dateOfBirth: event.target.value }))} /></label>
+                  <label><span>Gender</span><input value={enrollmentDetails.gender} onChange={(event) => setEnrollmentDetails((current) => ({ ...current, gender: event.target.value }))} placeholder="Optional" /></label>
+                  <label><span>School</span><input value={enrollmentDetails.schoolName} onChange={(event) => setEnrollmentDetails((current) => ({ ...current, schoolName: event.target.value }))} placeholder="Optional" /></label>
+                  <label><span>School grade</span><input value={enrollmentDetails.schoolGrade} onChange={(event) => setEnrollmentDetails((current) => ({ ...current, schoolGrade: event.target.value }))} placeholder="Optional" /></label>
+                </div>
+              </div>
               <h3>Newly uploaded documents</h3>
               <div className="registration-document-list">
                 {docsFor(selected.id).map((document) => <article key={document.id}>
                   <div>
-                    <strong>{document.document_type.replaceAll("_", " ")}</strong>
-                    <span>{Math.ceil(document.size_bytes / 1024)} KB | {document.verification_status}</span>
+                    <strong>{String(document.document_type ?? "uploaded_document").replaceAll("_", " ")}</strong>
+                    <span>{formatBytes(document.size_bytes)} | {String(document.verification_status ?? "uploaded").replaceAll("_", " ")}</span>
                   </div>
                   <div className="registration-document-actions">
                     <button type="button" className="inline-action" disabled={working} onClick={() => openDocument(document.id)}><Eye size={16} />Reveal</button>
@@ -394,9 +494,9 @@ export default function RegistrationCenter({
             <button type="button" className="inline-action" disabled={working} onClick={() => run(updateRegistrationSubmission, { submissionId: selected.id, decision: "needs_changes" }, "Correction requested.")}>Request Changes</button>
             <button type="button" className="inline-action danger-action" disabled={working} onClick={() => run(updateRegistrationSubmission, { submissionId: selected.id, decision: "rejected" }, "Registration rejected.")}>Reject</button>
             <button type="button" className="inline-action" disabled={working} onClick={() => run(updateRegistrationSubmission, { submissionId: selected.id, decision: "verified" }, "Registration verified.")}>Verify</button>
-            <button type="button" className="primary-action" disabled={working || !readyStatuses.has(selected.status)} onClick={() => run(
+            <button type="button" className="primary-action" disabled={working || !readyStatuses.has(selected.status) || !enrollmentDetails.fullName.trim() || !enrollmentDetails.targetGroupId} onClick={() => run(
               (payload) => runRegistrationAdminAction("enroll_submission", payload),
-              { submissionId: selected.id },
+              { submissionId: selected.id, enrollmentDetails },
               "Scout added to the season."
             )}><UserPlus size={17} />Approve and Add to Season</button>
           </footer>

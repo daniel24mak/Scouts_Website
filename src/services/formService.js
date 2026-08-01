@@ -1,4 +1,4 @@
-import { callSupabaseRpc, deleteSupabaseRows, getCurrentSupabaseUserId, getSupabaseRows, insertSupabaseRow, patchSupabaseRows, upsertSupabaseRows } from "./supabaseClient.js";
+import { callSupabaseRpc, deleteSupabaseRows, getCurrentSupabaseUserId, getSupabaseRows, insertSupabaseRow, invokeSupabaseFunction, patchSupabaseRows, upsertSupabaseRows } from "./supabaseClient.js";
 import { normalizeRegistrationSettings } from "../features/registration/registrationModel.js";
 
 function jsonValue(value, fallback) {
@@ -16,6 +16,7 @@ function jsonValue(value, fallback) {
 export const formQuestionTypes = [
   ["short_text", "Short text"],
   ["long_text", "Long text"],
+  ["email", "Email address"],
   ["phone", "Phone number"],
   ["number", "Number"],
   ["rating", "Rating scale 1-5"],
@@ -484,6 +485,10 @@ export async function saveFormSubmission(payload) {
 
   const [submission] = await insertSupabaseRow("form_submissions", row);
   return normalizeFormSubmission(submission);
+}
+
+export function sendFormResponseEmail(submissionId) {
+  return invokeSupabaseFunction("send-form-response-email", { submissionId });
 }
 
 export async function submitReimbursementForm(payload) {
