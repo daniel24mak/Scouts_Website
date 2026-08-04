@@ -4,8 +4,9 @@ import { useBootstrap } from "../api/useBootstrap.js";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import { useToast } from "../components/ToastProvider.jsx";
 import RichTextEditor from "../components/RichTextEditor.jsx";
+import { ACCEPTED_IMAGE_INPUT } from "../services/imageOptimizationService.js";
 
-const acceptedImageTypes = ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif";
+const acceptedImageTypes = ACCEPTED_IMAGE_INPUT;
 const wizardSteps = ["Details", "Media", "Review"];
 
 function WizardStepper({ step }) {

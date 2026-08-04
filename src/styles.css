@@ -16432,7 +16432,7 @@ span,
   padding: 0;
 }
 
-.admin-cms-shell.sidebar-collapsed .admin-sidebar button span,
+.admin-cms-shell.sidebar-collapsed .admin-sidebar button > span:not(.interactive-icon),
 .admin-cms-shell.sidebar-collapsed .admin-sidebar .sidebar-badge,
 .admin-cms-shell.sidebar-collapsed .sidebar-chevron {
   position: absolute;
@@ -16466,7 +16466,7 @@ span,
   padding: 9px 12px;
 }
 
-.admin-cms-shell.sidebar-collapsed .sidebar-group.open .sidebar-subitems button span {
+.admin-cms-shell.sidebar-collapsed .sidebar-group.open .sidebar-subitems button > span:not(.interactive-icon) {
   position: static;
   width: auto;
   height: auto;

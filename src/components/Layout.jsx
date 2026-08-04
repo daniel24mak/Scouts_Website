@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import scoutLogo from "../assets/smscouts_logo.png";
+import InteractiveIcon from "./icons/InteractiveIcon.jsx";
 import { isDashboardPath } from "./layoutModel.js";
 
 const navItems = [
@@ -78,7 +79,7 @@ export default function Layout() {
           aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
           onClick={() => setIsMenuOpen((current) => !current)}
         >
-          {isMenuOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
+          {isMenuOpen ? <InteractiveIcon icon={X} size={22} /> : <InteractiveIcon icon={Menu} size={22} />}
         </button>
         <div className={`header-menu ${isMenuOpen ? "open mobile-single-column-menu" : ""}`} id="site-menu">
           <button
@@ -87,18 +88,18 @@ export default function Layout() {
             aria-label="Close navigation menu"
             onClick={closeMenu}
           >
-            <X size={28} aria-hidden="true" />
+            <InteractiveIcon icon={X} size={28} />
           </button>
           <nav className="main-nav mobile-nav-stack" aria-label="Main navigation">
             {navItems.map(({ to, label, icon: Icon }) => (
               <NavLink key={to} to={to} onClick={closeMenu}>
-                <Icon size={18} aria-hidden="true" />
+                <InteractiveIcon icon={Icon} size={18} />
                 {label}
               </NavLink>
             ))}
             {user && (
               <NavLink to="/dashboard" onClick={closeMenu}>
-                <Users size={18} aria-hidden="true" />
+                <InteractiveIcon icon={Users} size={18} />
                 Dashboard
               </NavLink>
             )}
@@ -150,7 +151,7 @@ export default function Layout() {
         <div className="footer-column footer-social-column">
           <strong>Social</strong>
           <a className="footer-social" href="https://www.instagram.com/stmaryscoutsdubai" target="_blank" rel="noreferrer" aria-label="Follow St. Mary's Scouts Dubai on Instagram">
-            <Instagram size={20} aria-hidden="true" />
+            <InteractiveIcon icon={Instagram} size={20} />
             <span>Instagram</span>
           </a>
         </div>

@@ -1,5 +1,16 @@
 export const IMAGE_CACHE_CONTROL = "max-age=31536000, immutable";
-const supportedExtensions = ["jpg", "jpeg", "png", "webp", "heic", "heif"];
+export const ACCEPTED_IMAGE_EXTENSIONS = Object.freeze(["jpg", "jpeg", "png", "webp", "heic", "heif"]);
+export const ACCEPTED_IMAGE_MIME_TYPES = Object.freeze([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif"
+]);
+export const ACCEPTED_IMAGE_INPUT = [
+  ...ACCEPTED_IMAGE_EXTENSIONS.map((extension) => `.${extension}`),
+  ...ACCEPTED_IMAGE_MIME_TYPES
+].join(",");
 const maxOriginalSize = 25 * 1024 * 1024;
 
 const imageProfiles = {
@@ -22,7 +33,7 @@ function extensionFor(file) {
 export function detectImageFormat(file) {
   const extension = extensionFor(file);
   if (extension === "jpg") return "jpeg";
-  if (supportedExtensions.includes(extension)) return extension;
+  if (ACCEPTED_IMAGE_EXTENSIONS.includes(extension)) return extension;
   if (file?.type?.startsWith("image/")) return file.type.replace("image/", "").toLowerCase();
   return "";
 }
@@ -33,9 +44,9 @@ export function validateImageFile(file) {
   }
 
   const format = detectImageFormat(file);
-  const allowedMime = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"].includes(file.type);
+  const allowedMime = ACCEPTED_IMAGE_MIME_TYPES.includes(file.type);
 
-  if (!supportedExtensions.includes(format) && !allowedMime) {
+  if (!ACCEPTED_IMAGE_EXTENSIONS.includes(format) && !allowedMime) {
     throw new Error("Please upload JPG, PNG, WebP, HEIC, or HEIF images only.");
   }
 

@@ -1,0 +1,21 @@
+.interactive-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  pointer-events: none;
+}
+
+.interactive-icon > div,
+.interactive-icon svg {
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .interactive-icon,
+  .interactive-icon * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

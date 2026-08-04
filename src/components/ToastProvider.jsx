@@ -1,5 +1,6 @@
 import { CheckCircle2, Info, X, XCircle } from "lucide-react";
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import InteractiveIcon from "./icons/InteractiveIcon.jsx";
 
 const ToastContext = createContext(null);
 const icons = {
@@ -51,7 +52,7 @@ export function ToastProvider({ children }) {
               <Icon size={18} aria-hidden="true" />
               <span>{toast.message}</span>
               <button type="button" aria-label="Dismiss notification" onClick={() => dismissToast(toast.id)}>
-                <X size={16} aria-hidden="true" />
+                <InteractiveIcon icon={X} size={16} />
               </button>
             </div>
           );

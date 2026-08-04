@@ -5,7 +5,7 @@ export const REGISTRATION_UPLOAD_TYPES = Object.freeze([
   "scout_headshot_upload"
 ]);
 
-export const REGISTRATION_FILE_FORMATS = Object.freeze(["jpg", "jpeg", "png", "heic", "webp", "pdf"]);
+export const REGISTRATION_FILE_FORMATS = Object.freeze(["jpg", "jpeg", "png", "webp", "heic", "heif", "pdf"]);
 
 export const REGISTRATION_STORAGE_CATEGORIES = Object.freeze([
   ["attachment", "General attachment"],
