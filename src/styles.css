@@ -12177,6 +12177,10 @@ textarea:focus-visible {
   font-weight: 800;
 }
 
+.forms-page-navigation.single-page {
+  justify-content: flex-end;
+}
+
 @media (max-width: 760px) {
   .forms-page-builder-header,
   .forms-page-fill-header {
@@ -17806,6 +17810,15 @@ span,
     text-align: center;
   }
 
+  .forms-page-navigation.single-page {
+    grid-template-columns: 1fr;
+  }
+
+  .forms-page-navigation.single-page .primary-action {
+    justify-self: end;
+    width: min(260px, 100%);
+  }
+
   .forms-question-row {
     grid-template-columns: 1fr;
     gap: 12px;
@@ -19438,6 +19451,23 @@ textarea:focus,
   text-decoration: none;
 }
 
+button.registration-form-brand,
+.registration-back-link {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.registration-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 28px;
+  padding: 0;
+  color: inherit;
+}
+
 .registration-form-brand img {
   width: 38px;
   height: 38px;
@@ -19470,6 +19500,20 @@ textarea:focus,
   margin-bottom: 28px;
   color: inherit;
   text-decoration: none;
+}
+
+.registration-recovery-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 10px 13px;
+  border: 1px solid color-mix(in srgb, #2f7a5f 25%, var(--dashboard-line, #dce3ee));
+  border-radius: 10px;
+  color: #24634d;
+  background: color-mix(in srgb, #2f7a5f 8%, var(--dashboard-surface, #ffffff));
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
 .registration-public-heading h1 {

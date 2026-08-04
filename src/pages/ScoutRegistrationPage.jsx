@@ -1,12 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CalendarDays, CheckCircle2, Clock, FileCheck2, ShieldCheck, Users } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import BrandedLoader from "../components/BrandedLoader.jsx";
 import scoutLogo from "../assets/smscouts_logo.png";
 import { FormPreview, getVisibleQuestions } from "../features/forms/FormsDashboard.jsx";
 import { validatePhoneAnswer } from "../features/forms/formModel.js";
 import { getRegistrationAvailability, normalizeUploadQuestion } from "../features/registration/registrationModel.js";
 import { processRegistrationFile, releaseRegistrationPreview } from "../features/registration/registrationImageService.js";
+import {
+  clearRegistrationRecovery,
+  getSerializableRegistrationAnswers,
+  loadRegistrationRecovery,
+  saveRegistrationRecovery
+} from "../features/registration/registrationDraftRecovery.js";
 import {
   getPublicRegistrationCampaign,
   loadRegistrationDraft,
@@ -37,6 +43,7 @@ function CampaignList() {
 
 export default function ScoutRegistrationPage() {
   const { campaignSlug } = useParams();
+  const navigate = useNavigate();
   const [campaign, setCampaign] = useState(null);
   const [path, setPath] = useState("");
   const [step, setStep] = useState("questions");
@@ -50,8 +57,8 @@ export default function ScoutRegistrationPage() {
   const [result, setResult] = useState(null);
   const [questionErrors, setQuestionErrors] = useState([]);
   const [formStarted, setFormStarted] = useState(false);
-  const [isLastFormPage, setIsLastFormPage] = useState(false);
-  const handleFormPageStateChange = useCallback(({ isLastPage }) => setIsLastFormPage(isLastPage), []);
+  const [recoveryChecked, setRecoveryChecked] = useState(false);
+  const [recoveryNotice, setRecoveryNotice] = useState("");
 
   useEffect(() => {
     if (!campaignSlug) return;
@@ -62,17 +69,44 @@ export default function ScoutRegistrationPage() {
   }, [campaignSlug]);
 
   useEffect(() => {
-    if (!campaign || !draftToken) return;
+    if (!campaign || !campaignSlug) return undefined;
+    let active = true;
+    loadRegistrationRecovery(campaignSlug).then((recovery) => {
+      if (!active || !recovery) return;
+      setPath(recovery.path || "");
+      setAnswers(recovery.answers ?? {});
+      setFormStarted(Boolean(recovery.formStarted));
+      if (Object.keys(recovery.answers ?? {}).length) {
+        setRecoveryNotice("Your saved answers and uploads were restored on this device.");
+      }
+    }).finally(() => {
+      if (active) setRecoveryChecked(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, [campaign, campaignSlug]);
+
+  useEffect(() => {
+    if (!campaign || !draftToken || !recoveryChecked) return;
     loadRegistrationDraft({ slug: campaignSlug, resumeToken: draftToken }).then((draft) => {
       if (!draft?.payload) return;
-      setPath(draft.registrationPath || "");
-      setAnswers(draft.payload.answers ?? {});
+      setPath((current) => current || draft.registrationPath || "");
+      setAnswers((current) => ({ ...(draft.payload.answers ?? {}), ...current }));
       setStep("questions");
     }).catch(() => {
       window.sessionStorage.removeItem(`registration-draft:${campaignSlug}`);
       setDraftToken("");
     });
-  }, [campaign, campaignSlug, draftToken]);
+  }, [campaign, campaignSlug, draftToken, recoveryChecked]);
+
+  useEffect(() => {
+    if (!campaign || !campaignSlug || !recoveryChecked || !path || step === "complete") return undefined;
+    const timeout = window.setTimeout(() => {
+      saveRegistrationRecovery(campaignSlug, { answers, path, formStarted }).catch(() => {});
+    }, 350);
+    return () => window.clearTimeout(timeout);
+  }, [answers, campaign, campaignSlug, formStarted, path, recoveryChecked, step]);
 
   useEffect(() => {
     if (!campaign?.settings.allowDrafts || !path || step === "complete") return undefined;
@@ -81,7 +115,7 @@ export default function ScoutRegistrationPage() {
         slug: campaignSlug,
         resumeToken: draftToken || undefined,
         registrationPath: path,
-        payload: { answers }
+        payload: { answers: getSerializableRegistrationAnswers(answers) }
       }).then((saved) => {
         if (saved?.resumeToken) {
           setDraftToken(saved.resumeToken);
@@ -92,14 +126,25 @@ export default function ScoutRegistrationPage() {
     return () => window.clearTimeout(timeout);
   }, [answers, campaign?.settings.allowDrafts, campaignSlug, draftToken, path, step]);
 
+  useEffect(() => {
+    const hasProgress = Object.values(answers).some((value) => Array.isArray(value) ? value.length > 0 : String(value ?? "").trim());
+    if (!hasProgress || step === "complete") return undefined;
+    const warnBeforeLeaving = (event) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnBeforeLeaving);
+    return () => window.removeEventListener("beforeunload", warnBeforeLeaving);
+  }, [answers, step]);
+
   const newAvailability = useMemo(() => campaign ? getRegistrationAvailability(campaign.settings, "new") : null, [campaign]);
   useEffect(() => {
-    if (!campaign || path) return;
+    if (!campaign || !recoveryChecked || path) return;
     const nextPath = ["open", "waitlist"].includes(newAvailability?.state) ? "new" : "returning";
     setPath(nextPath);
     setStep("questions");
     setFormStarted(campaign.form?.schemaJson?.settings?.startScreen?.enabled === false);
-  }, [campaign, newAvailability, path]);
+  }, [campaign, newAvailability, path, recoveryChecked]);
 
   if (!campaignSlug) return <CampaignList />;
   if (!campaign && !error) return <BrandedLoader label="Loading registration" />;
@@ -147,6 +192,7 @@ export default function ScoutRegistrationPage() {
       });
       processed.forEach(releaseRegistrationPreview);
       window.sessionStorage.removeItem(`registration-draft:${campaignSlug}`);
+      await clearRegistrationRecovery(campaignSlug);
       setResult(response);
       setStep("complete");
     } catch (reason) {
@@ -180,25 +226,40 @@ export default function ScoutRegistrationPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const confirmRegistrationExit = async (destination) => {
+    const hasProgress = Object.values(answers).some((value) => Array.isArray(value) ? value.length > 0 : String(value ?? "").trim());
+    if (hasProgress && !window.confirm("Exit this registration? Your saved answers and uploads on this device will be removed.")) return;
+    await clearRegistrationRecovery(campaignSlug);
+    window.sessionStorage.removeItem(`registration-draft:${campaignSlug}`);
+    navigate(destination);
+  };
+
+  const updateAnswer = (id, value) => {
+    setAnswers((current) => ({ ...current, [id]: value }));
+    setQuestionErrors((current) => current.filter((questionId) => questionId !== id));
+    setRecoveryNotice("");
+  };
+
   return (
     <>
     <header className="registration-form-topbar">
-      <Link to="/" className="registration-form-brand">
+      <button type="button" className="registration-form-brand" onClick={() => confirmRegistrationExit("/")}>
         <img src={scoutLogo} alt="" />
         <strong>St. Mary&apos;s Scouts</strong>
-      </Link>
+      </button>
     </header>
     <main className="registration-public-page registration-form-page">
       <section className="registration-public-shell">
         <header className="registration-public-heading">
-          <Link to="/register"><ArrowLeft size={18} /> Registrations</Link>
+          <button type="button" className="registration-back-link" onClick={() => confirmRegistrationExit("/register")}><ArrowLeft size={18} /> Registrations</button>
           <p className="eyebrow">St. Mary&apos;s Scouts Dubai</p>
           <h1>{campaign.title}</h1>
           <div className="registration-trust-row"><span><ShieldCheck />Private by default</span><span><FileCheck2 />Secure documents</span><span><Users />Leader reviewed</span></div>
         </header>
+        {recoveryNotice && <p className="registration-recovery-notice" role="status"><CheckCircle2 size={17} />{recoveryNotice}</p>}
         {error && <p className="form-error registration-public-error">{error}</p>}
 
-        {step === "questions" && <section className="registration-form-stage"><FormPreview form={campaign.form} answers={answers} errorQuestionIds={questionErrors} onAnswerChange={(id, value) => { setAnswers((current) => ({ ...current, [id]: value })); setQuestionErrors((current) => current.filter((questionId) => questionId !== id)); }} showHeader embeddedHeader publicMode isStarted={formStarted} onStart={() => setFormStarted(true)} onPageStateChange={handleFormPageStateChange} />{formStarted && isLastFormPage && <div className="registration-stage-actions"><button type="button" className="primary-action" onClick={continueToConsent}>Review and consent</button></div>}</section>}
+        {step === "questions" && <section className="registration-form-stage"><FormPreview form={campaign.form} answers={answers} errorQuestionIds={questionErrors} onAnswerChange={updateAnswer} showHeader embeddedHeader publicMode isStarted={formStarted} onStart={() => setFormStarted(true)} finalPageAction={formStarted ? { label: "Review and consent", onClick: continueToConsent } : null} /></section>}
 
         {step === "consent" && <section className="registration-step-card"><p className="eyebrow">Review and consent</p><h2>Confirm this registration</h2><div className="registration-privacy-copy"><ShieldCheck /><div><strong>Privacy notice</strong><p>{campaign.settings.privacyText}</p><strong>Retention</strong><p>{campaign.settings.retentionText}</p></div></div><label>Signer full name<input value={signerName} onChange={(event) => setSignerName(event.target.value)} /></label><label className="registration-honeypot" aria-hidden="true">Website<input tabIndex="-1" autoComplete="off" value={website} onChange={(event) => setWebsite(event.target.value)} /></label><label className="toggle-row registration-consent"><input type="checkbox" checked={consentAccepted} onChange={(event) => setConsentAccepted(event.target.checked)} />{campaign.settings.consentText}</label><div className="registration-stage-actions"><button type="button" className="inline-action" onClick={() => setStep("questions")}>Back</button><button type="button" className="primary-action" disabled={isBusy || !path} onClick={submit}>{isBusy ? "Submitting securely..." : "Submit registration"}</button></div></section>}
 
