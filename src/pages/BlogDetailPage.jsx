@@ -10,8 +10,9 @@ import { useToast } from "../components/ToastProvider.jsx";
 import BlogPostPreview from "../components/BlogPostPreview.jsx";
 import RichTextEditor from "../components/RichTextEditor.jsx";
 import { canManageSystem, canPublishContent } from "../services/permissions.js";
+import { ACCEPTED_IMAGE_INPUT } from "../services/imageOptimizationService.js";
 
-const acceptedImageTypes = ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif";
+const acceptedImageTypes = ACCEPTED_IMAGE_INPUT;
 
 function formatPostCategory(value) {
   return String(value || "general")

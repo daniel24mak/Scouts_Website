@@ -110,6 +110,7 @@ import FormattedText from "../components/FormattedText.jsx";
 import RichTextEditor from "../components/RichTextEditor.jsx";
 import MfaSecurityPanel from "../components/MfaSecurityPanel.jsx";
 import UserAvatar from "../components/UserAvatar.jsx";
+import InteractiveIcon from "../components/icons/InteractiveIcon.jsx";
 import WorkspaceSwitcher from "../workspaces/WorkspaceSwitcher.jsx";
 import { getWorkspaceNavigationIds } from "../workspaces/workspaceNavigation.js";
 import { getMyWorkTasks } from "../workspaces/myWorkService.js";
@@ -133,6 +134,7 @@ import {
 import { subscribeDashboardRealtime } from "../services/realtimeService.js";
 import { isSupabaseConfigured } from "../services/supabaseClient.js";
 import { isStructuredSiteContentKey } from "../services/siteContentService.js";
+import { ACCEPTED_IMAGE_INPUT } from "../services/imageOptimizationService.js";
 import {
   decideAccessReview,
   deleteAccessRole,
@@ -313,7 +315,7 @@ const contentStatuses = ["draft", "pending", "pending_update", "needs_changes", 
 const reviewStatuses = ["pending", "pending_update", "needs_changes", "rejected", "archived"];
 const sidebarModeKey = "scouts-dashboard-sidebar-mode";
 const dashboardThemeKey = "scouts-dashboard-theme";
-const acceptedImageTypes = ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif";
+const acceptedImageTypes = ACCEPTED_IMAGE_INPUT;
 const wizardSteps = ["Details", "Media", "Review"];
 
 const sortLabels = {
@@ -3006,7 +3008,7 @@ export default function AdminDashboardPage({
     return <div className="inline-site-editor">
       <div className="inline-editor-toolbar"><div><p className="eyebrow">Website content</p><strong>{websiteEditorPage === "home" ? "Home" : "About"}</strong><small>Every change stays private until it is approved.</small></div><button type="button" className="primary-action" disabled={!websitePendingChanges.length || Boolean(uploadStatus)} onClick={() => setWebsiteReviewOpen(true)}>Review Changes ({websitePendingChanges.length})</button></div>
       <WebsiteContentEditor key={`${websiteEditorPage}-${websiteEditorVersion}`} data={data} page={websiteEditorPage} onPageChange={setWebsiteEditorPage} valueFor={getContentText} imageFor={getContentImage} onFieldChange={setContentEdit} onChooseImage={(file, contentKey, shape) => openAvatarCrop(file, { type: "siteContent", contentKey, shape })} onCollectionsChange={(change) => setWebsiteCollections((current) => ({ ...current, ...change }))} />
-      {websiteReviewOpen && <div className="approval-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setWebsiteReviewOpen(false); }}><article className="approval-review-modal"><div className="approval-modal-header"><div><p className="eyebrow">Before submission</p><h2>Review Website Changes</h2></div><button type="button" className="modal-close-button" onClick={() => setWebsiteReviewOpen(false)}><X size={18} /></button></div><div className="approval-modal-body website-revision-preview">{websitePendingChanges.map(renderWebsiteChangeComparison)}</div><div className="approval-modal-footer"><button type="button" className="inline-action" onClick={() => setWebsiteReviewOpen(false)}>Back to editing</button><button type="button" className="primary-action" disabled={Boolean(uploadStatus)} onClick={publishWebsiteContent}>{uploadStatus ? "Submitting..." : "Submit for Approval"}</button></div></article></div>}
+      {websiteReviewOpen && <div className="approval-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setWebsiteReviewOpen(false); }}><article className="approval-review-modal"><div className="approval-modal-header"><div><p className="eyebrow">Before submission</p><h2>Review Website Changes</h2></div><button type="button" className="modal-close-button" onClick={() => setWebsiteReviewOpen(false)}><InteractiveIcon icon={X} size={18} /></button></div><div className="approval-modal-body website-revision-preview">{websitePendingChanges.map(renderWebsiteChangeComparison)}</div><div className="approval-modal-footer"><button type="button" className="inline-action" onClick={() => setWebsiteReviewOpen(false)}>Back to editing</button><button type="button" className="primary-action" disabled={Boolean(uploadStatus)} onClick={publishWebsiteContent}>{uploadStatus ? "Submitting..." : "Submit for Approval"}</button></div></article></div>}
     </div>;
   };  const renderFaqs = () => (
     <div className="cms-panel-stack">
@@ -3136,7 +3138,7 @@ export default function AdminDashboardPage({
       </aside>
       <section className="contact-message-detail" aria-label="Selected contact message">
         {selected && edit ? <>
-          <button type="button" className="inline-action contact-mobile-back" onClick={() => setSelectedContactId(null)}><ArrowLeft size={16} />Back to messages</button>
+          <button type="button" className="inline-action contact-mobile-back" onClick={() => setSelectedContactId(null)}><InteractiveIcon icon={ArrowLeft} size={16} />Back to messages</button>
           <div className="contact-detail-header">
             <div>
               <p className="eyebrow">Contact message</p>
@@ -3158,7 +3160,7 @@ export default function AdminDashboardPage({
             <label>Internal notes<textarea rows="6" value={edit.notes ?? ""} onChange={(event) => setEdit("notes", event.target.value)} placeholder="Private notes for administrators..." /></label>
           </div>
           <div className="action-row contact-detail-actions">
-            <a className="inline-action" href={`mailto:${selected.email}?subject=${encodeURIComponent(`Re: ${selected.subject}`)}`}><Send size={16} />Reply by email</a>
+            <a className="inline-action" href={`mailto:${selected.email}?subject=${encodeURIComponent(`Re: ${selected.subject}`)}`}><InteractiveIcon icon={Send} size={16} />Reply by email</a>
             <button type="button" className="primary-action" onClick={() => saveContact(selected.id, edit)}>Save changes</button>
             <button type="button" className="inline-action danger-action" onClick={() => deleteContact(selected.id)}>Delete</button>
           </div>
@@ -3210,7 +3212,7 @@ export default function AdminDashboardPage({
             </button>
             {notification.id && !String(notification.id).startsWith("open-form-") && (
               <button type="button" className="icon-button notification-delete-button danger-action" aria-label="Delete notification" onClick={(event) => deleteNotificationItem(event, notification)}>
-                <Trash2 size={16} />
+                <InteractiveIcon icon={Trash2} size={16} />
               </button>
             )}
           </div>
@@ -3923,7 +3925,7 @@ export default function AdminDashboardPage({
       {editingProfile && edit && (
         <div className="profile-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditingUserId(null); }}>
           <section className="profile-modal people-access-profile-modal" role="dialog" aria-modal="true" aria-labelledby="people-access-profile-title">
-            <button type="button" className="modal-close-button" aria-label="Close account editor" onClick={() => setEditingUserId(null)}><X size={18} aria-hidden="true" /></button>
+            <button type="button" className="modal-close-button" aria-label="Close account editor" onClick={() => setEditingUserId(null)}><InteractiveIcon icon={X} size={18} /></button>
             <h2 id="people-access-profile-title">Edit profile & account</h2>
             <p className="helper-text">Update identity and account details. Access assignments remain separate and auditable.</p>
             {renderPeopleProfileEditPanel(editingProfile, edit)}
@@ -4222,7 +4224,7 @@ export default function AdminDashboardPage({
               <h2>Shared Dashboard Documents</h2>
               <p>Admins manage files and categories. Chiefs can view, preview, and download approved documents.</p>
             </div>
-            {isAdmin && <label className="primary-action document-upload-button"><Upload size={17} />Upload files<input type="file" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" onChange={uploadDocuments} /></label>}
+            {isAdmin && <label className="primary-action document-upload-button"><InteractiveIcon icon={Upload} size={17} />Upload files<input type="file" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" onChange={uploadDocuments} /></label>}
           </div>
           {uploadStatus && <UploadLoadingState message={uploadStatus} />}
           {isAdmin && (
@@ -4241,7 +4243,7 @@ export default function AdminDashboardPage({
                   New category
                   <input value={documentCategoryName} onChange={(event) => setDocumentCategoryName(event.target.value)} placeholder="Meeting forms, camp files..." />
                 </label>
-                <button type="submit" className="inline-action"><Plus size={16} />Add</button>
+                <button type="submit" className="inline-action"><InteractiveIcon icon={Plus} size={16} />Add</button>
               </form>
             </div>
           )}
@@ -4252,7 +4254,7 @@ export default function AdminDashboardPage({
               <span className="document-category-chip" key={category.id}>
                 <button type="button" className={selectedDocumentCategory === category.id ? "active" : ""} onClick={() => setSelectedDocumentCategory(category.id)}>{category.name}</button>
                 {isAdmin && <button type="button" className="icon-button" title="Rename category" onClick={() => createOrUpdateDocumentCategory(category)}>Edit</button>}
-                {isAdmin && <button type="button" className="icon-button danger-action" title="Delete category" onClick={() => removeDocumentCategory(category)}><Trash2 size={15} /></button>}
+                {isAdmin && <button type="button" className="icon-button danger-action" title="Delete category" onClick={() => removeDocumentCategory(category)}><InteractiveIcon icon={Trash2} size={15} /></button>}
               </span>
             ))}
           </div>
@@ -4278,10 +4280,10 @@ export default function AdminDashboardPage({
                 <div className="document-meta-row"><span>{document.categoryName}</span><span>{document.fileType?.toUpperCase()}</span><span>{formatFileSize(document.fileSize)}</span></div>
                 <small>Uploaded {formatDubaiDateTime(document.createdAt)}</small>
                 <div className="action-row">
-                  {isPdf && <button type="button" className="inline-action" onClick={() => setDocumentPreview(document)}><Eye size={16} />Preview</button>}
-                  <a className="inline-action" href={document.fileUrl} target="_blank" rel="noreferrer"><Download size={16} />Download</a>
+                  {isPdf && <button type="button" className="inline-action" onClick={() => setDocumentPreview(document)}><InteractiveIcon icon={Eye} size={16} />Preview</button>}
+                  <a className="inline-action" href={document.fileUrl} target="_blank" rel="noreferrer"><InteractiveIcon icon={Download} size={16} />Download</a>
                   {isAdmin && <button type="button" className="inline-action" onClick={() => updateDocument(document)}>Save</button>}
-                  {isAdmin && <button type="button" className="inline-action danger-action" onClick={() => deleteDocument(document)}><Trash2 size={16} />Delete</button>}
+                  {isAdmin && <button type="button" className="inline-action danger-action" onClick={() => deleteDocument(document)}><InteractiveIcon icon={Trash2} size={16} />Delete</button>}
                 </div>
               </article>
             );
@@ -4291,7 +4293,7 @@ export default function AdminDashboardPage({
       {documentPreview && (
         <div className="approval-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDocumentPreview(null); }}>
           <article className="approval-review-modal document-preview-modal" role="dialog" aria-modal="true">
-            <div className="approval-modal-header"><div><p className="eyebrow">PDF preview</p><h2>{documentPreview.title}</h2></div><button type="button" className="modal-close-button" onClick={() => setDocumentPreview(null)}><X size={18} /></button></div>
+            <div className="approval-modal-header"><div><p className="eyebrow">PDF preview</p><h2>{documentPreview.title}</h2></div><button type="button" className="modal-close-button" onClick={() => setDocumentPreview(null)}><InteractiveIcon icon={X} size={18} /></button></div>
             <iframe title={documentPreview.title} src={documentPreview.fileUrl} />
           </article>
         </div>
@@ -4403,7 +4405,7 @@ export default function AdminDashboardPage({
       <div className="settings-card-grid">
         {settingSections.map(([id, label, Icon, description]) => (
           <button type="button" key={id} className={activeSetting === id ? "active" : ""} onClick={() => { setActiveSetting(id); setActiveSection(id); }}>
-            <span><Icon size={20} aria-hidden="true" /></span>
+            <span><InteractiveIcon icon={Icon} size={20} /></span>
             <strong>{label}</strong>
             <small>{description}</small>
           </button>
@@ -4593,7 +4595,7 @@ export default function AdminDashboardPage({
               <div className="approval-modal-header-actions">
                 <StatusBadge status={selectedApproval.approvalStatus} />
                 <button type="button" className="modal-close-button" aria-label="Close preview" onClick={() => setSelectedApproval(null)}>
-                  <X size={18} aria-hidden="true" />
+                  <InteractiveIcon icon={X} size={18} />
                 </button>
               </div>
             </div>
@@ -4721,7 +4723,7 @@ export default function AdminDashboardPage({
     <div className="dashboard-topbar">
       <div className="dashboard-topbar-brand-group">
         <button type="button" className="dashboard-shell-toggle" onClick={toggleSidebarMode} title={sidebarMode === "expanded" ? "Collapse sidebar" : "Expand sidebar"} aria-label={sidebarMode === "expanded" ? "Collapse sidebar" : "Expand sidebar"}>
-          {sidebarMode === "expanded" ? <PanelLeftClose size={19} aria-hidden="true" /> : <PanelLeftOpen size={19} aria-hidden="true" />}
+          {sidebarMode === "expanded" ? <InteractiveIcon icon={PanelLeftClose} size={19} /> : <InteractiveIcon icon={PanelLeftOpen} size={19} />}
         </button>
         <Link className="dashboard-wordmark" to="/" title="Back to website" aria-label="Back to website">
           <img src={scoutLogo} alt="" />
@@ -4733,24 +4735,24 @@ export default function AdminDashboardPage({
         <WorkspaceSwitcher workspaces={availableWorkspaces} value={workspaceKey} onChange={onWorkspaceChange} />
       </div>
       <div className="dashboard-topbar-actions">
-        <button type="button" className="dashboard-my-work-button" onClick={() => openDashboardSection("myWork")} title="My Work" aria-label="Open My Work"><ListTodo size={18} aria-hidden="true" /><span>My Work</span>{myWorkTasks.length > 0 && <small>{myWorkTasks.length}</small>}</button>
+        <button type="button" className="dashboard-my-work-button" onClick={() => openDashboardSection("myWork")} title="My Work" aria-label="Open My Work"><InteractiveIcon icon={ListTodo} size={18} /><span>My Work</span>{myWorkTasks.length > 0 && <small>{myWorkTasks.length}</small>}</button>
         <div className="dashboard-notification-menu">
           <button type="button" className="dashboard-notification-button" onClick={() => { setIsNotificationsOpen((current) => !current); setIsProfileMenuOpen(false); }} title={canOpenSection("approvals", user) ? "Pending approvals" : "My pending work"} aria-expanded={isNotificationsOpen} aria-haspopup="menu">
-            <Bell size={18} aria-hidden="true" />
+            <InteractiveIcon icon={Bell} size={18} />
             {dashboardNotificationCount > 0 && <small>{dashboardNotificationCount}</small>}
           </button>
           {isNotificationsOpen && (
             <div className="dashboard-notification-dropdown" role="menu">
               <div className="notification-dropdown-header">
                 <div><strong>Notifications</strong><span>{dashboardNotificationCount}</span></div>
-                <div className="notification-dropdown-actions"><button type="button" className="inline-action" onClick={async () => { await readAllDashboardNotifications(); await refresh(); }}>Mark all read</button><button type="button" className="icon-button notification-mobile-close" aria-label="Close notifications" onClick={() => setIsNotificationsOpen(false)}><X size={18} /></button></div>
+                <div className="notification-dropdown-actions"><button type="button" className="inline-action" onClick={async () => { await readAllDashboardNotifications(); await refresh(); }}>Mark all read</button><button type="button" className="icon-button notification-mobile-close" aria-label="Close notifications" onClick={() => setIsNotificationsOpen(false)}><InteractiveIcon icon={X} size={18} /></button></div>
               </div>
               {visibleNotificationItems.length ? visibleNotificationItems.map((item) => (
                 <button type="button" className={`notification-row ${item.isRead ? "" : "unread"}`} key={item.id ?? `${item.contentType}-${item.entityId ?? item.title}`} onClick={() => openNotification(item)}>
                   <span className="notification-type-icon">{notificationIcon(item, 17)}</span>
                   <span><strong>{item.title || item.name || "Notification"}</strong><small>{item.message || item.contentType} - {formatRelativeTime(item.createdAt)}</small></span>
                   {!item.isRead && <i aria-label="Unread" />}
-                  {item.id && !String(item.id).startsWith("open-form-") && <span role="button" tabIndex={0} className="notification-delete-inline" aria-label="Delete notification" onClick={(event) => deleteNotificationItem(event, item)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") deleteNotificationItem(event, item); }}><Trash2 size={14} /></span>}
+                  {item.id && !String(item.id).startsWith("open-form-") && <span role="button" tabIndex={0} className="notification-delete-inline" aria-label="Delete notification" onClick={(event) => deleteNotificationItem(event, item)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") deleteNotificationItem(event, item); }}><InteractiveIcon icon={Trash2} size={14} /></span>}
                 </button>
               )) : <p>No notifications right now.</p>}
               <button type="button" className="notification-view-all" onClick={() => { setIsNotificationsOpen(false); openDashboardSection("notifications"); }}>See All</button>
@@ -4758,13 +4760,13 @@ export default function AdminDashboardPage({
           )}
         </div>
         <button type="button" className="dashboard-theme-toggle" onClick={() => setDashboardTheme((current) => current === "dark" ? "light" : "dark")} title={dashboardTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"} aria-label={dashboardTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"} aria-pressed={dashboardTheme === "dark"}>
-          {dashboardTheme === "dark" ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
+          {dashboardTheme === "dark" ? <InteractiveIcon icon={Sun} size={16} /> : <InteractiveIcon icon={Moon} size={16} />}
         </button>
         <div className="dashboard-profile-menu">
           <button type="button" className="dashboard-profile-button" onClick={() => { setIsProfileMenuOpen((current) => !current); setIsNotificationsOpen(false); }} aria-expanded={isProfileMenuOpen}>
             <UserAvatar user={user} size={36} />
             <span>{user.name}</span>
-            <ChevronDown size={15} aria-hidden="true" />
+            <InteractiveIcon icon={ChevronDown} size={15} />
           </button>
           {isProfileMenuOpen && (
             <div className="dashboard-profile-dropdown">
@@ -4782,7 +4784,7 @@ export default function AdminDashboardPage({
       {dashboardTopbar}
       <div className="dashboard-mobile-reveal-bar" aria-hidden={!showMobileMenuBar}>
         <button type="button" className="dashboard-menu-button" aria-expanded={isMobileSidebarOpen} aria-controls="dashboard-sidebar" onClick={() => setIsMobileSidebarOpen(true)}>
-          <Menu size={18} aria-hidden="true" />
+          <InteractiveIcon icon={Menu} size={18} />
           <span>Menu</span>
         </button>
         <span>{activeTitle}</span>
@@ -4791,7 +4793,7 @@ export default function AdminDashboardPage({
       <aside className="admin-sidebar" id="dashboard-sidebar">
         {isMobileSidebarOpen && (
           <button type="button" className="dashboard-drawer-close" aria-label="Close dashboard menu" onClick={() => setIsMobileSidebarOpen(false)}>
-            <X size={18} aria-hidden="true" />
+            <InteractiveIcon icon={X} size={18} />
           </button>
         )}
         <nav className="sidebar-navigation">
@@ -4800,7 +4802,7 @@ export default function AdminDashboardPage({
               const [id, label, Icon] = group.item;
               return (
                 <button type="button" className={activeSection === id ? "active" : ""} onClick={() => selectSidebarItem(id)} key={id} aria-label={label} {...sidebarTooltipHandlers(label)}>
-                  <Icon size={17} aria-hidden="true" />
+                  <InteractiveIcon icon={Icon} size={17} />
                   <span>{label}</span>
                   {id === "approvals" && pendingItems.length > 0 && <small className="sidebar-badge">{pendingItems.length}</small>}
                 </button>
@@ -4813,14 +4815,14 @@ export default function AdminDashboardPage({
             return (
               <div className={`sidebar-group ${isOpen ? "open" : ""} ${isActiveGroup ? "active-group" : ""}`} key={group.id}>
                 <button type="button" className="sidebar-group-trigger" onClick={(event) => sidebarMode === "collapsed" ? openCollapsedSidebarGroup(group.id, event) : toggleSidebarGroup(group.id)} aria-label={group.label} aria-expanded={isOpen} {...sidebarTooltipHandlers(group.label)}>
-                  <GroupIcon size={17} aria-hidden="true" />
+                  <InteractiveIcon icon={GroupIcon} size={17} />
                   <span>{group.label}</span>
-                  <ChevronDown className="sidebar-chevron" size={16} aria-hidden="true" />
+                  <InteractiveIcon icon={ChevronDown} className="sidebar-chevron" size={16} />
                 </button>
                 <div className="sidebar-subitems" style={sidebarMode === "collapsed" && isOpen && collapsedFlyoutTop !== null ? { "--sidebar-flyout-top": `${collapsedFlyoutTop}px` } : undefined}>
                   {group.children.map(([id, label, Icon]) => (
                     <button type="button" className={activeSection === id ? "active" : ""} onClick={() => selectSidebarItem(id)} key={id} aria-label={label} {...sidebarTooltipHandlers(label)}>
-                      <Icon size={16} aria-hidden="true" />
+                      <InteractiveIcon icon={Icon} size={16} />
                       <span>{label}</span>
                     </button>
                   ))}
@@ -4834,14 +4836,14 @@ export default function AdminDashboardPage({
         <span className="dashboard-bottom-indicator" aria-hidden="true" />
         {mobilePrimaryItems.map(([id, label, Icon]) => (
           <button type="button" key={id} className={isMobilePrimaryActive(id) ? "active" : ""} onPointerDown={triggerMobileNavPress} onClick={() => selectSidebarItem(id)}>
-            <Icon size={18} aria-hidden="true" />
+            <InteractiveIcon icon={Icon} size={18} />
             <span>{label}</span>
             {id === "approvals" && pendingItems.length > 0 && <small>{pendingItems.length}</small>}
           </button>
         ))}
         {hasMobileMoreItems && (
           <button type="button" className={isMobileMoreOpen ? "active" : ""} onPointerDown={triggerMobileNavPress} onClick={() => { setOpenMobileMoreGroups({}); setIsMobileMoreOpen((current) => !current); }}>
-            <MoreHorizontal size={18} aria-hidden="true" />
+            <InteractiveIcon icon={MoreHorizontal} size={18} />
             <span>More</span>
           </button>
         )}
@@ -4855,7 +4857,7 @@ export default function AdminDashboardPage({
                 <h2>Dashboard Sections</h2>
               </div>
               <button type="button" className="modal-close-button" aria-label="Close more menu" onClick={() => { setIsMobileMoreOpen(false); setOpenMobileMoreGroups({}); }}>
-                <X size={18} aria-hidden="true" />
+                <InteractiveIcon icon={X} size={18} />
               </button>
             </div>
             <div className="dashboard-more-grid">
@@ -4865,7 +4867,7 @@ export default function AdminDashboardPage({
                   if (mobilePrimaryIdSet.has(id)) return null;
                   return (
                     <button type="button" key={id} className={isMobilePrimaryActive(id) ? "active" : ""} onClick={(event) => { event.preventDefault(); event.stopPropagation(); selectSidebarItem(id); }}>
-                      <Icon size={18} aria-hidden="true" />
+                      <InteractiveIcon icon={Icon} size={18} />
                       <span>{label}</span>
                       {id === "approvals" && pendingItems.length > 0 && <small>{pendingItems.length}</small>}
                     </button>
@@ -4880,15 +4882,15 @@ export default function AdminDashboardPage({
                 return (
                   <div className={`dashboard-more-group ${isOpen ? "open" : ""} ${isActiveGroup ? "active-group" : ""}`} key={group.id}>
                     <button type="button" className="dashboard-more-group-trigger" onClick={(event) => { event.preventDefault(); event.stopPropagation(); toggleMobileMoreGroup(group.id); }} aria-expanded={isOpen}>
-                      <GroupIcon size={18} aria-hidden="true" />
+                      <InteractiveIcon icon={GroupIcon} size={18} />
                       <span>{group.label}</span>
-                      <ChevronDown size={16} aria-hidden="true" />
+                      <InteractiveIcon icon={ChevronDown} size={16} />
                     </button>
                     {isOpen && (
                       <div className="dashboard-more-subitems">
                         {visibleChildren.map(([id, label, Icon]) => (
                           <button type="button" key={id} className={activeSection === id ? "active" : ""} onClick={(event) => { event.preventDefault(); event.stopPropagation(); selectSidebarItem(id); }}>
-                            <Icon size={18} aria-hidden="true" />
+                            <InteractiveIcon icon={Icon} size={18} />
                             <span>{label}</span>
                           </button>
                         ))}
@@ -4938,7 +4940,7 @@ export default function AdminDashboardPage({
         <div className="profile-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setIsProfileModalOpen(false); }}>
           <div className="profile-modal" role="dialog" aria-modal="true" aria-label="Profile settings">
             <button type="button" className="modal-close-button" aria-label="Close profile settings" onClick={() => setIsProfileModalOpen(false)}>
-              <X size={18} aria-hidden="true" />
+              <InteractiveIcon icon={X} size={18} />
             </button>
             <h2>Profile settings</h2>
             <div className="profile-modal-current">
@@ -4991,7 +4993,7 @@ export default function AdminDashboardPage({
         <div className="profile-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPasswordResetUser(null); }}>
           <form className="profile-modal password-reset-modal" onSubmit={submitPasswordReset}>
             <button type="button" className="modal-close-button" aria-label="Close password reset" onClick={() => setPasswordResetUser(null)}>
-              <X size={18} aria-hidden="true" />
+              <InteractiveIcon icon={X} size={18} />
             </button>
             <h2>Send password recovery</h2>
             <p className="helper-text">Supabase will email {passwordResetUser.name} a secure link so they can choose their own password. You will never see or set it.</p>

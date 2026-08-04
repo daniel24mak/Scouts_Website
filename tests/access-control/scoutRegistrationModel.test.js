@@ -73,12 +73,13 @@ test("public registration recovers answers and uploads until submit or confirmed
   assert.match(recovery, /value instanceof File/);
 });
 
-test("registration image processing falls back when createImageBitmap cannot decode a valid image", () => {
+test("registration image processing converts accepted images to WebP", () => {
   const imageService = read("../../src/features/registration/registrationImageService.js");
 
   assert.match(imageService, /loadImageElement/);
   assert.match(imageService, /createImageBitmap/);
-  assert.match(imageService, /return originalRegistrationImage/);
+  assert.doesNotMatch(imageService, /return originalRegistrationImage/);
+  assert.match(imageService, /processedFormat: "webp"/);
   assert.match(imageService, /could not be decoded on this device/);
 });
 

@@ -1,4 +1,5 @@
 import { ChevronDown } from "lucide-react";
+import InteractiveIcon from "../components/icons/InteractiveIcon.jsx";
 import "./workspaceShell.css";
 
 export default function WorkspaceSwitcher({ workspaces = [], value, onChange }) {
@@ -12,7 +13,7 @@ export default function WorkspaceSwitcher({ workspaces = [], value, onChange }) 
           <option value={workspace.key} key={workspace.key}>{workspace.label}</option>
         ))}
       </select>
-      <ChevronDown size={14} aria-hidden="true" />
+      <InteractiveIcon icon={ChevronDown} size={14} />
     </label>
   );
 }

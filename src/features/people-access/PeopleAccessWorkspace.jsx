@@ -5,6 +5,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import AvatarCropModal from "../../components/AvatarCropModal.jsx";
 import UserAvatar from "../../components/UserAvatar.jsx";
+import { ACCEPTED_IMAGE_INPUT } from "../../services/imageOptimizationService.js";
 import { asArray } from "../../utils/collections.js";
 import { filterPeopleAccessUsers, mergePeopleAccessUserDetails, normalizePeopleAccessInvitation } from "./peopleAccessModel.js";
 import "./peopleAccessWorkspace.css";
@@ -215,7 +216,7 @@ function InviteWizard({ workspace, onClose, onSubmit }) {
       <ol className="people-stepper">{steps.map((label, index) => <li className={index === step ? "active" : index < step ? "complete" : ""} key={label}><span>{index + 1}</span><small>{label}</small></li>)}</ol>
       <div className="people-invite-body">
         {step === 0 && <div className="people-form-grid">
-          <div className="people-avatar-field"><UserAvatar name={draft.name || "New user"} imageUrl={previewUrl} size={72} /><label className="people-upload-button"><ImagePlus size={18} />Choose profile picture<input type="file" accept="image/*" onChange={(event) => setCropFile(event.target.files?.[0] ?? null)} /></label>{draft.profilePictureFile && <button type="button" className="people-text-button" onClick={() => { setPreviewUrl(""); setDraft((current) => ({ ...current, profilePictureFile: null })); }}><Trash2 size={16} />Remove</button>}</div>
+          <div className="people-avatar-field"><UserAvatar name={draft.name || "New user"} imageUrl={previewUrl} size={72} /><label className="people-upload-button"><ImagePlus size={18} />Choose profile picture<input type="file" accept={ACCEPTED_IMAGE_INPUT} onChange={(event) => setCropFile(event.target.files?.[0] ?? null)} /></label>{draft.profilePictureFile && <button type="button" className="people-text-button" onClick={() => { setPreviewUrl(""); setDraft((current) => ({ ...current, profilePictureFile: null })); }}><Trash2 size={16} />Remove</button>}</div>
           <label>Full name<input autoFocus value={draft.name} onChange={set("name")} placeholder="Full name" /></label>
           <label>Email address<input type="email" value={draft.email} onChange={set("email")} placeholder="name@example.com" /></label>
           <p className="people-advisory">A secure invitation email will be sent. No temporary password is created or displayed.</p>

@@ -1,5 +1,5 @@
 const pdfSignature = [0x25, 0x50, 0x44, 0x46];
-const supportedImageKinds = new Set(["jpeg", "png", "webp", "heic"]);
+const supportedImageKinds = new Set(["jpeg", "png", "webp", "heic", "heif"]);
 
 function startsWith(bytes, signature) {
   return signature.every((value, index) => bytes[index] === value);
@@ -12,7 +12,9 @@ async function detectFileKind(file) {
   if (startsWith(bytes, [0x89, 0x50, 0x4e, 0x47])) return "png";
   if (String.fromCharCode(...bytes.slice(8, 12)) === "WEBP") return "webp";
   const brand = String.fromCharCode(...bytes.slice(4, 12)).toLowerCase();
-  if (brand.includes("ftyp") && /(heic|heif|mif1)/.test(brand + file.name.toLowerCase())) return "heic";
+  if (brand.includes("ftyp") && /(heic|heif|mif1)/.test(brand + file.name.toLowerCase())) {
+    return /heif/i.test(file.type) || /\.heif$/i.test(file.name) ? "heif" : "heic";
+  }
   return "unknown";
 }
 
@@ -59,17 +61,6 @@ async function decodeRegistrationImage(file) {
   return loadImageElement(file);
 }
 
-function originalRegistrationImage(file, detectedKind) {
-  return {
-    file,
-    previewUrl: null,
-    width: null,
-    height: null,
-    originalFormat: detectedKind,
-    processedFormat: null
-  };
-}
-
 function canvasBlob(canvas, type, quality) {
   return new Promise((resolve, reject) => canvas.toBlob(
     (blob) => blob ? resolve(blob) : reject(new Error("The image could not be processed.")),
@@ -91,22 +82,12 @@ export async function processRegistrationFile(file, settings) {
   }
   if (!supportedImageKinds.has(detectedKind)) throw new Error("The selected image format is not supported.");
 
-  let readableFile;
-  try {
-    readableFile = await browserImageFile(file);
-  } catch {
-    return originalRegistrationImage(file, detectedKind);
-  }
-  let bitmap;
-  try {
-    bitmap = await decodeRegistrationImage(readableFile);
-  } catch {
-    return originalRegistrationImage(file, detectedKind);
-  }
+  const readableFile = await browserImageFile(file);
+  const bitmap = await decodeRegistrationImage(readableFile);
   const maxEdge = settings.imageCompression === "headshot" ? 1200 : 2000;
   const sourceWidth = bitmap.width || bitmap.naturalWidth;
   const sourceHeight = bitmap.height || bitmap.naturalHeight;
-  if (!sourceWidth || !sourceHeight) return originalRegistrationImage(file, detectedKind);
+  if (!sourceWidth || !sourceHeight) throw new Error(`${file.name} has invalid image dimensions.`);
   const scale = Math.min(1, maxEdge / Math.max(sourceWidth, sourceHeight));
   const width = Math.max(1, Math.round(sourceWidth * scale));
   const height = Math.max(1, Math.round(sourceHeight * scale));

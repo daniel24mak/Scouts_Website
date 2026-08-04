@@ -9,9 +9,10 @@ import { getPublicAlbumPage } from "../api/publicClient.js";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import { useToast } from "../components/ToastProvider.jsx";
 import { canManageSystem, canPublishContent } from "../services/permissions.js";
+import { ACCEPTED_IMAGE_INPUT } from "../services/imageOptimizationService.js";
 import { preloadImage, preloadImages } from "../utils/imagePreload.js";
 
-const acceptedImageTypes = ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif";
+const acceptedImageTypes = ACCEPTED_IMAGE_INPUT;
 const PHOTOS_PER_PAGE = 30;
 
 export default function AlbumDetailPage() {

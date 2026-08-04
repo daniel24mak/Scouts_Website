@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp, Crop, GripVertical, ImagePlus, Plus, Trash2, Upload
 import { useMemo, useState } from "react";
 import FormattedText from "./FormattedText.jsx";
 import RichTextEditor from "./RichTextEditor.jsx";
+import { ACCEPTED_IMAGE_INPUT } from "../services/imageOptimizationService.js";
 
 const makeId = (prefix) => `${prefix}-${crypto.randomUUID()}`;
 
@@ -127,7 +128,7 @@ function ImageField({ label, image, shape = "square", contentKey, onChoose }) {
     ) : (
       <label className="website-image-empty-picker">
         <span><ImagePlus size={25} />Drop or choose image</span>
-        <input type="file" accept="image/*,.heic,.heif" onChange={(event) => { handleFile(event.target.files?.[0] ?? null); event.target.value = ""; }} />
+        <input type="file" accept={ACCEPTED_IMAGE_INPUT} onChange={(event) => { handleFile(event.target.files?.[0] ?? null); event.target.value = ""; }} />
       </label>
     )}
     {status && <small className="helper-text">{status}</small>}
@@ -138,7 +139,7 @@ function ImageField({ label, image, shape = "square", contentKey, onChoose }) {
         <div className={`website-image-large-preview ${cropConfig.shape === "circle" ? "circle" : ""}`} style={{ aspectRatio: cropConfig.aspect }}><img src={image} alt="" /></div>
         <div className="action-row">
           <button type="button" className="inline-action" onClick={cropCurrent}><Crop size={16} />Crop Image</button>
-          <label className="primary-action website-image-upload-action"><Upload size={16} />Upload New Image<input type="file" accept="image/*,.heic,.heif" onChange={(event) => { handleFile(event.target.files?.[0] ?? null); event.target.value = ""; }} /></label>
+          <label className="primary-action website-image-upload-action"><Upload size={16} />Upload New Image<input type="file" accept={ACCEPTED_IMAGE_INPUT} onChange={(event) => { handleFile(event.target.files?.[0] ?? null); event.target.value = ""; }} /></label>
         </div>
         {status && <p className="form-status">{status}</p>}
       </article>

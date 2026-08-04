@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { RefreshCw, X } from "lucide-react";
 import { getErrorSignature, siteLoadErrorEvent } from "../services/siteErrorService.js";
+import InteractiveIcon from "./icons/InteractiveIcon.jsx";
 
 const reloadStorageKey = "scouts-site-recovery-attempts";
 const maxAutoReloads = 2;
@@ -85,13 +86,13 @@ export default function SiteRecoveryPrompt() {
           onClick={() => setDismissed(true)}
           aria-label="Dismiss loading message"
         >
-          <X size={18} />
+          <InteractiveIcon icon={X} size={18} />
         </button>
         <p className="eyebrow">{isImageError ? "Images not loading?" : "Page not loading properly?"}</p>
         <h2>{isImageError ? "Try reloading the page" : "Reload this page"}</h2>
         <p>{isAutoReloading ? "Trying to reload automatically..." : message}</p>
         <button type="button" className="primary-action" onClick={() => window.location.reload()}>
-          <RefreshCw size={18} />
+          <InteractiveIcon icon={RefreshCw} size={18} />
           Reload page
         </button>
       </div>

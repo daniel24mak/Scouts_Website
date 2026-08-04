@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider.jsx";
 import scoutLogo from "../assets/smscouts_logo.png";
 import UserAvatar from "../components/UserAvatar.jsx";
+import InteractiveIcon from "../components/icons/InteractiveIcon.jsx";
 import WorkspaceSwitcher from "./WorkspaceSwitcher.jsx";
 import "./focusedWorkspaceShell.css";
 
@@ -127,19 +128,19 @@ export default function FocusedWorkspaceShell({
     <div className={`admin-cms-shell focused-workspace-shell dashboard-theme-${theme} sidebar-${collapsed ? "collapsed" : "expanded"} ${mobileNavExpanded ? "mobile-menu-bar-visible" : ""}`} data-workspace={workspaceKey}>
       <header className="dashboard-topbar">
         <div className="dashboard-topbar-brand-group">
-          <button type="button" className="dashboard-shell-toggle" title={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={() => setCollapsed((value) => !value)}>{collapsed ? <PanelLeftOpen size={19} /> : <PanelLeftClose size={19} />}</button>
+          <button type="button" className="dashboard-shell-toggle" title={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={() => setCollapsed((value) => !value)}>{collapsed ? <InteractiveIcon icon={PanelLeftOpen} size={19} /> : <InteractiveIcon icon={PanelLeftClose} size={19} />}</button>
           <Link className="dashboard-wordmark" to="/" title="Back to website" aria-label="Back to website"><img src={scoutLogo} alt="" /><span>St. Mary's Scouts</span></Link>
         </div>
         <div className="dashboard-topbar-title-group"><strong className="dashboard-topbar-title">{activeTitle}</strong>{workspaces?.length > 1 ? <WorkspaceSwitcher workspaces={workspaces} value={workspaceKey} onChange={onWorkspaceChange} /> : null}</div>
         <div className="dashboard-topbar-actions">
-          {workspaceKey !== "my-work" ? <button type="button" className="dashboard-my-work-button" title="My Work" aria-label="Open My Work" onClick={() => selectSection("myWork")}><ListTodo size={18} /><span>My Work</span></button> : null}
-          <button type="button" className="dashboard-notification-button" title="Notifications" aria-label="Open Notifications" onClick={() => selectSection("notifications")}><Bell size={18} /></button>
+          {workspaceKey !== "my-work" ? <button type="button" className="dashboard-my-work-button" title="My Work" aria-label="Open My Work" onClick={() => selectSection("myWork")}><InteractiveIcon icon={ListTodo} size={18} /><span>My Work</span></button> : null}
+          <button type="button" className="dashboard-notification-button" title="Notifications" aria-label="Open Notifications" onClick={() => selectSection("notifications")}><InteractiveIcon icon={Bell} size={18} /></button>
           <button type="button" className="dashboard-theme-toggle" title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} onClick={() => setTheme((value) => value === "dark" ? "light" : "dark")}>
-            {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+            {theme === "dark" ? <InteractiveIcon icon={Sun} size={16} /> : <InteractiveIcon icon={Moon} size={16} />}
           </button>
           <div className="dashboard-profile-menu" ref={profileRef}>
             <button type="button" className="dashboard-profile-button" title={user?.name ?? "Account"} onClick={() => setProfileOpen((value) => !value)} aria-expanded={profileOpen}>
-              <UserAvatar user={user} size={36} /><span>{user?.name ?? "Account"}</span><ChevronDown size={15} />
+              <UserAvatar user={user} size={36} /><span>{user?.name ?? "Account"}</span><InteractiveIcon icon={ChevronDown} size={15} />
             </button>
             {profileOpen ? <div className="dashboard-profile-dropdown"><button type="button" onClick={() => { setProfileOpen(false); window.sessionStorage.setItem("scouts-open-profile", "true"); onWorkspaceChange?.("scouting"); }}>My Profile</button><button type="button" className="danger-action" onClick={() => logout()}>Log Out</button></div> : null}
           </div>
@@ -150,7 +151,7 @@ export default function FocusedWorkspaceShell({
         <nav className="sidebar-navigation">
           {navigation.map(({ key, label, Icon, group }, index) => <Fragment key={key}>
             {group && group !== navigation[index - 1]?.group ? <span className="focused-workspace-nav-group">{group}</span> : null}
-            <button type="button" className={activeSection === key ? "active" : ""} aria-label={label} onClick={() => selectSection(key)} {...sidebarTooltipHandlers(label)}>{Icon ? <Icon size={17} aria-hidden="true" /> : null}<span>{label}</span></button>
+            <button type="button" className={activeSection === key ? "active" : ""} aria-label={label} onClick={() => selectSection(key)} {...sidebarTooltipHandlers(label)}>{Icon ? <InteractiveIcon icon={Icon} size={17} /> : null}<span>{label}</span></button>
           </Fragment>)}
         </nav>
       </aside>
@@ -167,11 +168,11 @@ export default function FocusedWorkspaceShell({
         <span className="dashboard-bottom-indicator" aria-hidden="true" />
         {mobilePrimaryItems.map(({ key, label, Icon }) => (
           <button type="button" key={key} className={activeSection === key ? "active" : ""} onPointerDown={triggerMobilePress} onClick={() => selectSection(key)} aria-label={label} title={label}>
-            {Icon ? <Icon size={20} aria-hidden="true" /> : null}<span>{label}</span>
+            {Icon ? <InteractiveIcon icon={Icon} size={20} /> : null}<span>{label}</span>
           </button>
         ))}
         <button type="button" className={mobileMenuOpen || mobileMoreActive ? "active" : ""} onPointerDown={triggerMobilePress} onClick={() => setMobileMenuOpen((open) => !open)} aria-expanded={mobileMenuOpen} aria-label="More" title="More">
-          <Menu size={20} aria-hidden="true" /><span>More</span>
+          <InteractiveIcon icon={Menu} size={20} /><span>More</span>
         </button>
       </nav>
 
@@ -182,7 +183,7 @@ export default function FocusedWorkspaceShell({
             <div className="dashboard-more-grid">
               {navigation.map(({ key, label, Icon }) => (
                 <button type="button" key={key} className={activeSection === key ? "active" : ""} onClick={() => selectSection(key)}>
-                  {Icon ? <Icon size={19} aria-hidden="true" /> : null}<span>{label}</span>
+                  {Icon ? <InteractiveIcon icon={Icon} size={19} /> : null}<span>{label}</span>
                 </button>
               ))}
             </div>
