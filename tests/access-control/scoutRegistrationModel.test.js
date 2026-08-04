@@ -48,11 +48,38 @@ test("age is calculated at the campaign reference date", () => {
 
 test("public registration uses the configured form instead of built-in scout fields", () => {
   const page = read("../../src/pages/ScoutRegistrationPage.jsx");
+  const formsDashboard = read("../../src/features/forms/FormsDashboard.jsx");
 
   assert.doesNotMatch(page, /Scout and parent details/);
   assert.doesNotMatch(page, /Tell us about the scout/);
   assert.match(page, /sourceSnapshot:/);
   assert.match(page, /setStep\("questions"\)/);
+  assert.match(page, /finalPageAction=/);
+  assert.doesNotMatch(page, /formStarted && isLastFormPage/);
+  assert.match(formsDashboard, /finalPageAction\?\.label/);
+  assert.match(formsDashboard, /currentPageIndex === visiblePages\.length - 1/);
+});
+
+test("public registration recovers answers and uploads until submit or confirmed exit", () => {
+  const page = read("../../src/pages/ScoutRegistrationPage.jsx");
+  const recovery = read("../../src/features/registration/registrationDraftRecovery.js");
+
+  assert.match(page, /loadRegistrationRecovery/);
+  assert.match(page, /saveRegistrationRecovery/);
+  assert.match(page, /clearRegistrationRecovery/);
+  assert.match(page, /confirmRegistrationExit/);
+  assert.match(recovery, /indexedDB/);
+  assert.match(recovery, /localStorage/);
+  assert.match(recovery, /value instanceof File/);
+});
+
+test("registration image processing falls back when createImageBitmap cannot decode a valid image", () => {
+  const imageService = read("../../src/features/registration/registrationImageService.js");
+
+  assert.match(imageService, /loadImageElement/);
+  assert.match(imageService, /createImageBitmap/);
+  assert.match(imageService, /return originalRegistrationImage/);
+  assert.match(imageService, /could not be decoded on this device/);
 });
 
 test("public registration SQL only creates a scout profile when structured scout details exist", () => {

@@ -545,7 +545,7 @@ function FormReviewAnswerGroups({ form, answers }) {
   );
 }
 
-export function FormPreview({ form, answers = {}, onAnswerChange = null, disabled = false, errorQuestionIds = [], meta = null, showHeader = true, isStarted = null, onStart = null, embeddedHeader = false, onPageStateChange = null, publicMode = false }) {
+export function FormPreview({ form, answers = {}, onAnswerChange = null, disabled = false, errorQuestionIds = [], meta = null, showHeader = true, isStarted = null, onStart = null, embeddedHeader = false, onPageStateChange = null, publicMode = false, finalPageAction = null }) {
   const schema = safeSchema(form.schemaJson);
   const settings = getFormSettings(schema);
   const themeStyle = getFormThemeStyle(settings);
@@ -572,6 +572,7 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
   const showProgressDots = visiblePages.length > 1 && (progressDisplay === "dots" || (progressDisplay === "bar" && visiblePages.length <= 5));
   const firstPageIntroVisible = !showStartScreen && currentPageIndex === 0 && (hasMeaningfulText(form.description) || hasMeaningfulText(form.instructions));
   const pageTitle = currentPage?.title && !/^page\s*\d+$/i.test(currentPage.title.trim()) ? currentPage.title : "";
+  const isLastPage = currentPageIndex === visiblePages.length - 1;
 
   const scrollFormToTop = () => {
     window.requestAnimationFrame(() => {
@@ -700,10 +701,12 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
         })}
         </div>)}
       </div>
-      {visiblePages.length > 1 && <div className="forms-page-navigation">
-        <button type="button" className="inline-action" disabled={currentPageIndex <= 0} onClick={() => goToPage(-1)}>Previous</button>
-        <span>{publicMode ? `Section ${currentPageIndex + 1} of ${visiblePages.length}` : `${stats.percent}% complete`}</span>
-        <button type="button" className="primary-action" disabled={currentPageIndex >= visiblePages.length - 1} onClick={() => goToPage(1)}>Next</button>
+      {(visiblePages.length > 1 || finalPageAction) && <div className={`forms-page-navigation ${visiblePages.length === 1 ? "single-page" : ""}`}>
+        {visiblePages.length > 1 && <button type="button" className="inline-action" disabled={currentPageIndex <= 0} onClick={() => goToPage(-1)}>Previous</button>}
+        {visiblePages.length > 1 && <span>{publicMode ? `Section ${currentPageIndex + 1} of ${visiblePages.length}` : `${stats.percent}% complete`}</span>}
+        {isLastPage && finalPageAction
+          ? <button type="button" className="primary-action" disabled={finalPageAction?.disabled} onClick={finalPageAction?.onClick}>{finalPageAction?.label || "Review"}</button>
+          : <button type="button" className="primary-action" disabled={isLastPage} onClick={() => goToPage(1)}>Next</button>}
       </div>}
     </article>
   );

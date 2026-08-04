@@ -1,5 +1,5 @@
-const imageTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
 const pdfSignature = [0x25, 0x50, 0x44, 0x46];
+const supportedImageKinds = new Set(["jpeg", "png", "webp", "heic"]);
 
 function startsWith(bytes, signature) {
   return signature.every((value, index) => bytes[index] === value);
@@ -18,10 +18,56 @@ async function detectFileKind(file) {
 
 async function browserImageFile(file) {
   if (!["image/heic", "image/heif"].includes(file.type) && !/\.hei[cf]$/i.test(file.name)) return file;
-  const { default: heic2any } = await import("heic2any");
-  const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.92 });
-  const blob = Array.isArray(converted) ? converted[0] : converted;
-  return new File([blob], file.name.replace(/\.hei[cf]$/i, ".jpg"), { type: "image/jpeg" });
+  try {
+    const { default: heic2any } = await import("heic2any");
+    const converted = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.92 });
+    const blob = Array.isArray(converted) ? converted[0] : converted;
+    return new File([blob], file.name.replace(/\.hei[cf]$/i, ".jpg"), { type: "image/jpeg" });
+  } catch {
+    throw new Error(`${file.name} could not be decoded on this device. Please use JPG, PNG, or PDF for this upload.`);
+  }
+}
+
+function loadImageElement(file) {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error(`${file.name} could not be decoded on this device.`));
+    };
+    image.src = objectUrl;
+  });
+}
+
+async function decodeRegistrationImage(file) {
+  if (typeof createImageBitmap === "function") {
+    try {
+      return await createImageBitmap(file, { imageOrientation: "from-image" });
+    } catch {
+      try {
+        return await createImageBitmap(file);
+      } catch {
+        // Some mobile browsers reject valid camera images through ImageBitmap.
+      }
+    }
+  }
+  return loadImageElement(file);
+}
+
+function originalRegistrationImage(file, detectedKind) {
+  return {
+    file,
+    previewUrl: null,
+    width: null,
+    height: null,
+    originalFormat: detectedKind,
+    processedFormat: null
+  };
 }
 
 function canvasBlob(canvas, type, quality) {
@@ -33,6 +79,7 @@ function canvasBlob(canvas, type, quality) {
 }
 
 export async function processRegistrationFile(file, settings) {
+  if (!(file instanceof File) || file.size === 0) throw new Error("Please choose a valid, non-empty file.");
   const detectedKind = await detectFileKind(file);
   if (detectedKind === "unknown") throw new Error(`${file.name} is not a supported image or PDF.`);
   if (file.size > Number(settings.maxFileSizeMb ?? 8) * 1024 * 1024) {
@@ -42,14 +89,27 @@ export async function processRegistrationFile(file, settings) {
     if (!settings.acceptedFormats.includes("pdf")) throw new Error("PDF files are not accepted for this question.");
     return { file, previewUrl: null, width: null, height: null, originalFormat: "pdf", processedFormat: null };
   }
-  if (!imageTypes.has(file.type) && detectedKind !== "heic") throw new Error("The selected image format is not supported.");
+  if (!supportedImageKinds.has(detectedKind)) throw new Error("The selected image format is not supported.");
 
-  const readableFile = await browserImageFile(file);
-  const bitmap = await createImageBitmap(readableFile, { imageOrientation: "from-image" });
+  let readableFile;
+  try {
+    readableFile = await browserImageFile(file);
+  } catch {
+    return originalRegistrationImage(file, detectedKind);
+  }
+  let bitmap;
+  try {
+    bitmap = await decodeRegistrationImage(readableFile);
+  } catch {
+    return originalRegistrationImage(file, detectedKind);
+  }
   const maxEdge = settings.imageCompression === "headshot" ? 1200 : 2000;
-  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
-  const width = Math.max(1, Math.round(bitmap.width * scale));
-  const height = Math.max(1, Math.round(bitmap.height * scale));
+  const sourceWidth = bitmap.width || bitmap.naturalWidth;
+  const sourceHeight = bitmap.height || bitmap.naturalHeight;
+  if (!sourceWidth || !sourceHeight) return originalRegistrationImage(file, detectedKind);
+  const scale = Math.min(1, maxEdge / Math.max(sourceWidth, sourceHeight));
+  const width = Math.max(1, Math.round(sourceWidth * scale));
+  const height = Math.max(1, Math.round(sourceHeight * scale));
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -57,7 +117,7 @@ export async function processRegistrationFile(file, settings) {
   context.fillStyle = "#ffffff";
   context.fillRect(0, 0, width, height);
   context.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
+  bitmap.close?.();
   const blob = await canvasBlob(canvas, "image/webp", settings.imageCompression === "document" ? 0.88 : 0.84);
   const processed = new File([blob], file.name.replace(/\.[^.]+$/, ".webp"), { type: "image/webp" });
   return {
