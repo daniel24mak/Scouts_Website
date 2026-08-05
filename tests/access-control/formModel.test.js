@@ -12,9 +12,69 @@ import {
   packFormQuestionRows,
   normalizePhoneAnswer,
   validateEmailAnswer,
+  validateExpectedAnswer,
   validateFormResponseEmailSettings,
   validatePhoneAnswer
 } from "../../src/features/forms/formModel.js";
+
+test("expected-answer rules remain disabled for existing questions", () => {
+  const question = normalizeFormQuestion({ id: "question-1", type: "yes_no" });
+
+  assert.deepEqual(question.expectedAnswer, {
+    enabled: false,
+    value: "",
+    message: ""
+  });
+  assert.equal(validateExpectedAnswer(question, "No"), "");
+});
+
+test("expected-answer rules block a mismatched answer with the configured message", () => {
+  const question = normalizeFormQuestion({
+    id: "question-1",
+    type: "yes_no",
+    expectedAnswer: {
+      enabled: true,
+      value: "Yes",
+      message: "Please complete the required step, then select Yes."
+    }
+  });
+
+  assert.equal(validateExpectedAnswer(question, "yes"), "");
+  assert.equal(
+    validateExpectedAnswer(question, "No"),
+    "Please complete the required step, then select Yes."
+  );
+});
+
+test("expected-answer rules support checkbox answers without depending on order", () => {
+  const question = normalizeFormQuestion({
+    id: "question-1",
+    type: "checkboxes",
+    expectedAnswer: {
+      enabled: true,
+      value: ["Medical form", "Consent"],
+      message: "Select both required confirmations."
+    }
+  });
+
+  assert.equal(validateExpectedAnswer(question, ["Consent", "Medical form"]), "");
+  assert.equal(validateExpectedAnswer(question, ["Consent"]), "Select both required confirmations.");
+});
+
+test("expected-answer instructions preserve spaces while they are being edited", () => {
+  const question = normalizeFormQuestion({
+    id: "question-1",
+    type: "yes_no",
+    expectedAnswer: {
+      enabled: true,
+      value: "Yes",
+      message: "Please complete this step "
+    }
+  });
+
+  assert.equal(question.expectedAnswer.message, "Please complete this step ");
+  assert.equal(validateExpectedAnswer(question, "No"), "Please complete this step");
+});
 
 test("form appearance shows question numbers for existing forms by default", () => {
   assert.equal(normalizeFormAppearanceSettings().showQuestionNumbers, true);

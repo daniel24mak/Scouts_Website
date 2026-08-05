@@ -31,6 +31,19 @@ test("collapsed dashboard sidebar hides labels without hiding interactive icons"
   });
 });
 
+test("mobile dashboard navigation hides labels without hiding interactive icons", () => {
+  const stylesheets = [
+    read("../../src/styles.css"),
+    read("../../src/workspaces/dashboardShell.css")
+  ];
+
+  stylesheets.forEach((styles) => {
+    assert.doesNotMatch(styles, /dashboard-bottom-tabs button > span,/);
+    assert.match(styles, /dashboard-bottom-tabs button > span:not\(\.interactive-icon\),/);
+    assert.match(styles, /dashboard-bottom-tabs a\.dashboard-bottom-tab-link > span:not\(\.interactive-icon\)/);
+  });
+});
+
 test("vendored Lucide Animated components retain their license", () => {
   const license = read("../../src/components/icons/lucide-animated/LICENSE");
   const packageJson = JSON.parse(read("../../package.json"));
