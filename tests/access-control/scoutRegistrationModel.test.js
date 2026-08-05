@@ -5,6 +5,7 @@ import {
   calculateAgeOnDate,
   classifyDuplicateCandidate,
   getRegistrationAvailability,
+  inferRegistrationGroup,
   normalizeRegistrationSettings,
   normalizeUploadQuestion
 } from "../../src/features/registration/registrationModel.js";
@@ -44,6 +45,41 @@ test("age is calculated at the campaign reference date", () => {
   assert.equal(calculateAgeOnDate("2014-08-04", "2026-08-03"), 11);
   assert.equal(calculateAgeOnDate("2014-08-04", "2026-08-04"), 12);
   assert.equal(calculateAgeOnDate("", "2026-08-04"), null);
+});
+
+test("registration group inference follows grade and gender sorting rules", () => {
+  const result = inferRegistrationGroup({
+    schoolGrade: "Grade 5",
+    gender: "Female",
+    groups: [{ id: "louvetoux" }, { id: "jeanettes" }],
+    rules: [
+      { groupId: "louvetoux", assignmentBasis: "schoolGrade", gradeStart: 4, gradeEnd: 6, genderFilter: "male" },
+      { groupId: "jeanettes", assignmentBasis: "schoolGrade", gradeStart: 4, gradeEnd: 6, genderFilter: "female" }
+    ]
+  });
+
+  assert.equal(result?.groupId, "jeanettes");
+  assert.equal(result?.basis, "schoolGrade");
+});
+
+test("registration group inference calculates age at the scout-year reference date", () => {
+  const result = inferRegistrationGroup({
+    dateOfBirth: "2014-08-04",
+    referenceDate: "2026-08-04",
+    groups: [{ id: "scout-guide" }],
+    rules: [{ groupId: "scout-guide", assignmentBasis: "age", ageStart: 12, ageEnd: 13, genderFilter: "mixed" }]
+  });
+
+  assert.equal(result?.groupId, "scout-guide");
+  assert.equal(result?.matchedValue, 12);
+});
+
+test("registration group inference returns no suggestion when details do not match", () => {
+  assert.equal(inferRegistrationGroup({
+    schoolGrade: "Grade 2",
+    groups: [{ id: "louvetoux" }],
+    rules: [{ groupId: "louvetoux", assignmentBasis: "schoolGrade", gradeStart: 4, gradeEnd: 6, genderFilter: "mixed" }]
+  }), null);
 });
 
 test("public registration uses the configured form instead of built-in scout fields", () => {

@@ -11,6 +11,7 @@ import {
 import { formatPhoneAnswer, getOrderedFormQuestions } from "../forms/formModel.js";
 import { downloadExcelFile } from "../../utils/excelExport.js";
 import { richTextToPlainText } from "../../utils/richText.js";
+import { inferRegistrationGroup } from "./registrationModel.js";
 
 const tabs = [
   ["overview", "Overview"],
@@ -97,6 +98,7 @@ function orderedSubmissionAnswers(submission) {
 export default function RegistrationCenter({
   data = {},
   groups = [],
+  groupingRules = [],
   scoutYears = [],
   searchQuery = "",
   onRefresh,
@@ -112,6 +114,7 @@ export default function RegistrationCenter({
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
   const [revealedDocument, setRevealedDocument] = useState(null);
+  const [groupSuggestion, setGroupSuggestion] = useState(null);
   const [enrollmentDetails, setEnrollmentDetails] = useState({
     fullName: "",
     targetGroupId: "",
@@ -158,15 +161,28 @@ export default function RegistrationCenter({
     const inferredGroup = groups.find((group) =>
       String(group.id) === groupAnswer || String(group.name ?? "").toLowerCase() === groupAnswer.toLowerCase()
     );
+    const dateOfBirth = person?.date_of_birth ?? answerMatching(/^date of birth$/, /^birth date$/);
+    const gender = person?.gender ?? answerMatching(/^gender$/, /^sex$/);
+    const schoolGrade = person?.school_grade ?? answerMatching(/^school grade$/, /^grade$/);
+    const activeScoutYear = scoutYears.find((year) => year.isActive) ?? scoutYears[0];
+    const suggestion = inferRegistrationGroup({
+      schoolGrade,
+      dateOfBirth,
+      gender,
+      groups,
+      rules: groupingRules,
+      referenceDate: activeScoutYear?.startDate || new Date()
+    });
+    setGroupSuggestion(suggestion);
     setEnrollmentDetails({
       fullName: person?.full_name ?? answerMatching(/^(scout|child|participant)( s)? (full )?name$/, /^full name$/),
-      targetGroupId: selected.target_group_id ?? person?.requested_group_id ?? inferredGroup?.id ?? "",
-      dateOfBirth: person?.date_of_birth ?? answerMatching(/^date of birth$/, /^birth date$/),
-      gender: person?.gender ?? answerMatching(/^gender$/, /^sex$/),
+      targetGroupId: selected.target_group_id ?? suggestion?.groupId ?? person?.requested_group_id ?? inferredGroup?.id ?? "",
+      dateOfBirth,
+      gender,
       schoolName: person?.school_name ?? answerMatching(/^school( name)?$/),
-      schoolGrade: person?.school_grade ?? answerMatching(/^school grade$/, /^grade$/)
+      schoolGrade
     });
-  }, [selectedId, people, groups]);
+  }, [selectedId, people, groups, groupingRules, scoutYears]);
 
   const visible = useMemo(() => submissions.filter((submission) => {
     const person = personFor(submission.id);
@@ -420,6 +436,7 @@ export default function RegistrationCenter({
                       <option value="">Choose a scout group</option>
                       {groups.map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}
                     </select>
+                    {groupSuggestion && enrollmentDetails.targetGroupId === groupSuggestion.groupId && <small className="helper-text">Suggested automatically from the {groupSuggestion.basis === "age" ? "age" : "school grade"} sorting rule.</small>}
                   </label>
                   <label><span>Date of birth</span><input type="date" value={enrollmentDetails.dateOfBirth} onChange={(event) => setEnrollmentDetails((current) => ({ ...current, dateOfBirth: event.target.value }))} /></label>
                   <label><span>Gender</span><input value={enrollmentDetails.gender} onChange={(event) => setEnrollmentDetails((current) => ({ ...current, gender: event.target.value }))} placeholder="Optional" /></label>

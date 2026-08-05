@@ -95,6 +95,66 @@ export function calculateAgeOnDate(dateOfBirth, referenceDate = new Date()) {
   return age;
 }
 
+function numericGrade(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const match = String(value ?? "").match(/\d{1,2}/);
+  return match ? Number(match[0]) : null;
+}
+
+function normalizedGender(value) {
+  const gender = String(value ?? "").trim().toLowerCase();
+  if (["m", "male", "boy"].includes(gender)) return "male";
+  if (["f", "female", "girl"].includes(gender)) return "female";
+  return gender;
+}
+
+export function inferRegistrationGroup({
+  schoolGrade,
+  dateOfBirth,
+  gender,
+  groups = [],
+  rules = [],
+  referenceDate = new Date()
+} = {}) {
+  const safeGroups = Array.isArray(groups) ? groups : [];
+  const safeRules = Array.isArray(rules) ? rules : [];
+  const groupOrder = new Map(safeGroups.map((group, index) => [String(group.id), index]));
+  const grade = numericGrade(schoolGrade);
+  const age = calculateAgeOnDate(dateOfBirth, referenceDate);
+  const applicantGender = normalizedGender(gender);
+
+  const matchingRule = [...safeRules]
+    .filter((rule) => groupOrder.has(String(rule.groupId ?? rule.group_id)))
+    .sort((left, right) => (
+      groupOrder.get(String(left.groupId ?? left.group_id))
+      - groupOrder.get(String(right.groupId ?? right.group_id))
+    ))
+    .find((rule) => {
+      const basis = rule.assignmentBasis ?? rule.assignment_basis ?? "schoolGrade";
+      const ruleGender = normalizedGender(rule.genderFilter ?? rule.gender_filter ?? "mixed");
+      const genderMatches = ruleGender === "mixed" || (applicantGender && ruleGender === applicantGender);
+      if (!genderMatches) return false;
+
+      if (basis === "age") {
+        const start = Number(rule.ageStart ?? rule.age_start);
+        const end = Number(rule.ageEnd ?? rule.age_end);
+        return age != null && Number.isFinite(start) && Number.isFinite(end) && age >= start && age <= end;
+      }
+
+      const start = Number(rule.gradeStart ?? rule.grade_start);
+      const end = Number(rule.gradeEnd ?? rule.grade_end);
+      return grade != null && Number.isFinite(start) && Number.isFinite(end) && grade >= start && grade <= end;
+    });
+
+  if (!matchingRule) return null;
+  const basis = matchingRule.assignmentBasis ?? matchingRule.assignment_basis ?? "schoolGrade";
+  return {
+    groupId: matchingRule.groupId ?? matchingRule.group_id,
+    basis,
+    matchedValue: basis === "age" ? age : grade
+  };
+}
+
 export function normalizeUploadQuestion(question = {}) {
   const type = REGISTRATION_UPLOAD_TYPES.includes(question.type) ? question.type : "file_upload";
   const isProtected = ["protected_document_upload", "scout_headshot_upload"].includes(type);
