@@ -640,8 +640,8 @@
       transform 120ms ease;
   }
 
-  .dashboard-bottom-tabs button > span,
-  .dashboard-bottom-tabs a.dashboard-bottom-tab-link > span {
+.dashboard-bottom-tabs button > span:not(.interactive-icon),
+.dashboard-bottom-tabs a.dashboard-bottom-tab-link > span:not(.interactive-icon) {
     position: absolute;
     width: 1px;
     height: 1px;

@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import BrandedLoader from "../components/BrandedLoader.jsx";
 import scoutLogo from "../assets/smscouts_logo.png";
 import { FormPreview, getVisibleQuestions } from "../features/forms/FormsDashboard.jsx";
-import { validatePhoneAnswer } from "../features/forms/formModel.js";
+import { validateEmailAnswer, validateExpectedAnswer, validatePhoneAnswer } from "../features/forms/formModel.js";
 import { getRegistrationAvailability, normalizeUploadQuestion } from "../features/registration/registrationModel.js";
 import { processRegistrationFile, releaseRegistrationPreview } from "../features/registration/registrationImageService.js";
 import {
@@ -59,6 +59,7 @@ export default function ScoutRegistrationPage() {
   const [formStarted, setFormStarted] = useState(false);
   const [recoveryChecked, setRecoveryChecked] = useState(false);
   const [recoveryNotice, setRecoveryNotice] = useState("");
+  const [lastQuestionPageId, setLastQuestionPageId] = useState("");
 
   useEffect(() => {
     if (!campaignSlug) return;
@@ -207,6 +208,8 @@ export default function ScoutRegistrationPage() {
     const visibleQuestions = getVisibleQuestions(campaign.form.schemaJson, answers);
     const missing = visibleQuestions.filter((question) => {
       if (question.type === "phone") return Boolean(validatePhoneAnswer(question, answers[question.id]));
+      if (question.type === "email") return Boolean(validateEmailAnswer(question, answers[question.id]));
+      if (validateExpectedAnswer(question, answers[question.id])) return true;
       if (!question.required) return false;
       const answer = answers[question.id];
       if (Array.isArray(answer)) return answer.length === 0;
@@ -259,7 +262,7 @@ export default function ScoutRegistrationPage() {
         {recoveryNotice && <p className="registration-recovery-notice" role="status"><CheckCircle2 size={17} />{recoveryNotice}</p>}
         {error && <p className="form-error registration-public-error">{error}</p>}
 
-        {step === "questions" && <section className="registration-form-stage"><FormPreview form={campaign.form} answers={answers} errorQuestionIds={questionErrors} onAnswerChange={updateAnswer} showHeader embeddedHeader publicMode isStarted={formStarted} onStart={() => setFormStarted(true)} finalPageAction={formStarted ? { label: "Review and consent", onClick: continueToConsent } : null} /></section>}
+        {step === "questions" && <section className="registration-form-stage"><FormPreview form={campaign.form} answers={answers} errorQuestionIds={questionErrors} onAnswerChange={updateAnswer} showHeader embeddedHeader publicMode isStarted={formStarted} onStart={() => setFormStarted(true)} initialPageId={lastQuestionPageId} onPageStateChange={({ currentPageId }) => setLastQuestionPageId(currentPageId)} finalPageAction={formStarted ? { label: "Review and consent", onClick: continueToConsent } : null} /></section>}
 
         {step === "consent" && <section className="registration-step-card"><p className="eyebrow">Review and consent</p><h2>Confirm this registration</h2><div className="registration-privacy-copy"><ShieldCheck /><div><strong>Privacy notice</strong><p>{campaign.settings.privacyText}</p><strong>Retention</strong><p>{campaign.settings.retentionText}</p></div></div><label>Signer full name<input value={signerName} onChange={(event) => setSignerName(event.target.value)} /></label><label className="registration-honeypot" aria-hidden="true">Website<input tabIndex="-1" autoComplete="off" value={website} onChange={(event) => setWebsite(event.target.value)} /></label><label className="toggle-row registration-consent"><input type="checkbox" checked={consentAccepted} onChange={(event) => setConsentAccepted(event.target.checked)} />{campaign.settings.consentText}</label><div className="registration-stage-actions"><button type="button" className="inline-action" onClick={() => setStep("questions")}>Back</button><button type="button" className="primary-action" disabled={isBusy || !path} onClick={submit}>{isBusy ? "Submitting securely..." : "Submit registration"}</button></div></section>}
 

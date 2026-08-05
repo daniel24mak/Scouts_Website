@@ -105,10 +105,47 @@ export function normalizeFormQuestion(question = {}) {
     id,
     type,
     layout,
+    imageUrl: String(question.imageUrl ?? "").trim(),
+    imageStoragePath: String(question.imageStoragePath ?? "").trim(),
+    imageAlt: String(question.imageAlt ?? "").trim(),
+    linkUrl: String(question.linkUrl ?? "").trim(),
+    linkLabel: String(question.linkLabel ?? "").trim(),
+    expectedAnswer: normalizeExpectedAnswer(question.expectedAnswer),
     ...(type === "phone"
       ? { phoneSettings: normalizePhoneSettings(question.phoneSettings) }
       : {})
   };
+}
+
+export function normalizeExpectedAnswer(settings = {}) {
+  return {
+    enabled: settings?.enabled === true,
+    value: Array.isArray(settings?.value)
+      ? settings.value.map((item) => String(item).trim()).filter(Boolean)
+      : String(settings?.value ?? "").trim(),
+    message: String(settings?.message ?? "")
+  };
+}
+
+function comparableAnswer(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim().toLocaleLowerCase()).sort();
+  }
+  return String(value ?? "").trim().toLocaleLowerCase();
+}
+
+export function validateExpectedAnswer(question, value) {
+  const rule = normalizeExpectedAnswer(question?.expectedAnswer);
+  if (!rule.enabled || (!Array.isArray(rule.value) && !rule.value)) return "";
+  const expected = comparableAnswer(rule.value);
+  const actual = comparableAnswer(value);
+  const matches = Array.isArray(expected)
+    ? Array.isArray(actual)
+      && expected.length === actual.length
+      && expected.every((item, index) => item === actual[index])
+    : expected === actual;
+  if (matches) return "";
+  return rule.message.trim() || "Choose the required answer before continuing.";
 }
 
 export function getFormWidthUnits(width) {

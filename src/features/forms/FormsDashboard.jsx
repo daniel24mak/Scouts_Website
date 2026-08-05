@@ -17,7 +17,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { getCountries, getCountryCallingCode } from "libphonenumber-js";
-import { ArrowDown, ArrowLeft, ArrowUp, CalendarDays, CheckCircle2, Clock, Copy, FileText, GripVertical, Plus, Save, Search, Send, ShieldCheck, Star, Trash2, Users } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowLeft, ArrowUp, CalendarDays, CheckCircle2, Clock, Copy, ExternalLink, FileText, GripVertical, Image, Plus, Save, Search, Send, ShieldCheck, Star, Trash2, Upload, Users } from "lucide-react";
 import {
   closeDashboardPostedForm,
   deleteDashboardFormTemplate,
@@ -34,6 +34,8 @@ import FormattedText from "../../components/FormattedText.jsx";
 import RichTextEditor from "../../components/RichTextEditor.jsx";
 import { blankFormSchema, formQuestionTypes } from "../../services/formService.js";
 import { downloadExcelFile } from "../../utils/excelExport.js";
+import { ACCEPTED_IMAGE_INPUT } from "../../services/imageOptimizationService.js";
+import { uploadFormImage } from "../../services/formImageService.js";
 import RegistrationCampaignSettings from "../registration/RegistrationCampaignSettings.jsx";
 import RegistrationCampaigns from "../registration/RegistrationCampaigns.jsx";
 import RegistrationCenter from "../registration/RegistrationCenter.jsx";
@@ -54,6 +56,7 @@ import {
   normalizeFormQuestion,
   packFormQuestionRows,
   validateEmailAnswer,
+  validateExpectedAnswer,
   validateFormResponseEmailSettings,
   validatePhoneAnswer
 } from "./formModel.js";
@@ -80,7 +83,9 @@ const defaultFormSettings = {
     backgroundColor: "#eef3fb",
     cardColor: "#ffffff",
     headerImageUrl: "",
+    headerImageStoragePath: "",
     logoUrl: "",
+    logoStoragePath: "",
     darkLogoUrl: "",
     organizationName: "St. Mary's Scouts Dubai",
     subtitle: "",
@@ -374,10 +379,32 @@ function getQuestionHelper(question) {
 }
 
 function getQuestionValidationError(question, value) {
-  if (question.type === "phone") return validatePhoneAnswer(question, value);
-  if (question.type === "email") return validateEmailAnswer(question, value);
-  if (question.required && !isAnswerFilled(value)) return "This question is required.";
-  return "";
+  const fieldError = question.type === "phone"
+    ? validatePhoneAnswer(question, value)
+    : question.type === "email"
+      ? validateEmailAnswer(question, value)
+      : question.required && !isAnswerFilled(value)
+        ? "This question is required."
+        : "";
+  return fieldError || validateExpectedAnswer(question, value);
+}
+
+function safeExternalUrl(value) {
+  try {
+    const url = new URL(String(value ?? "").trim());
+    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
+function QuestionMedia({ question }) {
+  const normalized = normalizeFormQuestion(question);
+  const linkUrl = safeExternalUrl(normalized.linkUrl);
+  return <>
+    {normalized.imageUrl && <figure className="forms-question-media"><img src={normalized.imageUrl} alt={normalized.imageAlt || ""} loading="lazy" /></figure>}
+    {linkUrl && <a className="forms-question-resource-link" href={linkUrl} target="_blank" rel="noopener noreferrer"><ExternalLink size={16} />{normalized.linkLabel || "Open related link"}</a>}
+  </>;
 }
 
 function groupQuestionsByRow(questions) {
@@ -531,6 +558,7 @@ function FormReviewAnswerGroups({ form, answers }) {
                   {question.required && <em aria-label="Required">*</em>}
                 </div>
                 {question.description && <FormattedText text={question.description} className="forms-review-question-description" />}
+                <QuestionMedia question={question} />
                 {isAnswerFilled(answers[question.id])
                   ? question.type === "long_text"
                     ? <FormattedText text={answers[question.id]} className="forms-review-answer-rich" />
@@ -545,7 +573,7 @@ function FormReviewAnswerGroups({ form, answers }) {
   );
 }
 
-export function FormPreview({ form, answers = {}, onAnswerChange = null, disabled = false, errorQuestionIds = [], meta = null, showHeader = true, isStarted = null, onStart = null, embeddedHeader = false, onPageStateChange = null, publicMode = false, finalPageAction = null }) {
+export function FormPreview({ form, answers = {}, onAnswerChange = null, disabled = false, errorQuestionIds = [], meta = null, showHeader = true, isStarted = null, onStart = null, embeddedHeader = false, onPageStateChange = null, publicMode = false, finalPageAction = null, initialPageId = "" }) {
   const schema = safeSchema(form.schemaJson);
   const settings = getFormSettings(schema);
   const themeStyle = getFormThemeStyle(settings);
@@ -554,7 +582,7 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
   const showStartScreen = showHeader && settings.startScreen.enabled !== false;
   const [internalStarted, setInternalStarted] = useState(!showStartScreen);
   const [confirmedStart, setConfirmedStart] = useState(false);
-  const [currentPageId, setCurrentPageId] = useState(visiblePages[0]?.id ?? schema.pages[0]?.id);
+  const [currentPageId, setCurrentPageId] = useState(() => visiblePages.some((page) => page.id === initialPageId) ? initialPageId : visiblePages[0]?.id ?? schema.pages[0]?.id);
   const [pageErrors, setPageErrors] = useState([]);
   const currentPage = visiblePages.find((page) => page.id === currentPageId) ?? visiblePages[0] ?? schema.pages[0];
   const currentPageIndex = visiblePages.findIndex((page) => page.id === currentPage?.id);
@@ -603,11 +631,12 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
 
   useEffect(() => {
     onPageStateChange?.({
+      currentPageId: currentPage?.id ?? "",
       currentPageIndex,
       pageCount: visiblePages.length,
       isLastPage: currentPageIndex === visiblePages.length - 1
     });
-  }, [currentPageIndex, onPageStateChange, visiblePages.length]);
+  }, [currentPage?.id, currentPageIndex, onPageStateChange, visiblePages.length]);
 
   const validateCurrentPage = () => {
     const invalid = visibleQuestions.filter((question) => getQuestionValidationError(question, answers[question.id]));
@@ -637,7 +666,7 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
   if (showStartScreen && !started) {
     return (
       <article className="forms-preview-card premium-form-card forms-start-card google-form-canvas" style={themeStyle}>
-        {!embeddedHeader && <FormBrandHeader form={form} settings={settings} meta={meta} />}
+        <FormBrandHeader form={form} settings={settings} meta={meta} />
         <div className="forms-preview-header premium-form-header">
           {!embeddedHeader && <h2>{form.title || "Untitled form"}</h2>}
           <FormattedText text={form.description} fallback="No description provided." />
@@ -656,7 +685,7 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
 
   return (
     <article className={`forms-preview-card premium-form-card google-form-canvas ${settings.appearance.showQuestionNumbers ? "show-question-numbers" : "hide-question-numbers"}`} style={themeStyle} ref={formTopRef}>
-      {!embeddedHeader && (settings.appearance.headerMode === "repeat" || currentPageIndex === 0 || settings.appearance.headerMode === "compact_later") && (
+      {(settings.appearance.headerMode === "repeat" || currentPageIndex === 0 || settings.appearance.headerMode === "compact_later") && (
         <FormBrandHeader form={form} settings={settings} compact={currentPageIndex > 0 && settings.appearance.headerMode === "compact_later"} meta={meta} />
       )}
       {currentPage && <div className={`forms-page-fill-header ${showProgressBar || showProgressDots ? "" : "single-column"}`}>
@@ -681,6 +710,7 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
         {row.questions.map((question) => {
           const index = stats.questions.findIndex((item) => item.id === question.id);
           const error = combinedErrors.includes(question.id) ? getQuestionValidationError(question, answers[question.id]) || "This question is required." : "";
+          const expectedAnswerError = error ? validateExpectedAnswer(question, answers[question.id]) : "";
           return (
           <section className={`forms-fill-question premium-question-card question-surface-${normalizeFormQuestion(question).layout.surface} ${error ? "has-error" : ""}`} key={question.id} data-question-id={question.id} style={{ "--form-field-span": normalizeFormQuestion(question).layout.width === "half" ? 6 : normalizeFormQuestion(question).layout.width === "one_third" ? 4 : normalizeFormQuestion(question).layout.width === "two_thirds" ? 8 : 12 }}>
             <div className="premium-question-heading">
@@ -692,9 +722,12 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
             </div>
             <div className="forms-question-control">
               {question.description && <FormattedText text={question.description} className="premium-question-description" />}
+              <QuestionMedia question={question} />
               {getQuestionHelper(question) && <small className="premium-question-helper">{getQuestionHelper(question)}</small>}
               <QuestionInput question={question} value={answers[question.id]} disabled={disabled || !onAnswerChange} showError={Boolean(error)} onChange={(nextValue) => { onAnswerChange?.(question.id, nextValue); setPageErrors((current) => current.filter((id) => id !== question.id)); }} />
-              {error && question.type !== "phone" && <small className="forms-field-error">{error}</small>}
+              {error && question.type !== "phone" && (expectedAnswerError
+                ? <div className="forms-answer-gate-message" role="alert"><AlertCircle size={18} aria-hidden="true" /><div><strong>Before you continue</strong><p>{expectedAnswerError}</p></div></div>
+                : <small className="forms-field-error">{error}</small>)}
             </div>
           </section>
           );
@@ -705,7 +738,7 @@ export function FormPreview({ form, answers = {}, onAnswerChange = null, disable
         {visiblePages.length > 1 && <button type="button" className="inline-action" disabled={currentPageIndex <= 0} onClick={() => goToPage(-1)}>Previous</button>}
         {visiblePages.length > 1 && <span>{publicMode ? `Section ${currentPageIndex + 1} of ${visiblePages.length}` : `${stats.percent}% complete`}</span>}
         {isLastPage && finalPageAction
-          ? <button type="button" className="primary-action" disabled={finalPageAction?.disabled} onClick={finalPageAction?.onClick}>{finalPageAction?.label || "Review"}</button>
+          ? <button type="button" className="primary-action" disabled={finalPageAction?.disabled} onClick={() => { if (validateCurrentPage()) finalPageAction?.onClick?.(); }}>{finalPageAction?.label || "Review"}</button>
           : <button type="button" className="primary-action" disabled={isLastPage} onClick={() => goToPage(1)}>Next</button>}
       </div>}
     </article>
@@ -790,6 +823,7 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
   const [allowEdits, setAllowEdits] = useState(postedForm?.allowEdits ?? true);
   const [generateAiSummary, setGenerateAiSummary] = useState(postedForm?.generateAiSummary ?? false);
   const [isSaving, setIsSaving] = useState(false);
+  const [mediaUpload, setMediaUpload] = useState({ key: "", errorKey: "", error: "" });
   const [step, setStep] = useState(0);
   const [questionMode, setQuestionMode] = useState("edit");
   const [showTemplates, setShowTemplates] = useState(false);
@@ -814,6 +848,13 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
     orderedQuestions.forEach((question, index) => {
       if (!question.text.trim()) {
         issues.push({ id: `question-${question.id}`, step: 1, label: `Question ${index + 1}`, message: "Add question text." });
+      }
+      const expectedAnswer = normalizeFormQuestion(question).expectedAnswer;
+      if (expectedAnswer.enabled && (Array.isArray(expectedAnswer.value) ? !expectedAnswer.value.length : !expectedAnswer.value)) {
+        issues.push({ id: `expected-${question.id}`, targetId: `question-${question.id}`, step: 1, label: `Question ${index + 1}`, message: "Choose the answer required to continue." });
+      }
+      if (expectedAnswer.enabled && !expectedAnswer.message.trim()) {
+        issues.push({ id: `expected-message-${question.id}`, targetId: `question-${question.id}`, step: 1, label: `Question ${index + 1}`, message: "Add the message shown when the answer does not match." });
       }
     });
     const responseEmailError = validateFormResponseEmailSettings(
@@ -858,6 +899,41 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
   const updateBehavior = (patch) => updateSettings({ behavior: { ...formSettings.behavior, ...patch } });
   const updatePage = (id, patch) => setSchemaJson((current) => safeSchema({ ...current, pages: current.pages.map((page) => page.id === id ? { ...page, ...patch } : page) }));
   const updateQuestion = (id, patch) => setSchemaJson((current) => safeSchema({ ...current, questions: current.questions.map((question) => question.id === id ? { ...question, ...patch } : question) }));
+  const uploadBuilderImage = async (file, { kind, questionId = "" }) => {
+    if (!file || mediaUpload.key) return;
+    const key = kind === "header" ? "header" : kind === "logo" ? "logo" : `question-${questionId}`;
+    setMediaUpload({ key, errorKey: "", error: "" });
+    setSaveMessage("Optimizing image to WebP...");
+    try {
+      const uploaded = await uploadFormImage(file, {
+        kind,
+        ownerId: kind === "question" ? questionId : source?.id ?? "new-form"
+      });
+      if (kind === "header") {
+        updateAppearance({
+          headerImageUrl: uploaded.imageUrl,
+          headerImageStoragePath: uploaded.storagePath
+        });
+      } else if (kind === "logo") {
+        updateAppearance({
+          logoUrl: uploaded.imageUrl,
+          logoStoragePath: uploaded.storagePath
+        });
+      } else {
+        const currentQuestion = safeSchema(schemaJson).questions.find((question) => question.id === questionId);
+        updateQuestion(questionId, {
+          imageUrl: uploaded.imageUrl,
+          imageStoragePath: uploaded.storagePath,
+          imageAlt: currentQuestion?.imageAlt || file.name.replace(/\.[^.]+$/, "")
+        });
+      }
+      setSaveMessage(`Image uploaded as WebP (${uploaded.width} x ${uploaded.height}).`);
+      setMediaUpload({ key: "", errorKey: "", error: "" });
+    } catch (error) {
+      setMediaUpload({ key: "", errorKey: key, error: error.message || "Image upload failed." });
+      setSaveMessage(`Image could not be uploaded: ${error.message}`);
+    }
+  };
   const updateQuestionWidth = (id, width) => setSchemaJson((current) => {
     const schema = safeSchema(current);
     const updatedQuestions = schema.questions.map((question) => question.id === id
@@ -977,7 +1053,7 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
     setStep(issue.step);
     if (issue.step === 1) setQuestionMode("edit");
     window.setTimeout(() => {
-      const target = document.querySelector(`[data-builder-field="${issue.id}"]`);
+      const target = document.querySelector(`[data-builder-field="${issue.targetId ?? issue.id}"]`);
       target?.scrollIntoView({ behavior: "smooth", block: "center" });
       target?.querySelector("input, textarea, [contenteditable='true']")?.focus?.();
     }, 80);
@@ -997,6 +1073,10 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
     setSaveMessage(`Template "${nextTemplate.title}" loaded.`);
   };
   const saveTemplate = async (status = "active", saveAsNew = false) => {
+    if (mediaUpload.key) {
+      setSaveMessage("Wait for the image upload to finish before saving.");
+      return;
+    }
     if (status !== "draft" && !validateBuilderBeforePublishing()) return;
     setIsSaving(true);
     try {
@@ -1006,6 +1086,10 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
     } finally { setIsSaving(false); }
   };
   const post = async (saveTemplateFirst = false) => {
+    if (mediaUpload.key) {
+      setSaveMessage("Wait for the image upload to finish before posting.");
+      return;
+    }
     if (!validateBuilderBeforePublishing()) return;
     setIsSaving(true);
     try {
@@ -1047,9 +1131,21 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
                 <label>Header behavior<select value={formSettings.appearance.headerMode} onChange={(event) => updateAppearance({ headerMode: event.target.value })}><option value="compact_later">Full first page, compact later</option><option value="repeat">Repeat full header</option><option value="first_only">First page only</option></select></label>
                 <label>Organization name<input value={formSettings.appearance.organizationName} onChange={(event) => updateAppearance({ organizationName: event.target.value })} placeholder="St. Mary's Scouts Dubai" /></label>
                 <label>Subtitle<input value={formSettings.appearance.subtitle} onChange={(event) => updateAppearance({ subtitle: event.target.value })} placeholder="Optional label, event, or category" /></label>
-                <label>Logo URL<input value={formSettings.appearance.logoUrl} onChange={(event) => updateAppearance({ logoUrl: event.target.value })} placeholder="https://..." /></label>
-                <label>Dark logo URL<input value={formSettings.appearance.darkLogoUrl} onChange={(event) => updateAppearance({ darkLogoUrl: event.target.value })} placeholder="Optional dark-mode logo" /></label>
-                <label className="wide">Banner image URL<input value={formSettings.appearance.headerImageUrl} onChange={(event) => updateAppearance({ headerImageUrl: event.target.value })} placeholder="Optional header or cover image URL" /></label>
+                <div className="forms-builder-field wide forms-media-upload-field">
+                  <span className="forms-control-label">Organization logo</span>
+                  <label className={`forms-media-upload-control ${mediaUpload.key === "logo" ? "is-uploading" : ""}`}><Upload size={19} aria-hidden="true" /><span><strong>{mediaUpload.key === "logo" ? "Optimizing and uploading..." : "Upload organization logo"}</strong><small>JPG, PNG, WebP, HEIC, or HEIF. The uploaded copy is converted to WebP.</small></span><input type="file" accept={ACCEPTED_IMAGE_INPUT} disabled={Boolean(mediaUpload.key)} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; uploadBuilderImage(file, { kind: "logo" }); }} /></label>
+                  <label>Or use a logo URL<input type="url" value={formSettings.appearance.logoUrl} onChange={(event) => updateAppearance({ logoUrl: event.target.value, logoStoragePath: "" })} placeholder="https://example.com/logo.webp" /></label>
+                  <label>Optional dark-mode logo URL<input type="url" value={formSettings.appearance.darkLogoUrl} onChange={(event) => updateAppearance({ darkLogoUrl: event.target.value })} placeholder="https://example.com/dark-logo.webp" /></label>
+                  {mediaUpload.errorKey === "logo" && <small className="forms-field-error">{mediaUpload.error}</small>}
+                  {formSettings.appearance.logoUrl && <><span className="forms-logo-image-preview"><img src={formSettings.appearance.logoUrl} alt="Organization logo preview" /></span><button type="button" className="inline-action forms-remove-media" onClick={() => updateAppearance({ logoUrl: "", logoStoragePath: "" })}>Remove logo</button></>}
+                </div>
+                <div className="forms-builder-field wide forms-media-upload-field">
+                  <span className="forms-control-label">Banner image</span>
+                  <label className={`forms-media-upload-control ${mediaUpload.key === "header" ? "is-uploading" : ""}`}><Upload size={19} aria-hidden="true" /><span><strong>{mediaUpload.key === "header" ? "Optimizing and uploading..." : "Upload banner image"}</strong><small>JPG, PNG, WebP, HEIC, or HEIF. The uploaded copy is converted to WebP.</small></span><input type="file" accept={ACCEPTED_IMAGE_INPUT} disabled={Boolean(mediaUpload.key)} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; uploadBuilderImage(file, { kind: "header" }); }} /></label>
+                  <label>Or use an image URL<input type="url" value={formSettings.appearance.headerImageUrl} onChange={(event) => updateAppearance({ headerImageUrl: event.target.value, headerImageStoragePath: "" })} placeholder="https://example.com/form-banner.webp" /></label>
+                  {mediaUpload.errorKey === "header" && <small className="forms-field-error">{mediaUpload.error}</small>}
+                  {formSettings.appearance.headerImageUrl && <><span className="forms-header-image-preview"><img src={formSettings.appearance.headerImageUrl} alt="Form header preview" /></span><button type="button" className="inline-action forms-remove-media" onClick={() => updateAppearance({ headerImageUrl: "", headerImageStoragePath: "" })}>Remove banner</button></>}
+                </div>
               </div>
               <label className="toggle-row"><input type="checkbox" checked={formSettings.appearance.showQuestionNumbers} onChange={(event) => updateAppearance({ showQuestionNumbers: event.target.checked })} /><span><strong>Show question numbers</strong><small>Turn this off to hide numbers everywhere this form is displayed.</small></span></label>
             </section>
@@ -1122,7 +1218,7 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
                     .slice(0, index)
                     .filter((candidate) => normalizeFormQuestion(candidate).layout.rowId === normalizedQuestion.layout.rowId)
                     .reduce((total, candidate) => total + getFormWidthUnits(normalizeFormQuestion(candidate).layout.width), 0);
-                  return <SortableQuestionCard question={question} columnStart={columnStart} hasError={builderIssueIds.has(`question-${question.id}`)} key={question.id}>{({ attributes, listeners }) => <>
+                  return <SortableQuestionCard question={question} columnStart={columnStart} hasError={[`question-${question.id}`, `expected-${question.id}`, `expected-message-${question.id}`].some((id) => builderIssueIds.has(id))} key={question.id}>{({ attributes, listeners }) => <>
                   <div className="forms-question-card-topline"><button type="button" className="forms-drag-handle" title="Drag to reorder" aria-label={`Move question ${index + 1}`} {...attributes} {...listeners}><GripVertical size={20} /></button><span className="forms-question-number">Question {index + 1}</span><div className="forms-question-icon-actions"><button type="button" className="icon-button" title="Move up" disabled={index === 0} onClick={() => moveQuestion(page.id, index, -1)}><ArrowUp size={16} /></button><button type="button" className="icon-button" title="Move down" disabled={index === pageQuestions.length - 1} onClick={() => moveQuestion(page.id, index, 1)}><ArrowDown size={16} /></button><button type="button" className="icon-button" title="Duplicate" onClick={() => duplicateQuestion(page.id, index)}><Copy size={16} /></button><button type="button" className="icon-button danger-action" title="Delete" onClick={() => deleteQuestion(question.id)} disabled={schemaJson.questions.length === 1}><Trash2 size={16} /></button></div></div>
                   <div className="forms-question-header">
                     <label>Question<input value={question.text} onChange={(event) => updateQuestion(question.id, { text: event.target.value })} placeholder="Write the question" />{builderIssueIds.has(`question-${question.id}`) && <small className="forms-field-error">Question text is required before posting.</small>}</label>
@@ -1140,6 +1236,31 @@ function FormBuilder({ data, isAdmin, canManageTemplates, canPostForms, template
                     </div>
                   </details>
                   {optionQuestionTypes.has(question.type) && <div className="forms-options-editor">{question.options.map((option, optionIndex) => <div key={`${question.id}-${optionIndex}`}><span>{optionIndex + 1}</span><input value={option} onChange={(event) => updateQuestion(question.id, { options: question.options.map((item, idx) => idx === optionIndex ? event.target.value : item) })} /><button type="button" className="icon-button" onClick={() => updateQuestion(question.id, { options: question.options.filter((_, idx) => idx !== optionIndex) })}><Trash2 size={15} /></button></div>)}<button type="button" className="inline-action" onClick={() => updateQuestion(question.id, { options: [...question.options, `Option ${question.options.length + 1}`] })}>Add option</button></div>}
+                  <details className="forms-question-advanced forms-question-media-settings">
+                    <summary><Image size={16} />Image and external link</summary>
+                    <div className="forms-question-support-grid">
+                      <div className="forms-builder-field forms-media-upload-field">
+                        <span className="forms-control-label">Question image</span>
+                        <label className={`forms-media-upload-control ${mediaUpload.key === `question-${question.id}` ? "is-uploading" : ""}`}><Upload size={18} aria-hidden="true" /><span><strong>{mediaUpload.key === `question-${question.id}` ? "Optimizing and uploading..." : "Upload question image"}</strong><small>Converted to WebP before upload.</small></span><input type="file" accept={ACCEPTED_IMAGE_INPUT} disabled={Boolean(mediaUpload.key)} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; uploadBuilderImage(file, { kind: "question", questionId: question.id }); }} /></label>
+                        <label>Or use an image URL<input type="url" value={question.imageUrl ?? ""} onChange={(event) => updateQuestion(question.id, { imageUrl: event.target.value, imageStoragePath: "" })} placeholder="https://example.com/image.webp" /></label>
+                        {mediaUpload.errorKey === `question-${question.id}` && <small className="forms-field-error">{mediaUpload.error}</small>}
+                      </div>
+                      <label>Image description<input value={question.imageAlt ?? ""} onChange={(event) => updateQuestion(question.id, { imageAlt: event.target.value })} placeholder="Describe the image for accessibility" /></label>
+                      <label>Link URL<input type="url" value={question.linkUrl ?? ""} onChange={(event) => updateQuestion(question.id, { linkUrl: event.target.value })} placeholder="https://example.com/instructions" /></label>
+                      <label>Link text<input value={question.linkLabel ?? ""} onChange={(event) => updateQuestion(question.id, { linkLabel: event.target.value })} placeholder="Open instructions" /></label>
+                    </div>
+                    {(question.imageUrl || question.linkUrl) && <div className="forms-question-media-preview"><QuestionMedia question={question} />{question.imageUrl && <button type="button" className="inline-action forms-remove-media" onClick={() => updateQuestion(question.id, { imageUrl: "", imageStoragePath: "" })}>Remove image</button>}</div>}
+                  </details>
+                  <details className={`forms-question-advanced forms-expected-answer-settings ${normalizeFormQuestion(question).expectedAnswer.enabled ? "enabled" : ""}`}>
+                    <summary>Required answer to continue</summary>
+                    <label className="toggle-row"><input type="checkbox" checked={normalizeFormQuestion(question).expectedAnswer.enabled} onChange={(event) => updateQuestion(question.id, { expectedAnswer: { ...normalizeFormQuestion(question).expectedAnswer, enabled: event.target.checked } })} />Block progress until the expected answer is given</label>
+                    {normalizeFormQuestion(question).expectedAnswer.enabled && <div className="forms-question-support-grid">
+                      <label>Expected answer{question.type === "yes_no" || ["multiple_choice", "dropdown"].includes(question.type)
+                        ? <select value={normalizeFormQuestion(question).expectedAnswer.value} onChange={(event) => updateQuestion(question.id, { expectedAnswer: { ...normalizeFormQuestion(question).expectedAnswer, value: event.target.value } })}><option value="">Choose answer</option>{(question.type === "yes_no" ? ["Yes", "No"] : question.options).map((option) => <option value={option} key={option}>{option}</option>)}</select>
+                        : <input value={Array.isArray(normalizeFormQuestion(question).expectedAnswer.value) ? normalizeFormQuestion(question).expectedAnswer.value.join(", ") : normalizeFormQuestion(question).expectedAnswer.value} onChange={(event) => updateQuestion(question.id, { expectedAnswer: { ...normalizeFormQuestion(question).expectedAnswer, value: question.type === "checkboxes" ? event.target.value.split(",").map((item) => item.trim()).filter(Boolean) : event.target.value } })} placeholder={question.type === "checkboxes" ? "Required options, separated by commas" : "Required answer"} />}{builderIssueIds.has(`expected-${question.id}`) && <small className="forms-field-error">Choose the expected answer.</small>}</label>
+                      <label>Message shown when it does not match<textarea value={normalizeFormQuestion(question).expectedAnswer.message} onChange={(event) => updateQuestion(question.id, { expectedAnswer: { ...normalizeFormQuestion(question).expectedAnswer, message: event.target.value } })} placeholder="Explain what the person needs to do before continuing." />{builderIssueIds.has(`expected-message-${question.id}`) && <small className="forms-field-error">Add a clear instruction message.</small>}</label>
+                    </div>}
+                  </details>
                   {question.type === "phone" && <div className="forms-phone-settings"><label>Allowed countries<select value={question.phoneSettings?.countryMode ?? "all"} onChange={(event) => updateQuestion(question.id, { phoneSettings: { ...question.phoneSettings, countryMode: event.target.value } })}><option value="all">All countries</option><option value="single">One country only</option></select></label><label>{question.phoneSettings?.countryMode === "single" ? "Required country" : "Default country"}<select value={question.phoneSettings?.countryMode === "single" ? question.phoneSettings?.allowedCountry ?? "AE" : question.phoneSettings?.defaultCountry ?? "AE"} onChange={(event) => updateQuestion(question.id, { phoneSettings: { ...question.phoneSettings, ...(question.phoneSettings?.countryMode === "single" ? { allowedCountry: event.target.value, defaultCountry: event.target.value } : { defaultCountry: event.target.value }) } })}>{phoneCountries.map((country) => <option key={country.id} value={country.id}>{country.label}</option>)}</select></label><small>People see a searchable country selector when all countries are allowed. Answers are saved in international E.164 format.</small></div>}
                   {uploadQuestionTypes.has(question.type) && <UploadQuestionSettings question={question} onChange={(patch) => updateQuestion(question.id, patch)} />}
                   <ConditionalLogicEditor label="Show this question when..." item={question} questions={orderedQuestions} onChange={(rule) => updateQuestion(question.id, { conditionalLogic: rule })} />
