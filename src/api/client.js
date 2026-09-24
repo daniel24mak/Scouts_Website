@@ -50,7 +50,7 @@ import {
   updateFaq
 } from "../services/publicEngagementService.js";
 import { updateCurrentUserPassword } from "../services/authService.js";
-import { getCurrentSupabaseUserId, isSupabaseConfigured } from "../services/supabaseClient.js";
+import { getCurrentSupabaseUserId, invokeSupabaseFunction, isSupabaseConfigured } from "../services/supabaseClient.js";
 import { getBootstrapShadowAccess } from "../services/accessControlService.js";
 import {
   createLeader,
@@ -411,7 +411,7 @@ export function activateScoutingYear(yearId) {
 }
 export function uploadRegistrationSheet(payload) {
   if (isSupabaseConfigured) {
-    return request("/registration/parse", { method: "POST", body: JSON.stringify(payload) }).then(
+    return invokeSupabaseFunction("parse-registration-upload", payload).then(
       (parsed) =>
         importRegistrationSheetToSupabase({
           fileName: payload.fileName ?? "registered-scouts.xlsx",
