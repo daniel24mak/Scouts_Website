@@ -409,6 +409,23 @@ export function activateScoutingYear(yearId) {
 
   return Promise.resolve({ id: yearId, is_active: true });
 }
+export function parseRegistrationSheet(payload) {
+  if (isSupabaseConfigured) {
+    return invokeSupabaseFunction("parse-registration-upload", payload);
+  }
+
+  return request("/registration/parse", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function confirmRegistrationSheetImport(payloadWithScouts) {
+  if (isSupabaseConfigured) {
+    return importRegistrationSheetToSupabase(payloadWithScouts);
+  }
+
+  return request("/registration/upload", { method: "POST", body: JSON.stringify(payloadWithScouts) });
+}
+
+// Retained for callers that have not yet adopted the explicit parse/confirm flow.
 export function uploadRegistrationSheet(payload) {
   if (isSupabaseConfigured) {
     return invokeSupabaseFunction("parse-registration-upload", payload).then(

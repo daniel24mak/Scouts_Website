@@ -34,7 +34,7 @@ import {
   Plus,
   Users
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import scoutLogo from "../assets/smscouts_logo.png";
@@ -82,7 +82,8 @@ import {
   updatePhoto,
   updatePhotoBatch,
   updateRegisteredScout,
-  uploadRegistrationSheet,
+  confirmRegistrationSheetImport,
+  parseRegistrationSheet,
   loadDashboardReports,
   removeArchivedYearSnapshot,
   removeDashboardDocument,
@@ -983,6 +984,19 @@ export default function AdminDashboardPage({
   const [registrationTargetMode, setRegistrationTargetMode] = useState("existing");
   const [registrationYearId, setRegistrationYearId] = useState(data.activeScoutYearId ?? data.scoutYears?.[0]?.id ?? "");
   const [newScoutYearName, setNewScoutYearName] = useState("");
+  const [pendingRegistrationImport, setPendingRegistrationImport] = useState(null);
+  const [registrationImportLoading, setRegistrationImportLoading] = useState(false);
+  const registrationFileInputRef = useRef(null);
+  const registrationImportBusyRef = useRef(false);
+  const registrationParseVersionRef = useRef(0);
+  const registrationTargetIdentity = registrationTargetMode === "existing"
+    ? `existing:${registrationYearId}`
+    : `new:${newScoutYearName.trim()}`;
+  useEffect(() => {
+    registrationParseVersionRef.current += 1;
+    setPendingRegistrationImport(null);
+    if (registrationFileInputRef.current) registrationFileInputRef.current.value = "";
+  }, [registrationTargetMode, registrationYearId, newScoutYearName]);
   const [myWorkTasks, setMyWorkTasks] = useState([]);
   const [myWorkLoading, setMyWorkLoading] = useState(true);
   const [myWorkError, setMyWorkError] = useState("");
@@ -1841,46 +1855,105 @@ export default function AdminDashboardPage({
   };
   const handleRegistrationUpload = async (event) => {
     const file = event.target.files?.[0];
-    if (!file) {
+    if (!file || registrationImportBusyRef.current || uploadStatus) {
       return;
     }
 
+    setPendingRegistrationImport(null);
+    const parseVersion = ++registrationParseVersionRef.current;
+    registrationImportBusyRef.current = true;
+    setRegistrationImportLoading(true);
     try {
       const cleanedYearName = newScoutYearName.trim();
-    if (registrationTargetMode === "existing" && !registrationYearId) {
+      if (registrationTargetMode === "existing" && !registrationYearId) {
         setSaveMessage("Choose a scouting year before uploading the registration list.");
         event.target.value = "";
         return;
       }
-    if (registrationTargetMode === "new" && !cleanedYearName) {
+      if (registrationTargetMode === "new" && !cleanedYearName) {
         setSaveMessage("Please enter a scouting year name.");
         event.target.value = "";
         return;
       }
 
-      const result = await uploadRegistrationSheet({
+      const contentBase64 = arrayBufferToBase64(await file.arrayBuffer());
+      const targetLabel = registrationTargetMode === "existing"
+        ? data.scoutYears?.find((year) => year.id === registrationYearId)?.label ?? "Selected year"
+        : cleanedYearName;
+      const payload = {
         fileName: file.name,
-        contentBase64: arrayBufferToBase64(await file.arrayBuffer()),
+        contentBase64,
         scoutYearId: registrationTargetMode === "existing" ? registrationYearId : undefined,
         newScoutYear: registrationTargetMode === "new" ? { label: cleanedYearName, useExistingIfPresent: true } : undefined
+      };
+      const parsed = await parseRegistrationSheet(payload);
+      if (parseVersion !== registrationParseVersionRef.current) return;
+      const scouts = parsed.scouts ?? [];
+      setPendingRegistrationImport({
+        ...payload,
+        scouts,
+        count: parsed.count ?? scouts.length,
+        targetIdentity: registrationTargetIdentity,
+        targetLabel
+      });
+      setSaveMessage(`Registration sheet parsed. Review ${scouts.length} scouts before confirming the upload.`);
+    } catch (error) {
+      if (parseVersion === registrationParseVersionRef.current) {
+        cancelRegistrationUpload();
+        setSaveMessage(`Registration sheet parsing failed: ${error.message}`);
+      }
+    } finally {
+      registrationImportBusyRef.current = false;
+      setRegistrationImportLoading(false);
+    }
+  };
+  const cancelRegistrationUpload = () => {
+    registrationParseVersionRef.current += 1;
+    setPendingRegistrationImport(null);
+    if (registrationFileInputRef.current) registrationFileInputRef.current.value = "";
+  };
+  const confirmRegistrationUpload = async () => {
+    if (!pendingRegistrationImport || registrationImportBusyRef.current || registrationImportLoading || uploadStatus) return;
+
+    if (pendingRegistrationImport.targetIdentity !== registrationTargetIdentity) {
+      cancelRegistrationUpload();
+      setSaveMessage("The import target changed. Select the registration file again for the current target.");
+      return;
+    }
+
+    try {
+      registrationImportBusyRef.current = true;
+      setRegistrationImportLoading(true);
+      const result = await confirmRegistrationSheetImport({
+        fileName: pendingRegistrationImport.fileName,
+        contentBase64: pendingRegistrationImport.contentBase64,
+        scouts: pendingRegistrationImport.scouts,
+        scoutYearId: pendingRegistrationImport.scoutYearId,
+        newScoutYear: pendingRegistrationImport.newScoutYear
       });
       setSaveMessage(
         `Registration sheet uploaded. ${result.count} scouts loaded${
           result.scoutYear ? ` for ${result.scoutYear}` : ""
         }.`
       );
-      await refresh();
-      event.target.value = "";
-    if (registrationTargetMode === "new") {
+      cancelRegistrationUpload();
+      if (pendingRegistrationImport.newScoutYear) {
         setNewScoutYearName("");
         setRegistrationTargetMode("existing");
       }
+      await refresh().catch((error) => {
+        setSaveMessage(`Registration sheet uploaded, but refreshing the dashboard failed: ${error.message}`);
+      });
     } catch (error) {
       setSaveMessage(`Registration upload failed: ${error.message}`);
+    } finally {
+      registrationImportBusyRef.current = false;
+      setRegistrationImportLoading(false);
     }
   };
   const createNewScoutYearOnly = async (event) => {
     event.preventDefault();
+    if (registrationImportBusyRef.current || uploadStatus) return;
 
     const cleanedYearName = newScoutYearName.trim();
     if (!cleanedYearName) {
@@ -3391,28 +3464,28 @@ export default function AdminDashboardPage({
         <form className="admin-panel dashboard-upload-panel year-create-form" onSubmit={createNewScoutYearOnly}>
           <h2>Create New Scouting Year</h2>
           <div className="inline-editor-grid year-name-grid">
-            <label>Scouting Year Name *<input required placeholder="2026-2027" value={newScoutYearName} onChange={(event) => setNewScoutYearName(event.target.value)} /></label>
+            <label>Scouting Year Name *<input required placeholder="2026-2027" value={newScoutYearName} disabled={registrationImportLoading && Boolean(pendingRegistrationImport)} onChange={(event) => { setNewScoutYearName(event.target.value); cancelRegistrationUpload(); }} /></label>
           </div>
-          <button type="submit" className="primary-action" disabled={Boolean(uploadStatus)}>Create New Scouting Year</button>
+          <button type="submit" className="primary-action" disabled={Boolean(uploadStatus) || registrationImportLoading}>Create New Scouting Year</button>
         </form>
 
         <article className="admin-panel dashboard-upload-panel">
           <h2>Upload Registration List</h2>
           <p>Choose the target scouting year first. Uploading a list does not change the active year.</p>
           <div className="segmented-control registration-target-control">
-            <button type="button" className={registrationTargetMode === "existing" ? "active" : ""} onClick={() => setRegistrationTargetMode("existing")}>Existing year</button>
-            <button type="button" className={registrationTargetMode === "new" ? "active" : ""} onClick={() => setRegistrationTargetMode("new")}>Create new year</button>
+            <button type="button" className={registrationTargetMode === "existing" ? "active" : ""} disabled={registrationImportLoading && Boolean(pendingRegistrationImport)} onClick={() => { setRegistrationTargetMode("existing"); cancelRegistrationUpload(); }}>Existing year</button>
+            <button type="button" className={registrationTargetMode === "new" ? "active" : ""} disabled={registrationImportLoading && Boolean(pendingRegistrationImport)} onClick={() => { setRegistrationTargetMode("new"); cancelRegistrationUpload(); }}>Create new year</button>
           </div>
           {registrationTargetMode === "existing" ? (
             <label className="compact-field">
               Select scouting year
-              <select required value={registrationYearId} onChange={(event) => setRegistrationYearId(event.target.value)}>
+              <select required value={registrationYearId} disabled={registrationImportLoading && Boolean(pendingRegistrationImport)} onChange={(event) => { setRegistrationYearId(event.target.value); cancelRegistrationUpload(); }}>
                 {(data.scoutYears ?? []).map((year) => <option key={year.id} value={year.id}>{year.label} - {year.status}</option>)}
               </select>
             </label>
           ) : (
             <div className="inline-editor-grid year-name-grid">
-              <label>Scouting Year Name *<input required placeholder="2027-2028" value={newScoutYearName} onChange={(event) => setNewScoutYearName(event.target.value)} /></label>
+              <label>Scouting Year Name *<input required placeholder="2027-2028" value={newScoutYearName} disabled={registrationImportLoading && Boolean(pendingRegistrationImport)} onChange={(event) => { setNewScoutYearName(event.target.value); cancelRegistrationUpload(); }} /></label>
             </div>
           )}
           <p className="helper-text">
@@ -3420,8 +3493,28 @@ export default function AdminDashboardPage({
           </p>
           <label className="compact-field">
             Excel or CSV file
-            <input type="file" accept=".xlsx,.xls,.xml,.csv,.tsv,.html" onChange={handleRegistrationUpload} disabled={Boolean(uploadStatus)} />
+            <input ref={registrationFileInputRef} type="file" accept=".xlsx,.xls,.xml,.csv,.tsv,.html" onChange={handleRegistrationUpload} disabled={Boolean(uploadStatus) || registrationImportLoading} />
           </label>
+          {registrationImportLoading && !pendingRegistrationImport && <p role="status">Parsing registration sheet...</p>}
+          {pendingRegistrationImport && (
+            <section className="registration-import-preview" aria-label="Registration import preview">
+              <h3>Review registration import</h3>
+              <p><strong>File:</strong> {pendingRegistrationImport.fileName}</p>
+              <p><strong>Target year:</strong> {pendingRegistrationImport.targetLabel}</p>
+              <p><strong>Scouts parsed:</strong> {pendingRegistrationImport.count}</p>
+              <p className="helper-text">Confirming will archive existing scouts in that target year before new rows are imported.</p>
+              <ul>
+                {pendingRegistrationImport.scouts.slice(0, 5).map((scout, index) => (
+                  <li key={`${scout.name}-${index}`}>{scout.name}{scout.schoolGrade ? ` — ${scout.schoolGrade}` : ""}</li>
+                ))}
+              </ul>
+              {pendingRegistrationImport.count > 5 && <p className="helper-text">Showing the first five parsed scouts.</p>}
+              <div className="action-row">
+                <button type="button" className="primary-action" disabled={registrationImportLoading || Boolean(uploadStatus)} onClick={confirmRegistrationUpload}>{registrationImportLoading ? "Uploading..." : "Confirm upload"}</button>
+                <button type="button" className="secondary-action" disabled={registrationImportLoading || Boolean(uploadStatus)} onClick={cancelRegistrationUpload}>Cancel upload</button>
+              </div>
+            </section>
+          )}
         </article>
       </div>
     );
