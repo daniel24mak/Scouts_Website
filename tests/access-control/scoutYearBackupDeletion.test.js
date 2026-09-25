@@ -5,6 +5,7 @@ import fs from "node:fs";
 const migrationUrl = new URL("../../database/supabase-scout-year-backup-deletion.sql", import.meta.url);
 const sql = fs.existsSync(migrationUrl) ? fs.readFileSync(migrationUrl, "utf8") : "";
 const preserved = ["posts", "gallery_albums", "calendar_events", "announcements", "content_submissions", "documents", "reports", "archived_years"];
+const transitive = ["gallery_images", "photo_upload_batches", "post_revisions", "album_revisions"];
 const operational = ["attendance_records", "attendance_sessions", "chief_attendance_records", "chief_attendance_sessions", "scout_equipe_assignments", "registration_uploads", "scouts"];
 const registration = ["registration_campaigns", "registration_parent_verification_challenges", "scout_registration_drafts", "scout_registration_submissions", "scout_registration_people", "scout_registration_parent_contacts", "scout_registration_documents", "scout_registration_duplicate_matches", "scout_registration_reviews", "scout_registration_consents", "scout_season_enrollments", "registration_retention_jobs", "registration_document_access_logs"];
 const body = (name) => sql.match(new RegExp(`CREATE OR REPLACE FUNCTION public\\.${name}\\([\\s\\S]*?\\$\\$;`, "i"))?.[0] ?? "";
@@ -29,7 +30,7 @@ test("only normalized retention permission and its MFA authorize deletion", () =
   const deletion = body("delete_scout_year_with_backup");
   assert.match(sql, /ON CONFLICT \(id\) DO UPDATE SET[\s\S]*requires_mfa = EXCLUDED\.requires_mfa,[\s\S]*is_active = true;/i);
   assert.match(deletion, /target_year_id uuid,\s*target_receipt_id uuid,\s*expected_label text/i);
-  assert.match(deletion, /RETURNS jsonb[\s\S]*SECURITY DEFINER[\s\S]*SET search_path = pg_catalog, public[\s\S]*SET timezone = 'UTC'/i);
+  assert.match(deletion, /RETURNS jsonb[\s\S]*SECURITY DEFINER[\s\S]*SET search_path = pg_catalog, public, pg_temp[\s\S]*SET timezone = 'UTC'/i);
   assert.match(deletion, /actor_id uuid := auth\.uid\(\)/i);
   assert.match(deletion, /public\.has_permission\('registration\.retention\.manage'\)/i);
   assert.match(deletion, /public\.has_required_aal\('registration\.retention\.manage'\)/i);
@@ -40,11 +41,12 @@ test("only normalized retention permission and its MFA authorize deletion", () =
 
 test("backup snapshot records deterministic rows, not counts alone", () => {
   const snapshot = body("get_scout_year_backup_snapshot");
+  assert.match(snapshot, /SET search_path = pg_catalog, public, pg_temp/i);
   assert.match(snapshot, /SET timezone = 'UTC'/i);
   assert.match(snapshot, /jsonb_agg\(to_jsonb\(record\) ORDER BY/i);
   assert.match(snapshot, /sha256\(convert_to\(/i);
   assert.match(snapshot, /record\.original_document_id IN \(SELECT owned_document\.id/i, "cross-year derivative documents must be included before detaching their parent link");
-  for (const table of ["scout_years", ...preserved, ...operational, ...registration]) assert.match(snapshot, new RegExp(`'${table}'`));
+  for (const table of ["scout_years", ...preserved, ...transitive, ...operational, ...registration]) assert.match(snapshot, new RegExp(`'${table}'`));
   assert.match(snapshot, /'data',[\s\S]*'counts',[\s\S]*'snapshotHash'/i);
   assert.match(sql, /REVOKE ALL ON FUNCTION public\.get_scout_year_backup_snapshot\(uuid\) FROM PUBLIC, anon, authenticated/i);
   assert.match(sql, /GRANT EXECUTE ON FUNCTION public\.get_scout_year_backup_snapshot\(uuid\) TO service_role/i);
@@ -61,6 +63,11 @@ test("deletion rejects invalid year, receipt, manifest, and stale snapshot befor
 
 test("deletion preserves content and deletes every known operational dependency in order", () => {
   const deletion = body("delete_scout_year_with_backup");
+  assert.match(deletion, /FROM pg_catalog\.pg_constraint dependency/i);
+  assert.match(deletion, /JOIN pg_catalog\.pg_class child/i);
+  assert.match(deletion, /JOIN pg_catalog\.pg_namespace child_schema/i);
+  assert.doesNotMatch(deletion, /(?:FROM|JOIN)\s+pg_(?:constraint|class|namespace)\b/i);
+  for (const table of transitive) assert.match(deletion, new RegExp(`'${table}'`), `${table} must be locked during snapshot validation and deletion`);
   for (const table of preserved) {
     assert.match(deletion, new RegExp(`UPDATE public\\.${table} SET scout_year_id = NULL WHERE scout_year_id = target_year_id`, "i"));
     assert.doesNotMatch(deletion, new RegExp(`DELETE FROM public\\.${table}\\b`, "i"));
@@ -87,6 +94,8 @@ test("rollback SQL covers denial and successful data preservation", () => {
   assert.match(fixture, /^BEGIN;/m);
   assert.match(fixture, /ROLLBACK;\s*$/);
   for (const name of ["active_year", "receipt_wrong_user", "receipt_wrong_year", "receipt_expired", "receipt_used", "incomplete_manifest", "stale_snapshot", "label_mismatch", "permission_denied"]) assert.match(fixture, new RegExp(`'${name}'`));
+  assert.match(fixture, /CREATE TEMP TABLE pg_constraint/i);
+  assert.match(fixture, /UPDATE public\.gallery_images SET title = 'Mutated image title'[\s\S]*'stale_snapshot'/i);
   assert.match(fixture, /used_at IS NOT NULL/i);
   assert.match(fixture, /scout_year_id IS NULL/i);
   assert.match(fixture, /registration_campaigns/i);

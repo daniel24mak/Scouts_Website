@@ -54,7 +54,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = pg_catalog, public, pg_temp
 SET timezone = 'UTC'
 AS $$
 DECLARE
@@ -74,7 +74,11 @@ BEGIN
     SELECT * FROM (VALUES
       ('scout_years', 'record.id = $1'),
       ('posts', 'record.scout_year_id = $1'),
+      ('post_revisions', 'record.original_content_id IN (SELECT id FROM public.posts WHERE scout_year_id = $1)'),
       ('gallery_albums', 'record.scout_year_id = $1'),
+      ('gallery_images', 'record.album_id IN (SELECT id FROM public.gallery_albums WHERE scout_year_id = $1)'),
+      ('photo_upload_batches', 'record.album_id IN (SELECT id FROM public.gallery_albums WHERE scout_year_id = $1)'),
+      ('album_revisions', 'record.original_content_id IN (SELECT id FROM public.gallery_albums WHERE scout_year_id = $1)'),
       ('calendar_events', 'record.scout_year_id = $1'),
       ('announcements', 'record.scout_year_id = $1'),
       ('content_submissions', 'record.scout_year_id = $1'),
@@ -134,7 +138,7 @@ CREATE OR REPLACE FUNCTION public.delete_scout_year_with_backup(
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public
+SET search_path = pg_catalog, public, pg_temp
 SET timezone = 'UTC'
 AS $$
 DECLARE
@@ -160,6 +164,7 @@ BEGIN
   -- Consistent table order also serializes concurrent deletions of different years.
   LOCK TABLE public.scout_years IN SHARE ROW EXCLUSIVE MODE;
   FOREACH dependent_table IN ARRAY ARRAY[
+    'album_revisions',
     'announcements',
     'archived_years',
     'attendance_records',
@@ -170,7 +175,10 @@ BEGIN
     'content_submissions',
     'documents',
     'gallery_albums',
+    'gallery_images',
+    'photo_upload_batches',
     'posts',
+    'post_revisions',
     'registration_campaigns',
     'registration_document_access_logs',
     'registration_parent_verification_challenges',
@@ -197,9 +205,9 @@ BEGIN
 
   -- Fail closed if a future migration adds a new child outside this reviewed set.
   IF EXISTS (
-    SELECT 1 FROM pg_constraint dependency
-    JOIN pg_class child ON child.oid = dependency.conrelid
-    JOIN pg_namespace child_schema ON child_schema.oid = child.relnamespace
+    SELECT 1 FROM pg_catalog.pg_constraint dependency
+    JOIN pg_catalog.pg_class child ON child.oid = dependency.conrelid
+    JOIN pg_catalog.pg_namespace child_schema ON child_schema.oid = child.relnamespace
     WHERE dependency.contype = 'f'
       AND dependency.confrelid IN (
         SELECT to_regclass('public.' || parent_name)

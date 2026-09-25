@@ -39,6 +39,12 @@ BEGIN
 END;
 $$;
 
+-- SECURITY DEFINER functions must not resolve attacker-controlled temporary
+-- relations ahead of the reviewed public/catalog relations.
+CREATE TEMP TABLE pg_constraint (shadow text);
+CREATE TEMP TABLE pg_class (shadow text);
+CREATE TEMP TABLE pg_namespace (shadow text);
+
 DO $$
 DECLARE
   requesting_user uuid := gen_random_uuid();
@@ -51,7 +57,11 @@ DECLARE
   attendance_id uuid := gen_random_uuid();
   chief_attendance_id uuid := gen_random_uuid();
   post_id uuid := gen_random_uuid();
+  post_revision_id uuid := gen_random_uuid();
   album_id uuid := gen_random_uuid();
+  photo_batch_id uuid := gen_random_uuid();
+  gallery_image_id uuid := gen_random_uuid();
+  album_revision_id uuid := gen_random_uuid();
   calendar_id uuid := gen_random_uuid();
   announcement_id uuid := gen_random_uuid();
   content_id uuid := gen_random_uuid();
@@ -96,6 +106,10 @@ BEGIN
   INSERT INTO public.registration_uploads (scout_year_id, file_name, storage_path) VALUES (target_year, 'fixture.csv', target_year::text || '/fixture.csv');
   INSERT INTO public.posts (id, scout_year_id, slug, title, body, status) VALUES (post_id, target_year, post_id::text, 'Preserve post', 'Original body', 'draft');
   INSERT INTO public.gallery_albums (id, scout_year_id, title, status) VALUES (album_id, target_year, 'Preserve album', 'draft');
+  INSERT INTO public.post_revisions (id, original_content_id, proposed_data) VALUES (post_revision_id, post_id, '{"title":"Revised post"}');
+  INSERT INTO public.photo_upload_batches (id, album_id, photo_count) VALUES (photo_batch_id, album_id, 1);
+  INSERT INTO public.gallery_images (id, album_id, upload_batch_id, title) VALUES (gallery_image_id, album_id, photo_batch_id, 'Original image title');
+  INSERT INTO public.album_revisions (id, original_content_id, proposed_data) VALUES (album_revision_id, album_id, '{"title":"Revised album"}');
   INSERT INTO public.calendar_events (id, scout_year_id, title, event_date, status) VALUES (calendar_id, target_year, 'Preserve event', current_date, 'draft');
   INSERT INTO public.announcements (id, scout_year_id, title, body, status) VALUES (announcement_id, target_year, 'Preserve announcement', 'Original body', 'draft');
   INSERT INTO public.content_submissions (id, scout_year_id, content_type, title, status) VALUES (content_id, target_year, 'test', 'Preserve content', 'draft');
@@ -136,6 +150,7 @@ BEGIN
   END IF;
 
   PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', requesting_user, 'role', 'authenticated', 'aal', 'aal2')::text, true);
+  ASSERT pg_catalog.to_regclass('pg_constraint') = pg_catalog.to_regclass('pg_temp.pg_constraint'), 'temporary catalog shadow fixture is not active';
   snapshot := public.get_scout_year_backup_snapshot(target_year);
   original_snapshot := snapshot;
   ASSERT snapshot = public.get_scout_year_backup_snapshot(target_year), 'snapshot is nondeterministic';
@@ -186,6 +201,10 @@ BEGIN
   UPDATE public.attendance_records SET status = 'absent' WHERE session_id = attendance_id AND scout_id = target_scout;
   PERFORM pg_temp.expect_year_deletion_error(target_year, receipt_id, target_label, 'stale_snapshot');
   UPDATE public.attendance_records SET status = 'present' WHERE session_id = attendance_id AND scout_id = target_scout;
+  -- A mutation only in a transitively year-linked image must invalidate the backup.
+  UPDATE public.gallery_images SET title = 'Mutated image title' WHERE id = gallery_image_id;
+  PERFORM pg_temp.expect_year_deletion_error(target_year, receipt_id, target_label, 'stale_snapshot');
+  UPDATE public.gallery_images SET title = 'Original image title' WHERE id = gallery_image_id;
   -- Same count, replacement ID: counts and timestamps alone would miss this.
   UPDATE public.registration_uploads SET id = gen_random_uuid() WHERE scout_year_id = target_year;
   PERFORM pg_temp.expect_year_deletion_error(target_year, receipt_id, target_label, 'stale_snapshot');
@@ -217,7 +236,11 @@ BEGIN
   ASSERT NOT EXISTS (SELECT 1 FROM public.registration_uploads WHERE scout_year_id = target_year), 'upload retained';
   ASSERT EXISTS (SELECT 1 FROM public.scouts WHERE id = other_scout AND scout_year_id = other_year), 'unrelated scout deleted';
   ASSERT EXISTS (SELECT 1 FROM public.posts WHERE id = post_id AND scout_year_id IS NULL AND body = 'Original body'), 'post lost';
+  ASSERT EXISTS (SELECT 1 FROM public.post_revisions WHERE id = post_revision_id), 'post revision lost';
   ASSERT EXISTS (SELECT 1 FROM public.gallery_albums WHERE id = album_id AND scout_year_id IS NULL), 'album lost';
+  ASSERT EXISTS (SELECT 1 FROM public.photo_upload_batches WHERE id = photo_batch_id), 'photo batch lost';
+  ASSERT EXISTS (SELECT 1 FROM public.gallery_images WHERE id = gallery_image_id AND title = 'Original image title'), 'gallery image lost';
+  ASSERT EXISTS (SELECT 1 FROM public.album_revisions WHERE id = album_revision_id), 'album revision lost';
   ASSERT EXISTS (SELECT 1 FROM public.calendar_events WHERE id = calendar_id AND scout_year_id IS NULL), 'calendar lost';
   ASSERT EXISTS (SELECT 1 FROM public.announcements WHERE id = announcement_id AND scout_year_id IS NULL), 'announcement lost';
   ASSERT EXISTS (SELECT 1 FROM public.content_submissions WHERE id = content_id AND scout_year_id IS NULL), 'content lost';
