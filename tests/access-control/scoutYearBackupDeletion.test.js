@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
 import { transform } from "esbuild";
+import { unzipSync, zipSync as realZipSync } from "fflate";
 
 const migrationUrl = new URL("../../database/supabase-scout-year-backup-deletion.sql", import.meta.url);
 const sql = fs.existsSync(migrationUrl) ? fs.readFileSync(migrationUrl, "utf8") : "";
@@ -187,6 +188,31 @@ test("storage inventory honors configured upload bucket and fails closed on unma
   assert.throws(() => collectStorageReferences(fixtureSnapshot({ new_dataset: [{ storage_path: "unknown.pdf" }] })), /storage reference/i);
 });
 
+test("archived year snapshots map their real nested public-content shape without deletion ownership", async () => {
+  const { collectStorageReferences } = await helpers();
+  const refs = collectStorageReferences(fixtureSnapshot({
+    archived_years: [{
+      snapshot: {
+        posts: [{ thumbnailPath: "archives/post.webp" }],
+        albums: [{
+          thumbnailPath: "archives/album.webp",
+          photos: [{ storagePath: "archives/photo.webp", thumbnailPath: "archives/photo-thumb.webp" }]
+        }],
+        events: [{ storagePath: "archives/event.webp" }]
+      }
+    }]
+  }));
+  const byPath = Object.fromEntries(refs.map((ref) => [ref.path, ref]));
+  assert.deepEqual(Object.fromEntries(Object.entries(byPath).map(([path, ref]) => [path, ref.bucket])), {
+    "archives/album.webp": "album-thumbnails",
+    "archives/event.webp": "event-images",
+    "archives/photo-thumb.webp": "gallery",
+    "archives/photo.webp": "gallery",
+    "archives/post.webp": "blog-thumbnails"
+  });
+  assert.ok(refs.every((ref) => ref.deleteWithYear === false));
+});
+
 test("archive paths cannot traverse or collide after sanitization, including case-insensitive extraction", async () => {
   const { collectStorageReferences } = await helpers();
   const refs = collectStorageReferences(fixtureSnapshot({ gallery_images: ["a/b?.webp", "a/b*.webp", "a/B.webp", "a/b.webp", "a/日本語.webp"].map((storage_path) => ({ storage_path })) }));
@@ -218,6 +244,20 @@ test("manifest completeness requires every referenced object and retains the tru
   assert.equal(complete.files.length, csvs.length + 1);
   assert.deepEqual(complete.missing, []);
   assert.ok(complete.files.every((file) => /^[a-f0-9]{64}$/.test(file.sha256) && file.sizeBytes > 0));
+});
+
+test("real fflate ZIP output uses deterministic entry mtimes", async () => {
+  const { createDeterministicZipEntries } = await helpers();
+  const files = [{ archivePath: "year.csv", bytes: new TextEncoder().encode("id\r\n1\r\n") }];
+  const manifestBytes = new TextEncoder().encode('{"complete":true}');
+  const first = realZipSync(createDeterministicZipEntries(files, manifestBytes), { level: 6 });
+  const second = realZipSync(createDeterministicZipEntries(files, manifestBytes), { level: 6 });
+  assert.deepEqual(first, second);
+  assert.equal(new DataView(first.buffer, first.byteOffset, first.byteLength).getUint16(10, true), 0, "DOS entry time must be midnight");
+  assert.equal(new DataView(first.buffer, first.byteOffset, first.byteLength).getUint16(12, true), 0x2821, "DOS entry date must be 2000-01-01");
+  const unzipped = unzipSync(first);
+  assert.equal(new TextDecoder().decode(unzipped["year.csv"]), "id\r\n1\r\n");
+  assert.equal(new TextDecoder().decode(unzipped["manifest.json"]), '{"complete":true}');
 });
 
 // External boundaries alone are replaced; CSV, reference, hash, manifest, and
@@ -262,6 +302,25 @@ async function edgeHarness(options = {}) {
   });
   return { events, archives, receipts, audits, request: (body = { scoutYearId: yearId }, method = "POST") => handler(new Request("http://localhost/backup", { method, ...(method === "POST" ? { body: JSON.stringify(body) } : {}) })) };
 }
+
+test("user-editable revision JSON cannot choose a service-role storage bucket", async () => {
+  const harness = await edgeHarness({
+    snapshot: fixtureSnapshot({
+      post_revisions: [{
+        id: "malicious-revision",
+        proposed_data: {
+          thumbnailPath: "revisions/safe-thumbnail.webp",
+          bucket: "finance-private",
+          bucket_id: "finance-private",
+          storageBucket: "finance-private"
+        }
+      }]
+    })
+  });
+  assert.equal((await harness.request()).status, 200);
+  assert.ok(harness.events.includes("download:blog-thumbnails/revisions/safe-thumbnail.webp"));
+  assert.ok(!harness.events.some((event) => event.startsWith("download:finance-private/")));
+});
 
 test("Edge success uploads a full archive and issues a caller-bound unused 24-hour receipt and 15-minute URL", async () => {
   const harness = await edgeHarness();

@@ -2,7 +2,7 @@ import { zipSync } from "npm:fflate@0.8.2";
 import { AuthorizationError, parseUuid, requireDashboardPermission } from "../_shared/dashboardAuthorization.ts";
 import type { AuthorizedContext } from "../_shared/dashboardAuthorization.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { collectStorageReferences, createBackupManifest, createCsvExports, validateBackupSnapshot } from "../_shared/scoutYearBackup.ts";
+import { collectStorageReferences, createBackupManifest, createCsvExports, createDeterministicZipEntries, validateBackupSnapshot } from "../_shared/scoutYearBackup.ts";
 import type { DownloadedFile } from "../_shared/scoutYearBackup.ts";
 
 const backupBucket = "scout-year-backups";
@@ -64,9 +64,10 @@ Deno.serve(async (req) => {
     failureCode = "archive_failed";
     const manifest = await createBackupManifest(snapshot, csvFiles, references, downloaded, new Date().toISOString());
     if (!manifest.complete || !manifest.filesComplete) throw new Error("Backup inventory is incomplete");
-    const entries: Record<string, Uint8Array> = Object.create(null);
-    for (const file of [...csvFiles, ...downloaded]) entries[file.archivePath] = file.bytes;
-    entries["manifest.json"] = new TextEncoder().encode(JSON.stringify(manifest, null, 2));
+    const entries = createDeterministicZipEntries(
+      [...csvFiles, ...downloaded],
+      new TextEncoder().encode(JSON.stringify(manifest, null, 2))
+    );
     const zip = zipSync(entries, { level: 6 });
 
     stagedPath = `${context.callerId}/${scoutYearId}/${crypto.randomUUID()}.zip`;
