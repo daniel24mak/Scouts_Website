@@ -117,7 +117,17 @@ export async function supabaseRequest(path, options = {}) {
   }
 
   if (!response.ok) {
-    throw new Error((await response.text()) || `Supabase request failed: ${response.status}`);
+    const fallback = `Supabase request failed: ${response.status}`;
+    const text = (await response.text()).trim();
+    let message = text || fallback;
+    try {
+      const payload = JSON.parse(text);
+      message = [payload?.error, payload?.message, payload?.error_description]
+        .find((value) => typeof value === "string" && value.trim()) ?? fallback;
+    } catch {
+      // Non-JSON failures retain the existing plain-text response behavior.
+    }
+    throw new Error(message);
   }
 
   if (response.status === 204) {

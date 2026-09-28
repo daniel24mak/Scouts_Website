@@ -386,3 +386,236 @@ test("receipt, signing, and success-audit failures clean up the staged ZIP and n
     assert.ok(!JSON.stringify(result).includes("private"));
   }
 });
+
+const deletionUrl = new URL("../../supabase/functions/delete-scout-year/index.ts", import.meta.url);
+const receiptId = "33333333-3333-4333-8333-333333333333";
+
+async function deletionHarness(options = {}) {
+  assert.ok(fs.existsSync(deletionUrl), "deletion coordinator must exist");
+  const helper = await helpers();
+  const snapshot = options.snapshot ?? fixtureSnapshot({
+    registration_uploads: [{ id: "upload", scout_year_id: yearId, storage_path: `registration/${yearId}/source.xlsx` }],
+    posts: [{ id: "post", thumbnail_path: "preserved.webp" }]
+  });
+  const refs = helper.collectStorageReferences(snapshot, options.uploadBucket ?? "scouts-files");
+  const manifest = await helper.createBackupManifest(snapshot, helper.createCsvExports(snapshot), refs,
+    refs.map((ref) => ({ ...ref, bytes: new TextEncoder().encode("file") })), new Date().toISOString());
+  const receipt = {
+    id: receiptId, scout_year_id: yearId, requested_by: callerId,
+    archive_path: `${callerId}/${yearId}/archive.zip`, snapshot_hash: snapshotHash,
+    expires_at: new Date(Date.now() + 60000).toISOString(), used_at: null,
+    manifest: options.manifest ? options.manifest(manifest) : manifest,
+    ...options.receipt
+  };
+  const events = [], audits = [], logs = [], removals = [], rpcCalls = [];
+  class AuthorizationError extends Error { constructor(message, status) { super(message); this.status = status; } }
+  const adminClient = {
+    from(table) {
+      if (table === "audit_logs") return { insert: async (row) => {
+        events.push("audit"); audits.push(row);
+        return { error: options.auditFailure ? { message: "secret audit details" } : null };
+      } };
+      assert.equal(table, "scout_year_backup_receipts");
+      return { select: () => ({ eq: (key, value) => {
+        assert.equal(key, "id"); assert.equal(value, receiptId);
+        return { maybeSingle: async () => {
+          events.push("receipt");
+          return { data: options.missingReceipt ? null : receipt, error: options.receiptReadFailure ? { message: "secret read details" } : null };
+        } };
+      } }) };
+    },
+    rpc: async (name, payload) => {
+      assert.equal(name, "get_scout_year_backup_snapshot");
+      assert.equal(payload.target_year_id, yearId);
+      events.push("snapshot");
+      return { data: options.staleSnapshot ? { ...snapshot, snapshotHash: "b".repeat(64) } : snapshot, error: null };
+    },
+    storage: { from(bucket) { return { remove: async (paths) => {
+      events.push("remove"); removals.push({ bucket, paths });
+      if (options.cleanupThrow) throw new Error("secret cleanup exception");
+      return { data: [], error: options.cleanupFailure ? { message: "secret storage details" } : null };
+    } }; } }
+  };
+  const userClient = { rpc: async (name, payload) => {
+    events.push("delete-rpc"); rpcCalls.push({ name, payload });
+    if (options.rpcError) return { data: null, error: { message: options.rpcError } };
+    receipt.used_at = new Date().toISOString();
+    receipt.scout_year_id = null;
+    return { data: { deleted: true, yearId, receiptId }, error: null };
+  } };
+  let handler;
+  const source = fs.readFileSync(deletionUrl, "utf8").replace(/^import[\s\S]*?;\s*$/gm, "");
+  const compiled = await transform(source, { loader: "ts", format: "iife" });
+  vm.runInNewContext(compiled.code, {
+    ...helper, TextEncoder, Uint8Array, Request, Response, Date,
+    Deno: { env: { get: (name) => name === "SCOUT_UPLOAD_STORAGE_BUCKET" ? options.uploadBucket : undefined }, serve: (callback) => { handler = callback; } },
+    console: { warn: (...args) => logs.push(args), error: (...args) => logs.push(args) },
+    AuthorizationError,
+    parseUuid(value, field) {
+      if (typeof value !== "string" || ![yearId, receiptId].includes(value.toLowerCase())) throw new AuthorizationError(`${field} is invalid`, 400);
+      return value;
+    },
+    requireDashboardPermission: async (req, permission) => {
+      assert.equal(permission, "registration.retention.manage"); events.push("authorize");
+      if (options.denied) throw new AuthorizationError("Forbidden", 403);
+      return { adminClient, userClient, callerId };
+    },
+    corsHeaders: () => ({ "Access-Control-Allow-Origin": "http://localhost:5173" }),
+    jsonResponse: (req, body, status = 200) => new Response(JSON.stringify(body), { status })
+  });
+  return { events, audits, logs, removals, rpcCalls, request: (body = { scoutYearId: yearId, receiptId, expectedLabel: "2024-2025" }, method = "POST") =>
+    handler(new Request("http://localhost/delete", { method, ...(method === "POST" ? { body: typeof body === "string" ? body : JSON.stringify(body) } : {}) })) };
+}
+
+test("deletion commits through the caller RPC before removing only owned source objects and keeps the ZIP", async () => {
+  const harness = await deletionHarness();
+  const response = await harness.request({ scoutYearId: yearId, receiptId, expectedLabel: "2024-2025", paths: ["unrelated"], bucket: "finance-private", files: [{ path: "arbitrary" }] });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { deleted: true, yearId, receiptId, storageCleanupPending: false });
+  assert.ok(harness.events.indexOf("authorize") < harness.events.indexOf("receipt"));
+  assert.ok(harness.events.indexOf("snapshot") < harness.events.indexOf("delete-rpc"));
+  assert.ok(harness.events.indexOf("delete-rpc") < harness.events.indexOf("remove"));
+  assert.deepEqual(JSON.parse(JSON.stringify(harness.rpcCalls)), [{ name: "delete_scout_year_with_backup", payload: { target_year_id: yearId, target_receipt_id: receiptId, expected_label: "2024-2025" } }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(harness.removals)), [{ bucket: "scouts-files", paths: [`registration/${yearId}/source.xlsx`] }]);
+  assert.ok(harness.audits.some((audit) => audit.outcome === "success" && audit.metadata.receiptId === receiptId));
+});
+
+test("deletion rejects invalid methods, JSON, UUIDs and labels without database mutation", async () => {
+  for (const [body, method, status] of [
+    [undefined, "OPTIONS", 200], [undefined, "GET", 405], ["{", "POST", 400], [null, "POST", 400],
+    [{ scoutYearId: "bad", receiptId, expectedLabel: "year" }, "POST", 400],
+    [{ scoutYearId: yearId, receiptId: "bad", expectedLabel: "year" }, "POST", 400],
+    [{ scoutYearId: yearId, receiptId, expectedLabel: 1 }, "POST", 400],
+    [{ scoutYearId: yearId, receiptId, expectedLabel: "" }, "POST", 400]
+  ]) {
+    const harness = await deletionHarness();
+    assert.equal((await harness.request(body, method)).status, status);
+    assert.equal(harness.rpcCalls.length, 0); assert.equal(harness.removals.length, 0);
+    if (status >= 400) assert.ok(harness.audits.length || harness.logs.length, "rejection must leave a safe audit event");
+  }
+  const denied = await deletionHarness({ denied: true });
+  assert.equal((await denied.request()).status, 403);
+  assert.deepEqual(denied.events, ["authorize"]);
+  assert.ok(denied.logs.length);
+});
+
+test("deletion validates caller/year ownership, unused/unexpired receipt, and complete manifest", async () => {
+  for (const options of [
+    { missingReceipt: true }, { receiptReadFailure: true },
+    { receipt: { requested_by: yearId } }, { receipt: { scout_year_id: callerId } },
+    { receipt: { used_at: new Date().toISOString() } },
+    { receipt: { expires_at: new Date(Date.now() - 1000).toISOString() } }, { receipt: { expires_at: "invalid" } },
+    { manifest: () => null }, { manifest: (m) => ({ ...m, complete: false }) },
+    { manifest: (m) => ({ ...m, filesComplete: false }) }, { manifest: (m) => ({ ...m, yearId: callerId }) },
+    { manifest: (m) => ({ ...m, snapshotHash: "b".repeat(64) }) }, { manifest: (m) => ({ ...m, counts: [] }) },
+    { manifest: (m) => ({ ...m, missing: [{ bucket: "scouts-files", path: "missing" }] }) }
+  ]) {
+    const harness = await deletionHarness(options);
+    const response = await harness.request();
+    assert.ok(response.status >= 400, JSON.stringify(options));
+    assert.equal(harness.rpcCalls.length, 0); assert.equal(harness.removals.length, 0);
+    assert.ok(harness.audits.some((audit) => audit.outcome === "failed"));
+    assert.ok(!(await response.text()).includes("secret"));
+  }
+});
+
+test("deletion rejects malformed or forged inventory against the shared trusted allowlist", async () => {
+  const mutateFile = (change) => (m) => ({ ...m, files: m.files.map((f) => f.deleteWithYear ? { ...f, ...change } : f) });
+  for (const manifest of [
+    (m) => ({ ...m, files: {} }), (m) => ({ ...m, files: [] }),
+    (m) => ({ ...m, files: [...m.files, m.files.at(-1)] }),
+    mutateFile({ bucket: "finance-private" }), mutateFile({ path: "../escape" }),
+    mutateFile({ path: "registration/another-year/source.xlsx" }), mutateFile({ deleteWithYear: "true" }),
+    mutateFile({ sha256: "invalid" }), mutateFile({ sizeBytes: -1 }),
+    (m) => ({ ...m, files: m.files.map((f) => f.bucket === "blog-thumbnails" ? { ...f, deleteWithYear: true } : f) })
+  ]) {
+    const harness = await deletionHarness({ manifest });
+    assert.equal((await harness.request()).status, 409);
+    assert.equal(harness.rpcCalls.length, 0); assert.equal(harness.removals.length, 0);
+  }
+  const custom = await deletionHarness({ uploadBucket: "custom-uploads" });
+  assert.equal((await custom.request()).status, 200);
+  assert.equal(custom.removals[0].bucket, "custom-uploads");
+});
+
+test("stale snapshots and RPC transaction failures never trigger source storage deletion", async () => {
+  for (const options of [{ staleSnapshot: true }, { rpcError: "stale_snapshot" }, { rpcError: "receipt_used" }, { rpcError: "permission_denied" }, { rpcError: "secret backend detail https://private.test?token=secret" }]) {
+    const harness = await deletionHarness(options);
+    const response = await harness.request();
+    assert.ok(response.status >= 400);
+    assert.equal(harness.removals.length, 0);
+    assert.ok(harness.audits.some((audit) => audit.outcome === "failed"));
+    assert.ok(!JSON.stringify([await response.json(), harness.audits, harness.logs]).includes("secret"));
+  }
+});
+
+test("cleanup failures report committed deletion and pending cleanup, audited without private errors", async () => {
+  for (const options of [{ cleanupFailure: true }, { cleanupThrow: true }]) {
+    const harness = await deletionHarness(options);
+    const response = await harness.request();
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.equal(result.deleted, true); assert.equal(result.storageCleanupPending, true);
+    assert.ok(harness.audits.some((audit) => audit.outcome === "failed" && audit.metadata.storageCleanupPending === true));
+    assert.ok(!JSON.stringify([result, harness.audits, harness.logs]).includes("secret"));
+    const retry = await harness.request();
+    assert.equal(retry.status, 409, "consumed receipt retry must fail closed");
+    assert.equal(harness.rpcCalls.length, 1); assert.equal(harness.removals.length, 1);
+  }
+});
+
+test("an Edge audit outage after commit cannot turn completed deletion into an error", async () => {
+  const harness = await deletionHarness({ auditFailure: true });
+  const response = await harness.request();
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.deleted, true); assert.equal(result.auditPending, true);
+  assert.ok(harness.logs.length);
+  assert.ok(!JSON.stringify([result, harness.logs]).includes("secret"));
+});
+
+async function frontendServices(options = {}) {
+  const requests = [];
+  const session = { access_token: "user-access-token", user: { id: callerId } };
+  const globals = { FormData, Response, console, window: { localStorage: {
+    getItem: () => JSON.stringify(session), setItem() {}, removeItem() {}
+  } }, fetch: async (url, init) => {
+    requests.push({ url, ...init });
+    return new Response(options.responseBody ?? JSON.stringify({ ok: true }), { status: options.status ?? 200 });
+  } };
+  const clientSource = fs.readFileSync(new URL("../../src/services/supabaseClient.js", import.meta.url), "utf8")
+    .replace("import.meta.env", JSON.stringify({ VITE_SUPABASE_URL: "https://supabase.test", VITE_SUPABASE_PUBLISHABLE_KEY: "public-key" }));
+  const clientModule = { exports: {} };
+  vm.runInNewContext((await transform(clientSource, { format: "cjs" })).code, { ...globals, module: clientModule });
+  const serviceModule = { exports: {} };
+  const serviceSource = fs.readFileSync(new URL("../../src/services/scoutService.js", import.meta.url), "utf8");
+  vm.runInNewContext((await transform(serviceSource, { format: "cjs" })).code, {
+    ...globals, module: serviceModule, require: (name) => name === "./supabaseClient.js" ? clientModule.exports : {}
+  });
+  return { requests, services: serviceModule.exports, client: clientModule.exports };
+}
+
+test("frontend backup and deletion services invoke the authenticated Edge endpoints with bounded payloads", async () => {
+  const { services, requests } = await frontendServices();
+  assert.equal(typeof services.createScoutYearBackup, "function");
+  assert.equal(typeof services.deleteScoutYear, "function");
+  await services.createScoutYearBackup(yearId);
+  await services.deleteScoutYear({ scoutYearId: yearId, receiptId, expectedLabel: "2024-2025", paths: ["untrusted"] });
+  assert.deepEqual(requests.map((request) => [request.url, request.method, request.headers.Authorization, JSON.parse(request.body)]), [
+    ["https://supabase.test/functions/v1/scout-year-backup", "POST", "Bearer user-access-token", { scoutYearId: yearId }],
+    ["https://supabase.test/functions/v1/delete-scout-year", "POST", "Bearer user-access-token", { scoutYearId: yearId, receiptId, expectedLabel: "2024-2025" }]
+  ]);
+});
+
+test("Supabase errors surface JSON error text, message fallback, plain text, and empty response fallback", async () => {
+  for (const [responseBody, expected] of [
+    ['{"error":"Create a fresh backup","code":"stale_snapshot"}', "Create a fresh backup"],
+    ['{"message":"Permission denied","details":"private context"}', "Permission denied"],
+    ['{"error_description":"Session expired","error":"invalid_grant"}', "invalid_grant"],
+    ['{"error":{"detail":"not user-facing"}}', "Supabase request failed: 409"],
+    ["Plain failure", "Plain failure"], ["", "Supabase request failed: 409"]
+  ]) {
+    const { client } = await frontendServices({ status: 409, responseBody });
+    await assert.rejects(client.invokeSupabaseFunction("delete-scout-year", {}), (error) => error.message === expected);
+  }
+});
