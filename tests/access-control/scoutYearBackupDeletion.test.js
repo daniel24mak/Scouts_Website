@@ -408,6 +408,9 @@ async function deletionHarness(options = {}) {
     ...options.receipt
   };
   const events = [], audits = [], logs = [], removals = [], rpcCalls = [];
+  const storageObjects = new Map(refs.map((ref) => [`${ref.bucket}/${ref.path}`, "original bytes"]));
+  storageObjects.set(`scout-year-backups/${receipt.archive_path}`, "backup bytes");
+  const survivingRecords = options.survivingRecords ?? [];
   class AuthorizationError extends Error { constructor(message, status) { super(message); this.status = status; } }
   const adminClient = {
     from(table) {
@@ -432,8 +435,8 @@ async function deletionHarness(options = {}) {
     },
     storage: { from(bucket) { return { remove: async (paths) => {
       events.push("remove"); removals.push({ bucket, paths });
-      if (options.cleanupThrow) throw new Error("secret cleanup exception");
-      return { data: [], error: options.cleanupFailure ? { message: "secret storage details" } : null };
+      for (const path of paths) storageObjects.delete(`${bucket}/${path}`);
+      return { data: [], error: null };
     } }; } }
   };
   const userClient = { rpc: async (name, payload) => {
@@ -463,21 +466,63 @@ async function deletionHarness(options = {}) {
     corsHeaders: () => ({ "Access-Control-Allow-Origin": "http://localhost:5173" }),
     jsonResponse: (req, body, status = 200) => new Response(JSON.stringify(body), { status })
   });
-  return { events, audits, logs, removals, rpcCalls, request: (body = { scoutYearId: yearId, receiptId, expectedLabel: "2024-2025" }, method = "POST") =>
+  return { events, audits, logs, removals, rpcCalls, storageObjects, survivingRecords, request: (body = { scoutYearId: yearId, receiptId, expectedLabel: "2024-2025" }, method = "POST") =>
     handler(new Request("http://localhost/delete", { method, ...(method === "POST" ? { body: typeof body === "string" ? body : JSON.stringify(body) } : {}) })) };
 }
 
-test("deletion commits through the caller RPC before removing only owned source objects and keeps the ZIP", async () => {
+test("deletion commits through the caller RPC and retains source objects pending atomic ownership verification", async () => {
   const harness = await deletionHarness();
   const response = await harness.request({ scoutYearId: yearId, receiptId, expectedLabel: "2024-2025", paths: ["unrelated"], bucket: "finance-private", files: [{ path: "arbitrary" }] });
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { deleted: true, yearId, receiptId, storageCleanupPending: false });
+  assert.deepEqual(await response.json(), { deleted: true, yearId, receiptId, storageCleanupPending: true, storageCleanupReason: "ownership_check_unavailable" });
   assert.ok(harness.events.indexOf("authorize") < harness.events.indexOf("receipt"));
   assert.ok(harness.events.indexOf("snapshot") < harness.events.indexOf("delete-rpc"));
-  assert.ok(harness.events.indexOf("delete-rpc") < harness.events.indexOf("remove"));
+  assert.ok(harness.events.indexOf("delete-rpc") < harness.events.indexOf("audit"));
   assert.deepEqual(JSON.parse(JSON.stringify(harness.rpcCalls)), [{ name: "delete_scout_year_with_backup", payload: { target_year_id: yearId, target_receipt_id: receiptId, expected_label: "2024-2025" } }]);
-  assert.deepEqual(JSON.parse(JSON.stringify(harness.removals)), [{ bucket: "scouts-files", paths: [`registration/${yearId}/source.xlsx`] }]);
-  assert.ok(harness.audits.some((audit) => audit.outcome === "success" && audit.metadata.receiptId === receiptId));
+  assert.deepEqual(harness.removals, []);
+  assert.ok(harness.audits.some((audit) => audit.outcome === "failed" && audit.metadata.receiptId === receiptId
+    && audit.metadata.deleted === true && audit.metadata.code === "ownership_check_unavailable" && audit.metadata.pendingFileCount === 1));
+  assert.equal(harness.storageObjects.get(`scouts-files/registration/${yearId}/source.xlsx`), "original bytes");
+  assert.equal(harness.storageObjects.get(`scout-year-backups/${callerId}/${yearId}/archive.zip`), "backup bytes");
+});
+
+for (const [name, record] of [
+  ["another year's registration upload", { table: "registration_uploads", scout_year_id: callerId }],
+  ["a preserved report with no year", { table: "reports", scout_year_id: null }]
+]) {
+  test(`deletion keeps the actual object referenced by ${name}`, async () => {
+    const path = `registration/${yearId}/source.xlsx`;
+    const harness = await deletionHarness({ survivingRecords: [{ ...record, storage_path: path }] });
+    const response = await harness.request();
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.equal(result.deleted, true); assert.equal(result.storageCleanupPending, true);
+    assert.equal(harness.survivingRecords[0].storage_path, path);
+    assert.equal(harness.storageObjects.get(`scouts-files/${path}`), "original bytes", "surviving reference must keep resolving");
+    assert.equal(harness.removals.length, 0);
+  });
+}
+
+test("cleanup retention is unconditional for valid and foreign year path prefixes until an atomic claim exists", async () => {
+  for (const path of [`registration/${yearId}/source.xlsx`, `registration/${callerId}/source.xlsx`, "legacy/source.xlsx"]) {
+    const harness = await deletionHarness({ snapshot: fixtureSnapshot({ registration_uploads: [{ scout_year_id: yearId, storage_path: path }] }) });
+    const response = await harness.request();
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.equal(result.storageCleanupPending, true);
+    assert.equal(result.storageCleanupReason, "ownership_check_unavailable");
+    assert.equal(harness.storageObjects.get(`scouts-files/${path}`), "original bytes");
+    assert.equal(harness.removals.length, 0);
+  }
+});
+
+test("a year without operational source objects completes with no pending cleanup", async () => {
+  const harness = await deletionHarness({ snapshot: fixtureSnapshot({ posts: [{ thumbnail_path: "preserved.webp" }] }) });
+  const response = await harness.request();
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { deleted: true, yearId, receiptId, storageCleanupPending: false });
+  assert.equal(harness.removals.length, 0);
+  assert.ok(harness.audits.some((audit) => audit.outcome === "success" && audit.metadata.pendingFileCount === 0));
 });
 
 test("deletion rejects invalid methods, JSON, UUIDs and labels without database mutation", async () => {
@@ -535,7 +580,8 @@ test("deletion rejects malformed or forged inventory against the shared trusted 
   }
   const custom = await deletionHarness({ uploadBucket: "custom-uploads" });
   assert.equal((await custom.request()).status, 200);
-  assert.equal(custom.removals[0].bucket, "custom-uploads");
+  assert.equal(custom.removals.length, 0);
+  assert.equal(custom.storageObjects.get(`custom-uploads/registration/${yearId}/source.xlsx`), "original bytes");
 });
 
 test("stale snapshots and RPC transaction failures never trigger source storage deletion", async () => {
@@ -549,9 +595,8 @@ test("stale snapshots and RPC transaction failures never trigger source storage 
   }
 });
 
-test("cleanup failures report committed deletion and pending cleanup, audited without private errors", async () => {
-  for (const options of [{ cleanupFailure: true }, { cleanupThrow: true }]) {
-    const harness = await deletionHarness(options);
+test("unavailable cleanup reports committed deletion and rejects consumed-receipt retries", async () => {
+    const harness = await deletionHarness();
     const response = await harness.request();
     assert.equal(response.status, 200);
     const result = await response.json();
@@ -560,8 +605,7 @@ test("cleanup failures report committed deletion and pending cleanup, audited wi
     assert.ok(!JSON.stringify([result, harness.audits, harness.logs]).includes("secret"));
     const retry = await harness.request();
     assert.equal(retry.status, 409, "consumed receipt retry must fail closed");
-    assert.equal(harness.rpcCalls.length, 1); assert.equal(harness.removals.length, 1);
-  }
+    assert.equal(harness.rpcCalls.length, 1); assert.equal(harness.removals.length, 0);
 });
 
 test("an Edge audit outage after commit cannot turn completed deletion into an error", async () => {
@@ -576,12 +620,16 @@ test("an Edge audit outage after commit cannot turn completed deletion into an e
 
 async function frontendServices(options = {}) {
   const requests = [];
-  const session = { access_token: "user-access-token", user: { id: callerId } };
+  const removedKeys = [];
+  let session = { access_token: "user-access-token", user: { id: callerId }, ...options.session };
   const globals = { FormData, Response, console, window: { localStorage: {
-    getItem: () => JSON.stringify(session), setItem() {}, removeItem() {}
+    getItem: () => session ? JSON.stringify(session) : null,
+    setItem(key, value) { session = JSON.parse(value); },
+    removeItem(key) { removedKeys.push(key); session = null; }
   } }, fetch: async (url, init) => {
     requests.push({ url, ...init });
-    return new Response(options.responseBody ?? JSON.stringify({ ok: true }), { status: options.status ?? 200 });
+    const response = options.responses?.[requests.length - 1] ?? options;
+    return new Response(response.responseBody ?? JSON.stringify({ ok: true }), { status: response.status ?? 200 });
   } };
   const clientSource = fs.readFileSync(new URL("../../src/services/supabaseClient.js", import.meta.url), "utf8")
     .replace("import.meta.env", JSON.stringify({ VITE_SUPABASE_URL: "https://supabase.test", VITE_SUPABASE_PUBLISHABLE_KEY: "public-key" }));
@@ -592,7 +640,7 @@ async function frontendServices(options = {}) {
   vm.runInNewContext((await transform(serviceSource, { format: "cjs" })).code, {
     ...globals, module: serviceModule, require: (name) => name === "./supabaseClient.js" ? clientModule.exports : {}
   });
-  return { requests, services: serviceModule.exports, client: clientModule.exports };
+  return { requests, removedKeys, services: serviceModule.exports, client: clientModule.exports };
 }
 
 test("frontend backup and deletion services invoke the authenticated Edge endpoints with bounded payloads", async () => {
@@ -617,5 +665,24 @@ test("Supabase errors surface JSON error text, message fallback, plain text, and
   ]) {
     const { client } = await frontendServices({ status: 409, responseBody });
     await assert.rejects(client.invokeSupabaseFunction("delete-scout-year", {}), (error) => error.message === expected);
+  }
+});
+
+test("a 401 followed by a JSON refresh failure exposes one clean error and clears invalid sessions", async () => {
+  for (const [responseBody, expected] of [
+    ['{"error":"Session expired","details":"private context"}', "Session expired"],
+    ['{"message":"Refresh token is invalid","details":"private context"}', "Refresh token is invalid"],
+    ['{"error_description":"Please log in again"}', "Please log in again"],
+    ["", "Session refresh failed: 400"]
+  ]) {
+    const { client, requests, removedKeys } = await frontendServices({
+      session: { refresh_token: "refresh-token" },
+      responses: [{ status: 401, responseBody: '{"error":"expired JWT"}' }, { status: 400, responseBody }]
+    });
+    await assert.rejects(client.invokeSupabaseFunction("delete-scout-year", {}), (error) => error.message === expected);
+    assert.equal(requests.length, 2);
+    assert.equal(requests[1].url, "https://supabase.test/auth/v1/token?grant_type=refresh_token");
+    assert.deepEqual(JSON.parse(requests[1].body), { refresh_token: "refresh-token" });
+    assert.deepEqual(removedKeys, ["scouts-supabase-session"]);
   }
 });

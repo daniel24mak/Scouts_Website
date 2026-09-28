@@ -144,24 +144,22 @@ Deno.serve(async (req) => {
     }
     if (result?.deleted !== true || result.yearId !== scoutYearId || result.receiptId !== receiptId) throw new Error("Deletion result could not be verified");
 
-    const byBucket = new Map<string, string[]>();
-    for (const file of cleanup) byBucket.set(file.bucket, [...(byBucket.get(file.bucket) ?? []), file.path]);
-    let pendingFileCount = 0;
-    for (const [bucket, paths] of byBucket) {
-      for (let offset = 0; offset < paths.length; offset += 100) {
-        const batch = paths.slice(offset, offset + 100);
-        try {
-          const { error } = await context.adminClient.storage.from(bucket).remove(batch);
-          if (error) pendingFileCount += batch.length;
-        } catch { pendingFileCount += batch.length; }
-      }
-    }
+    // The year snapshot cannot establish exclusive ownership across all other
+    // years, null-year content, and nested JSON storage references. A separate
+    // reference-query RPC/advisory transaction lock would end before the Storage
+    // HTTP request, leaving concurrent cleanup and new-reference races open.
+    // Until an atomic database-backed claim protects that entire operation,
+    // retain every source object, including paths with the expected year prefix.
+    // A future reconciler must verify every surviving schema reference and path
+    // ownership while holding that claim; the receipt preserves its inventory.
+    const pendingFileCount = cleanup.length;
     const storageCleanupPending = pendingFileCount > 0;
+    const storageCleanupReason = "ownership_check_unavailable";
     let auditPending = false;
     try {
       await auditDeletion(context, scoutYearId, storageCleanupPending ? "failed" : "success", {
         receiptId, deleted: true, storageCleanupPending, pendingFileCount,
-        fileCount: cleanup.length, code: storageCleanupPending ? "storage_cleanup_failed" : "deletion_completed"
+        fileCount: cleanup.length, code: storageCleanupPending ? storageCleanupReason : "deletion_completed"
       });
     } catch {
       // SQL already wrote the durable deletion audit in the committed transaction.
@@ -171,7 +169,11 @@ Deno.serve(async (req) => {
     // Retain the receipt manifest and staged ZIP for recovery until expiry.
     // Expired archives may be purged separately; do not invalidate a signed URL
     // that the client may still be downloading immediately after deletion.
-    return jsonResponse(req, { deleted: true, yearId: scoutYearId, receiptId, storageCleanupPending, ...(auditPending ? { auditPending: true } : {}) });
+    return jsonResponse(req, {
+      deleted: true, yearId: scoutYearId, receiptId, storageCleanupPending,
+      ...(storageCleanupPending ? { storageCleanupReason } : {}),
+      ...(auditPending ? { auditPending: true } : {})
+    });
   } catch (error) {
     const status = error instanceof AuthorizationError ? error.status : 500;
     if (context) {

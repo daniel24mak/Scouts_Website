@@ -45,6 +45,17 @@ export function getCurrentSupabaseUserId() {
   return getStoredSupabaseSession()?.user?.id ?? null;
 }
 
+async function supabaseErrorMessage(response, fallback) {
+  const text = (await response.text()).trim();
+  try {
+    const payload = JSON.parse(text);
+    return [payload?.error, payload?.message, payload?.error_description]
+      .find((value) => typeof value === "string" && value.trim()) ?? fallback;
+  } catch {
+    return text || fallback;
+  }
+}
+
 async function refreshStoredSupabaseSession() {
   const currentSession = getStoredSupabaseSession();
   if (!currentSession?.refresh_token) {
@@ -62,7 +73,7 @@ async function refreshStoredSupabaseSession() {
     })
       .then(async (response) => {
         if (!response.ok) {
-          const message = (await response.text()) || `Session refresh failed: ${response.status}`;
+          const message = await supabaseErrorMessage(response, `Session refresh failed: ${response.status}`);
           if (response.status === 400 || response.status === 401) {
             clearSupabaseSession();
           }
@@ -117,17 +128,7 @@ export async function supabaseRequest(path, options = {}) {
   }
 
   if (!response.ok) {
-    const fallback = `Supabase request failed: ${response.status}`;
-    const text = (await response.text()).trim();
-    let message = text || fallback;
-    try {
-      const payload = JSON.parse(text);
-      message = [payload?.error, payload?.message, payload?.error_description]
-        .find((value) => typeof value === "string" && value.trim()) ?? fallback;
-    } catch {
-      // Non-JSON failures retain the existing plain-text response behavior.
-    }
-    throw new Error(message);
+    throw new Error(await supabaseErrorMessage(response, `Supabase request failed: ${response.status}`));
   }
 
   if (response.status === 204) {
