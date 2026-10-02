@@ -31,7 +31,8 @@ function deletionHarness(overrides = {}) {
     "confirmScoutYearDelete"
   ].map(functionSource).concat([
     optionalFunctionSource("expireScoutYearReceipts", "(current) => current"),
-    optionalFunctionSource("cleanupScoutYearOperations", "() => {}")
+    optionalFunctionSource("cleanupScoutYearOperations", "() => {}"),
+    optionalFunctionSource("focusScoutYearDeleteEnabledControl", "() => {}")
   ]).join("\n");
   const events = [];
   const year = overrides.year ?? { id: "year-a", label: "2024-2025", status: "inactive", isActive: false };
@@ -74,6 +75,7 @@ function deletionHarness(overrides = {}) {
       activeElement: null
     },
     Date,
+    modalControlsEnabled: overrides.modalControlsEnabled ?? false,
     setSaveMessage(message) { events.push(["message", message]); }
   };
   const factory = new Function(...Object.keys(scope), `
@@ -90,7 +92,14 @@ function deletionHarness(overrides = {}) {
     const scoutYearOperationsMountedRef = { current: true };
     const scoutYearsRef = { current: data.scoutYears };
     const scoutYearDeleteReturnFocusRef = { current: null };
-    const scoutYearDeleteModalRef = { current: { querySelectorAll: () => [], focus: () => events.push("modal-focus") } };
+    const confirmationInput = { disabled: false, focus() { document.activeElement = this; events.push("input-focus"); } };
+    const cancelButton = { disabled: false, focus() { document.activeElement = this; events.push("cancel-focus"); } };
+    const scoutYearDeleteModalElement = {
+      querySelectorAll: () => modalControlsEnabled ? [confirmationInput, cancelButton] : [],
+      focus() { document.activeElement = this; events.push("modal-focus"); }
+    };
+    const scoutYearDeleteModalRef = { current: scoutYearDeleteModalElement };
+    const scoutYearDeleteInputRef = { current: confirmationInput };
     const registrationParseVersionRef = { current: 0 };
     const registrationFileInputRef = { current: { value: "selected.csv" } };
     const setScoutYearBackups = (update) => { scoutYearBackups = typeof update === "function" ? update(scoutYearBackups) : update; };
@@ -109,9 +118,12 @@ function deletionHarness(overrides = {}) {
       confirmScoutYearDelete,
       expireScoutYearReceipts,
       cleanupScoutYearOperations,
+      focusScoutYearDeleteEnabledControl,
       setDeleteLabel: setScoutYearDeleteLabel,
       replaceBackups: setScoutYearBackups,
       replaceYears: (years) => { scoutYearsRef.current = years; },
+      focusModal: () => { document.activeElement = scoutYearDeleteModalElement; },
+      focusOutside: () => { document.activeElement = { outside: true }; },
       state: () => ({ scoutYearBackups, scoutYearDeleteRequest, scoutYearDeleteLabel, registrationYearId, pendingRegistrationImport, registrationParseVersion: registrationParseVersionRef.current, registrationFileValue: registrationFileInputRef.current?.value })
     };
   `);
@@ -312,6 +324,25 @@ test("deleting the selected registration year clears pending import state and se
   assert.ok(flow.state().registrationParseVersion > 0);
 });
 
+test("deleting the stored existing selection while creating a new year preserves the new-year preview", async () => {
+  const newYearPreview = { targetIdentity: "new:2026-2027", scouts: [{ name: "New Year Scout" }] };
+  const flow = deletionHarness({
+    registrationTargetMode: "new",
+    pendingRegistrationImport: newYearPreview,
+    initialBackups: {
+      "year-a": { yearId: "year-a", status: "ready", receiptId: "receipt-a", expiresAt: "2099-01-01T00:00:00.000Z" }
+    }
+  });
+  flow.openScoutYearDelete(flow.year);
+  flow.setDeleteLabel(flow.year.label);
+  await flow.confirmScoutYearDelete();
+  assert.equal(flow.state().registrationYearId, "year-b");
+  assert.equal(flow.state().pendingRegistrationImport, newYearPreview);
+  assert.equal(flow.state().registrationFileValue, "selected.csv");
+  assert.equal(flow.state().registrationParseVersion, 0);
+  assert.match(dashboard, /\}, \[registrationTargetIdentity\]\);/);
+});
+
 test("server deletion errors remain announced inside the open modal", () => {
   const modal = dashboard.match(/\{scoutYearDeleteRequest && \([\s\S]*?\n      \)\}/)?.[0] ?? "";
   assert.match(modal, /role="alert"/);
@@ -327,6 +358,34 @@ test("modal retains focus when deletion disables every control", () => {
   assert.ok(flow.events.includes("prevent-default"));
   assert.ok(flow.events.includes("modal-focus"));
   assert.match(dashboard, /className="scout-year-delete-modal"[^>]*tabIndex=\{-1\}/);
+});
+
+test("failed deletion restores the confirmation input and traps reverse focus from the dialog container", async () => {
+  const flow = deletionHarness({
+    modalControlsEnabled: true,
+    initialBackups: {
+      "year-a": { yearId: "year-a", status: "ready", receiptId: "receipt-a", expiresAt: "2099-01-01T00:00:00.000Z" }
+    },
+    deleteScoutYear: async () => { throw new Error("Deletion failed"); }
+  });
+  flow.openScoutYearDelete(flow.year);
+  flow.setDeleteLabel(flow.year.label);
+  flow.focusModal();
+  await flow.confirmScoutYearDelete();
+  flow.focusScoutYearDeleteEnabledControl();
+  assert.ok(flow.events.includes("input-focus"));
+  assert.match(dashboard, /else if \(scoutYearDeleteRequest\) \{\s+focusScoutYearDeleteEnabledControl\(\);/);
+
+  flow.focusModal();
+  const fromContainer = { key: "Tab", shiftKey: true, preventDefault: () => flow.events.push("prevent-reverse") };
+  flow.handleScoutYearDeleteModalKeyDown(fromContainer);
+  assert.ok(flow.events.includes("prevent-reverse"));
+  assert.ok(flow.events.includes("cancel-focus"));
+
+  flow.focusOutside();
+  const fromOutside = { key: "Tab", shiftKey: true, preventDefault: () => flow.events.push("prevent-outside") };
+  flow.handleScoutYearDeleteModalKeyDown(fromOutside);
+  assert.ok(flow.events.includes("prevent-outside"));
 });
 
 test("receipt expiry never overwrites an in-flight deleting state", () => {

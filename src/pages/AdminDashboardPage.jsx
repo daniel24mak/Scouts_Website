@@ -1029,7 +1029,7 @@ export default function AdminDashboardPage({
     registrationParseVersionRef.current += 1;
     setPendingRegistrationImport(null);
     if (registrationFileInputRef.current) registrationFileInputRef.current.value = "";
-  }, [registrationTargetMode, registrationYearId, newScoutYearName]);
+  }, [registrationTargetIdentity]);
   useEffect(() => {
     const nextExpiry = Object.values(scoutYearBackups)
       .filter((backup) => backup?.receiptId && Number.isFinite(Date.parse(backup.expiresAt)))
@@ -1058,6 +1058,8 @@ export default function AdminDashboardPage({
   useEffect(() => {
     if (scoutYearDeleteRequest && scoutYearBackups[scoutYearDeleteRequest.yearId]?.status === "deleting") {
       scoutYearDeleteModalRef.current?.focus();
+    } else if (scoutYearDeleteRequest) {
+      focusScoutYearDeleteEnabledControl();
     }
   }, [scoutYearBackups, scoutYearDeleteRequest]);
   const [myWorkTasks, setMyWorkTasks] = useState([]);
@@ -2112,6 +2114,15 @@ export default function AdminDashboardPage({
     setScoutYearDeleteRequest(null);
     setScoutYearDeleteLabel("");
   };
+  const focusScoutYearDeleteEnabledControl = () => {
+    const modal = scoutYearDeleteModalRef.current;
+    if (!modal || document.activeElement !== modal) return;
+    if (scoutYearDeleteInputRef.current && !scoutYearDeleteInputRef.current.disabled) {
+      scoutYearDeleteInputRef.current.focus();
+      return;
+    }
+    modal.querySelector("button:not([disabled]), input:not([disabled])")?.focus();
+  };
   const handleScoutYearDeleteModalKeyDown = (event) => {
     if (event.key === "Escape") {
       cancelScoutYearDelete();
@@ -2126,7 +2137,10 @@ export default function AdminDashboardPage({
     }
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
+    if (!focusable.includes(document.activeElement)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+    } else if (event.shiftKey && document.activeElement === first) {
       event.preventDefault();
       last.focus();
     } else if (!event.shiftKey && document.activeElement === last) {
@@ -2172,10 +2186,10 @@ export default function AdminDashboardPage({
       });
       setScoutYearDeleteRequest(null);
       setScoutYearDeleteLabel("");
-      if (registrationTargetMode === "existing" && registrationYearId === targetYear.id) {
+      if (registrationYearId === targetYear.id) {
         const remainingYears = scoutYearsRef.current.filter((year) => year.id !== targetYear.id);
         const nextRegistrationYear = remainingYears.find((year) => year.isActive) ?? remainingYears[0];
-        cancelRegistrationUpload();
+        if (registrationTargetMode === "existing") cancelRegistrationUpload();
         setRegistrationYearId(nextRegistrationYear?.id ?? "");
       }
       setSaveMessage(result.storageCleanupPending
