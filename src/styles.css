@@ -20980,6 +20980,21 @@ button.registration-form-brand,
   justify-content: flex-end;
 }
 
+.scout-year-delete-error {
+  border-left: 3px solid #b42318;
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: #8f1d16;
+  background: color-mix(in srgb, #fff1ef 82%, var(--dashboard-surface, #ffffff));
+  font-weight: 750;
+  line-height: 1.5;
+}
+
+.scout-year-delete-modal:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--dashboard-accent, #4055a6) 35%, transparent);
+  outline-offset: 3px;
+}
+
 .admin-cms-shell.dashboard-theme-dark .scout-year-danger-zone {
   border-color: color-mix(in srgb, #ff8b82 42%, var(--dashboard-line));
   background: color-mix(in srgb, #5c1e1a 28%, var(--dashboard-surface));
@@ -20987,6 +21002,12 @@ button.registration-form-brand,
 
 .admin-cms-shell.dashboard-theme-dark .scout-year-backup-status [role="alert"] {
   color: #ffaaa3;
+}
+
+.admin-cms-shell.dashboard-theme-dark .scout-year-delete-error {
+  border-left-color: #ff8b82;
+  color: #ffb4ad;
+  background: color-mix(in srgb, #5c1e1a 35%, var(--dashboard-surface));
 }
 
 @media (max-width: 768px) {

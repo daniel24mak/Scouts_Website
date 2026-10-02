@@ -13,23 +13,37 @@ function functionSource(name) {
   return match[0];
 }
 
+function optionalFunctionSource(name, fallback) {
+  const match = dashboard.match(new RegExp(`  const ${name} = (?:async )?\\([^)]*\\) => \\{[\\s\\S]*?\\n  \\};`));
+  return match?.[0] ?? `  const ${name} = ${fallback};`;
+}
+
 function deletionHarness(overrides = {}) {
   const sources = [
     "hasValidScoutYearReceipt",
+    "cancelRegistrationUpload",
     "invalidateScoutYearBackup",
     "triggerScoutYearBackupDownload",
     "downloadScoutYearBackup",
     "openScoutYearDelete",
     "cancelScoutYearDelete",
+    "handleScoutYearDeleteModalKeyDown",
     "confirmScoutYearDelete"
-  ].map(functionSource).join("\n");
+  ].map(functionSource).concat([
+    optionalFunctionSource("expireScoutYearReceipts", "(current) => current"),
+    optionalFunctionSource("cleanupScoutYearOperations", "() => {}")
+  ]).join("\n");
   const events = [];
   const year = overrides.year ?? { id: "year-a", label: "2024-2025", status: "inactive", isActive: false };
   const secondYear = { id: "year-b", label: "2023-2024", status: "inactive", isActive: false };
   const scope = {
+    events,
     initialBackups: overrides.initialBackups ?? {},
     initialRequest: null,
     initialLabel: "",
+    initialRegistrationYearId: overrides.registrationYearId ?? year.id,
+    initialPendingRegistrationImport: overrides.pendingRegistrationImport ?? { targetIdentity: `existing:${year.id}`, scouts: [{ name: "Pending Scout" }] },
+    initialRegistrationTargetMode: overrides.registrationTargetMode ?? "existing",
     data: overrides.data ?? { scoutYears: [year, secondYear] },
     refresh: overrides.refresh ?? (async () => { events.push("refresh"); }),
     createScoutYearBackup: overrides.createScoutYearBackup ?? (async () => ({
@@ -56,7 +70,8 @@ function deletionHarness(overrides = {}) {
           click() { events.push(["click", this.href, this.download]); },
           remove() { events.push("remove"); this.isConnected = false; }
         };
-      }
+      },
+      activeElement: null
     },
     Date,
     setSaveMessage(message) { events.push(["message", message]); }
@@ -65,14 +80,24 @@ function deletionHarness(overrides = {}) {
     let scoutYearBackups = initialBackups;
     let scoutYearDeleteRequest = initialRequest;
     let scoutYearDeleteLabel = initialLabel;
+    let registrationYearId = initialRegistrationYearId;
+    let pendingRegistrationImport = initialPendingRegistrationImport;
+    const registrationTargetMode = initialRegistrationTargetMode;
     const scoutYearBackupBusyRef = { current: new Set() };
     const scoutYearBackupVersionRef = { current: {} };
     const scoutYearDeleteBusyRef = { current: false };
+    const scoutYearDeleteVersionRef = { current: 0 };
+    const scoutYearOperationsMountedRef = { current: true };
     const scoutYearsRef = { current: data.scoutYears };
     const scoutYearDeleteReturnFocusRef = { current: null };
+    const scoutYearDeleteModalRef = { current: { querySelectorAll: () => [], focus: () => events.push("modal-focus") } };
+    const registrationParseVersionRef = { current: 0 };
+    const registrationFileInputRef = { current: { value: "selected.csv" } };
     const setScoutYearBackups = (update) => { scoutYearBackups = typeof update === "function" ? update(scoutYearBackups) : update; };
     const setScoutYearDeleteRequest = (update) => { scoutYearDeleteRequest = typeof update === "function" ? update(scoutYearDeleteRequest) : update; };
     const setScoutYearDeleteLabel = (update) => { scoutYearDeleteLabel = typeof update === "function" ? update(scoutYearDeleteLabel) : update; };
+    const setRegistrationYearId = (update) => { registrationYearId = typeof update === "function" ? update(registrationYearId) : update; };
+    const setPendingRegistrationImport = (update) => { pendingRegistrationImport = typeof update === "function" ? update(pendingRegistrationImport) : update; };
     ${sources}
     return {
       hasValidScoutYearReceipt,
@@ -80,11 +105,14 @@ function deletionHarness(overrides = {}) {
       downloadScoutYearBackup,
       openScoutYearDelete,
       cancelScoutYearDelete,
+      handleScoutYearDeleteModalKeyDown,
       confirmScoutYearDelete,
+      expireScoutYearReceipts,
+      cleanupScoutYearOperations,
       setDeleteLabel: setScoutYearDeleteLabel,
       replaceBackups: setScoutYearBackups,
       replaceYears: (years) => { scoutYearsRef.current = years; },
-      state: () => ({ scoutYearBackups, scoutYearDeleteRequest, scoutYearDeleteLabel })
+      state: () => ({ scoutYearBackups, scoutYearDeleteRequest, scoutYearDeleteLabel, registrationYearId, pendingRegistrationImport, registrationParseVersion: registrationParseVersionRef.current, registrationFileValue: registrationFileInputRef.current?.value })
     };
   `);
   return { year, events, ...factory(...Object.values(scope)) };
@@ -267,6 +295,81 @@ test("deletion errors preserve the year receipt and expose the server message", 
   assert.equal(flow.state().scoutYearBackups[flow.year.id].receiptId, "receipt-a");
   assert.equal(flow.events.filter((event) => event === "refresh").length, 0);
   assert.match(flow.events.find((event) => Array.isArray(event) && event[0] === "message")[1], /Snapshot changed; download a fresh backup\./);
+});
+
+test("deleting the selected registration year clears pending import state and selects a remaining year", async () => {
+  const flow = deletionHarness({
+    initialBackups: {
+      "year-a": { yearId: "year-a", status: "ready", receiptId: "receipt-a", expiresAt: "2099-01-01T00:00:00.000Z" }
+    }
+  });
+  flow.openScoutYearDelete(flow.year);
+  flow.setDeleteLabel(flow.year.label);
+  await flow.confirmScoutYearDelete();
+  assert.equal(flow.state().registrationYearId, "year-b");
+  assert.equal(flow.state().pendingRegistrationImport, null);
+  assert.equal(flow.state().registrationFileValue, "");
+  assert.ok(flow.state().registrationParseVersion > 0);
+});
+
+test("server deletion errors remain announced inside the open modal", () => {
+  const modal = dashboard.match(/\{scoutYearDeleteRequest && \([\s\S]*?\n      \)\}/)?.[0] ?? "";
+  assert.match(modal, /role="alert"/);
+  assert.match(modal, /scoutYearBackups\[scoutYearDeleteRequest\.yearId\]\?\.error/);
+  assert.match(modal, /scout-year-delete-error/);
+  assert.match(styles, /\.scout-year-delete-error/);
+});
+
+test("modal retains focus when deletion disables every control", () => {
+  const flow = deletionHarness();
+  const event = { key: "Tab", shiftKey: false, preventDefault: () => flow.events.push("prevent-default") };
+  flow.handleScoutYearDeleteModalKeyDown(event);
+  assert.ok(flow.events.includes("prevent-default"));
+  assert.ok(flow.events.includes("modal-focus"));
+  assert.match(dashboard, /className="scout-year-delete-modal"[^>]*tabIndex=\{-1\}/);
+});
+
+test("receipt expiry never overwrites an in-flight deleting state", () => {
+  const flow = deletionHarness();
+  const expired = flow.expireScoutYearReceipts({
+    deleting: { yearId: "deleting", status: "deleting", receiptId: "receipt-delete", expiresAt: "2000-01-01T00:00:00.000Z" },
+    ready: { yearId: "ready", status: "ready", receiptId: "receipt-ready", expiresAt: "2000-01-01T00:00:00.000Z" }
+  }, Date.parse("2026-01-01T00:00:00.000Z"));
+  assert.equal(expired.deleting.status, "deleting");
+  assert.equal(expired.deleting.receiptId, "receipt-delete");
+  assert.equal(expired.ready.status, "expired");
+  assert.equal(expired.ready.receiptId, undefined);
+});
+
+test("unmount invalidates late backup and deletion continuations", async () => {
+  assert.match(dashboard, /return cleanupScoutYearOperations/);
+
+  let resolveBackup;
+  const backupFlow = deletionHarness({
+    createScoutYearBackup: () => new Promise((resolve) => { resolveBackup = resolve; })
+  });
+  const backupRequest = backupFlow.downloadScoutYearBackup(backupFlow.year);
+  backupFlow.cleanupScoutYearOperations();
+  resolveBackup({ receiptId: "late", downloadUrl: "https://signed.example/late.zip", expiresAt: "2099-01-01T00:00:00.000Z", manifest: {} });
+  await backupRequest;
+  assert.equal(backupFlow.events.some((event) => Array.isArray(event) && event[0] === "click"), false);
+  assert.equal(backupFlow.state().scoutYearBackups[backupFlow.year.id]?.receiptId, undefined);
+
+  let resolveDelete;
+  const deleteFlow = deletionHarness({
+    initialBackups: {
+      "year-a": { yearId: "year-a", status: "ready", receiptId: "receipt-a", expiresAt: "2099-01-01T00:00:00.000Z" }
+    },
+    deleteScoutYear: () => new Promise((resolve) => { resolveDelete = resolve; })
+  });
+  deleteFlow.openScoutYearDelete(deleteFlow.year);
+  deleteFlow.setDeleteLabel(deleteFlow.year.label);
+  const deleteRequest = deleteFlow.confirmScoutYearDelete();
+  deleteFlow.cleanupScoutYearOperations();
+  resolveDelete({ deleted: true, storageCleanupPending: false });
+  await deleteRequest;
+  assert.equal(deleteFlow.events.filter((event) => event === "refresh").length, 0);
+  assert.equal(deleteFlow.state().scoutYearDeleteRequest?.yearId, deleteFlow.year.id);
 });
 
 test("scoped controls have responsive and dark-mode styles without broad important overrides", () => {
