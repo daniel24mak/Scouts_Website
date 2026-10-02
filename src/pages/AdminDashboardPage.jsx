@@ -74,7 +74,9 @@ import {
   requestProfileChange,
   reviewProfileChange,
   activateScoutingYear,
+  createScoutYearBackup,
   createScoutingYear,
+  deleteScoutYear,
   updateAlbum,
   updateBlog,
   updateCalendarEvent,
@@ -986,9 +988,20 @@ export default function AdminDashboardPage({
   const [newScoutYearName, setNewScoutYearName] = useState("");
   const [pendingRegistrationImport, setPendingRegistrationImport] = useState(null);
   const [registrationImportLoading, setRegistrationImportLoading] = useState(false);
+  const [scoutYearBackups, setScoutYearBackups] = useState({});
+  const [scoutYearDeleteRequest, setScoutYearDeleteRequest] = useState(null);
+  const [scoutYearDeleteLabel, setScoutYearDeleteLabel] = useState("");
   const registrationFileInputRef = useRef(null);
   const registrationImportBusyRef = useRef(false);
   const registrationParseVersionRef = useRef(0);
+  const scoutYearBackupBusyRef = useRef(new Set());
+  const scoutYearBackupVersionRef = useRef({});
+  const scoutYearDeleteBusyRef = useRef(false);
+  const scoutYearDeleteInputRef = useRef(null);
+  const scoutYearDeleteModalRef = useRef(null);
+  const scoutYearDeleteReturnFocusRef = useRef(null);
+  const scoutYearsRef = useRef(data.scoutYears ?? []);
+  scoutYearsRef.current = data.scoutYears ?? [];
   const registrationTargetIdentity = registrationTargetMode === "existing"
     ? `existing:${registrationYearId}`
     : `new:${newScoutYearName.trim()}`;
@@ -997,6 +1010,34 @@ export default function AdminDashboardPage({
     setPendingRegistrationImport(null);
     if (registrationFileInputRef.current) registrationFileInputRef.current.value = "";
   }, [registrationTargetMode, registrationYearId, newScoutYearName]);
+  useEffect(() => {
+    const nextExpiry = Object.values(scoutYearBackups)
+      .filter((backup) => backup?.receiptId && Number.isFinite(Date.parse(backup.expiresAt)))
+      .map((backup) => Date.parse(backup.expiresAt))
+      .filter((expiry) => expiry > Date.now())
+      .sort((left, right) => left - right)[0];
+    if (!nextExpiry) return undefined;
+
+    const expiryTimer = window.setTimeout(() => {
+      setScoutYearBackups((current) => Object.fromEntries(Object.entries(current).map(([yearId, backup]) => {
+        if (!backup?.receiptId || Date.parse(backup.expiresAt) > Date.now()) return [yearId, backup];
+        return [yearId, { ...backup, status: "expired", receiptId: undefined, downloadUrl: undefined }];
+      })));
+    }, Math.min(nextExpiry - Date.now() + 25, 2_147_483_647));
+    return () => window.clearTimeout(expiryTimer);
+  }, [scoutYearBackups]);
+  useEffect(() => {
+    if (!scoutYearDeleteRequest) return undefined;
+    const returnFocus = scoutYearDeleteReturnFocusRef.current;
+    const focusTimer = window.setTimeout(() => scoutYearDeleteInputRef.current?.focus(), 0);
+    return () => {
+      window.clearTimeout(focusTimer);
+      if (returnFocus?.isConnected !== false) {
+        window.setTimeout(() => returnFocus?.focus(), 0);
+      }
+      scoutYearDeleteReturnFocusRef.current = null;
+    };
+  }, [scoutYearDeleteRequest]);
   const [myWorkTasks, setMyWorkTasks] = useState([]);
   const [myWorkLoading, setMyWorkLoading] = useState(true);
   const [myWorkError, setMyWorkError] = useState("");
@@ -1951,6 +1992,176 @@ export default function AdminDashboardPage({
       setRegistrationImportLoading(false);
     }
   };
+  const hasValidScoutYearReceipt = (yearId) => {
+    const backup = scoutYearBackups[yearId];
+    return Boolean(
+      backup?.yearId === yearId
+      && backup.receiptId
+      && Number.isFinite(Date.parse(backup.expiresAt))
+      && Date.parse(backup.expiresAt) > Date.now()
+    );
+  };
+  const invalidateScoutYearBackup = (yearId) => {
+    scoutYearBackupVersionRef.current[yearId] = (scoutYearBackupVersionRef.current[yearId] ?? 0) + 1;
+    setScoutYearBackups((current) => {
+      if (!current[yearId]) return current;
+      const next = { ...current };
+      delete next[yearId];
+      return next;
+    });
+    setScoutYearDeleteRequest((current) => current?.yearId === yearId ? null : current);
+  };
+  const triggerScoutYearBackupDownload = (downloadUrl, label) => {
+    const anchor = document.createElement("a");
+    anchor.href = downloadUrl;
+    anchor.download = `scouting-year-${String(label).replace(/[^a-zA-Z0-9._-]+/g, "-")}-backup.zip`;
+    anchor.rel = "noopener";
+    document.body.appendChild(anchor);
+    try {
+      anchor.click();
+    } finally {
+      anchor.remove();
+    }
+  };
+  const downloadScoutYearBackup = async (year) => {
+    if (!year?.id || year.isActive || scoutYearBackupBusyRef.current.has(year.id)) return;
+    scoutYearBackupBusyRef.current.add(year.id);
+    const requestVersion = (scoutYearBackupVersionRef.current[year.id] ?? 0) + 1;
+    scoutYearBackupVersionRef.current[year.id] = requestVersion;
+    setScoutYearBackups((current) => ({
+      ...current,
+      [year.id]: { yearId: year.id, status: "loading", error: "" }
+    }));
+
+    try {
+      const result = await createScoutYearBackup(year.id);
+      if (scoutYearBackupVersionRef.current[year.id] !== requestVersion) return;
+      const currentYear = scoutYearsRef.current.find((candidate) => candidate.id === year.id);
+      if (!currentYear || currentYear.isActive) {
+        invalidateScoutYearBackup(year.id);
+        return;
+      }
+      if (!result?.receiptId || !result?.downloadUrl || !result?.expiresAt) {
+        throw new Error("The backup service returned an incomplete receipt.");
+      }
+
+      triggerScoutYearBackupDownload(result.downloadUrl, currentYear.label);
+      if (scoutYearBackupVersionRef.current[year.id] !== requestVersion) return;
+      setScoutYearBackups((current) => ({
+        ...current,
+        [year.id]: {
+          yearId: year.id,
+          status: "ready",
+          receiptId: result.receiptId,
+          downloadUrl: result.downloadUrl,
+          expiresAt: result.expiresAt,
+          manifest: result.manifest,
+          error: ""
+        }
+      }));
+      setSaveMessage(`Complete backup for ${currentYear.label} is ready and its download has started.`);
+    } catch (error) {
+      if (scoutYearBackupVersionRef.current[year.id] !== requestVersion) return;
+      setScoutYearBackups((current) => ({
+        ...current,
+        [year.id]: { yearId: year.id, status: "error", error: error.message }
+      }));
+      setSaveMessage(`Scouting year backup failed: ${error.message}`);
+    } finally {
+      scoutYearBackupBusyRef.current.delete(year.id);
+    }
+  };
+  const openScoutYearDelete = (year) => {
+    if (!year?.id || year.isActive) {
+      setSaveMessage("Activate another year before deleting this one.");
+      return;
+    }
+    if (!hasValidScoutYearReceipt(year.id)) {
+      setSaveMessage("Download a fresh complete backup before deleting this scouting year.");
+      return;
+    }
+    const receipt = scoutYearBackups[year.id];
+    scoutYearDeleteReturnFocusRef.current = document.activeElement;
+    setScoutYearDeleteLabel("");
+    setScoutYearDeleteRequest({ yearId: year.id, label: year.label, receiptId: receipt.receiptId });
+  };
+  const cancelScoutYearDelete = () => {
+    if (scoutYearDeleteBusyRef.current) return;
+    setScoutYearDeleteRequest(null);
+    setScoutYearDeleteLabel("");
+  };
+  const handleScoutYearDeleteModalKeyDown = (event) => {
+    if (event.key === "Escape") {
+      cancelScoutYearDelete();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = Array.from(scoutYearDeleteModalRef.current?.querySelectorAll("button:not([disabled]), input:not([disabled])") ?? []);
+    if (!focusable.length) {
+      event.preventDefault();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+  const confirmScoutYearDelete = async () => {
+    if (!scoutYearDeleteRequest || scoutYearDeleteBusyRef.current) return;
+    const targetYear = scoutYearsRef.current.find((year) => year.id === scoutYearDeleteRequest.yearId);
+    const receipt = scoutYearBackups[scoutYearDeleteRequest.yearId];
+    if (!targetYear || targetYear.isActive) {
+      setSaveMessage("Activate another year before deleting this one.");
+      return;
+    }
+    if (scoutYearDeleteLabel !== scoutYearDeleteRequest.label) {
+      setSaveMessage(`Type ${scoutYearDeleteRequest.label} exactly to confirm deletion.`);
+      return;
+    }
+    if (!hasValidScoutYearReceipt(targetYear.id) || receipt?.receiptId !== scoutYearDeleteRequest.receiptId) {
+      setSaveMessage("Download a fresh complete backup before deleting this scouting year.");
+      return;
+    }
+
+    scoutYearDeleteBusyRef.current = true;
+    setScoutYearBackups((current) => ({
+      ...current,
+      [targetYear.id]: { ...current[targetYear.id], status: "deleting", error: "" }
+    }));
+    try {
+      const result = await deleteScoutYear({
+        scoutYearId: targetYear.id,
+        receiptId: receipt.receiptId,
+        expectedLabel: scoutYearDeleteRequest.label
+      });
+      setScoutYearBackups((current) => {
+        const next = { ...current };
+        delete next[targetYear.id];
+        return next;
+      });
+      setScoutYearDeleteRequest(null);
+      setScoutYearDeleteLabel("");
+      setSaveMessage(result.storageCleanupPending
+        ? `Scouting year ${targetYear.label} deleted. Database records were deleted successfully; storage cleanup is pending.`
+        : `Scouting year ${targetYear.label} and its owned records were deleted successfully.`);
+      await refresh().catch((error) => {
+        setSaveMessage(`Scouting year deleted, but refreshing the dashboard failed: ${error.message}`);
+      });
+    } catch (error) {
+      setScoutYearBackups((current) => ({
+        ...current,
+        [targetYear.id]: { ...current[targetYear.id], status: "ready", error: error.message }
+      }));
+      setSaveMessage(`Scouting year deletion failed: ${error.message}`);
+    } finally {
+      scoutYearDeleteBusyRef.current = false;
+    }
+  };
   const createNewScoutYearOnly = async (event) => {
     event.preventDefault();
     if (registrationImportBusyRef.current || uploadStatus) return;
@@ -1987,6 +2198,7 @@ export default function AdminDashboardPage({
     }
 
     try {
+      invalidateScoutYearBackup(yearId);
       setUploadStatus("Setting active scouting year...");
       await activateScoutingYear(yearId);
       setSaveMessage(`Active scouting year changed to ${targetYear.label}.`);
@@ -3446,17 +3658,49 @@ export default function AdminDashboardPage({
           <table className="editable-table">
             <thead><tr><th>Year</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
-              {(data.scoutYears ?? []).length ? data.scoutYears.map((year) => (
-                <tr key={year.id}>
-                  <td><strong>{year.label}</strong></td>
-                  <td><StatusBadge status={year.status} /></td>
-                  <td className="table-actions">
-                    <button type="button" className="inline-action" disabled={year.isActive || year.status === "archived" || Boolean(uploadStatus)} onClick={() => changeActiveScoutYear(year.id)}>
-                      {year.isActive ? "Active" : "Set active"}
-                    </button>
-                  </td>
-                </tr>
-              )) : <tr><td colSpan="3">No scouting years found.</td></tr>}
+              {(data.scoutYears ?? []).length ? data.scoutYears.map((year) => {
+                const backupState = scoutYearBackups[year.id];
+                const backupRecordCount = Object.values(backupState?.manifest?.counts ?? {}).reduce((total, count) => total + Number(count || 0), 0);
+                const backupFileCount = backupState?.manifest?.files?.length ?? 0;
+                return (
+                  <tr key={year.id}>
+                    <td><strong>{year.label}</strong></td>
+                    <td><StatusBadge status={year.status} /></td>
+                    <td className="table-actions scout-year-actions">
+                      <button type="button" className="inline-action" disabled={year.isActive || year.status === "archived" || Boolean(uploadStatus) || backupState?.status === "loading" || backupState?.status === "deleting"} onClick={() => changeActiveScoutYear(year.id)}>
+                        {year.isActive ? "Active" : "Set active"}
+                      </button>
+                      <section className="scout-year-danger-zone" aria-label={`Backup and deletion controls for ${year.label}`}>
+                        {year.isActive ? (
+                          <p className="scout-year-backup-status">Activate another year before deleting this one.</p>
+                        ) : (
+                          <>
+                            <div className="scout-year-danger-actions">
+                              <button type="button" className="inline-action" disabled={Boolean(uploadStatus) || backupState?.status === "loading" || backupState?.status === "deleting"} onClick={() => downloadScoutYearBackup(year)}>
+                                <Download size={16} aria-hidden="true" />
+                                {backupState?.status === "loading" ? "Preparing complete backup..." : "Download complete backup"}
+                              </button>
+                              <button type="button" className="danger-action scout-year-delete-action" disabled={!hasValidScoutYearReceipt(year.id) || Boolean(uploadStatus) || backupState?.status === "loading" || backupState?.status === "deleting"} onClick={() => openScoutYearDelete(year)}>
+                                <Trash2 size={16} aria-hidden="true" />Delete scouting year
+                              </button>
+                            </div>
+                            <div className="scout-year-backup-status" aria-live="polite">
+                              {backupState?.status === "loading" && <span>Building the ZIP and verifying all database records and files...</span>}
+                              {backupState?.status === "ready" && hasValidScoutYearReceipt(year.id) && (
+                                <span>Backup ready: {backupRecordCount} records and {backupFileCount} files. Receipt expires {new Date(backupState.expiresAt).toLocaleString()}.</span>
+                              )}
+                              {backupState?.status === "expired" && <span>The backup receipt expired. Download a fresh complete backup to enable deletion.</span>}
+                              {backupState?.status === "deleting" && <span>Deleting database records securely...</span>}
+                              {backupState?.error && <span role="alert">{backupState.status === "error" ? "Backup failed" : "Deletion failed"}: {backupState.error}</span>}
+                              {!backupState && <span>Deletion stays locked until a complete backup download starts.</span>}
+                            </div>
+                          </>
+                        )}
+                      </section>
+                    </td>
+                  </tr>
+                );
+              }) : <tr><td colSpan="3">No scouting years found.</td></tr>}
             </tbody>
           </table>
         </article>
@@ -5093,6 +5337,28 @@ export default function AdminDashboardPage({
             <div className="action-row">
               <button type="button" className="inline-action" onClick={() => setPasswordResetUser(null)}>Cancel</button>
               <button type="submit" className="primary-action">Send recovery email</button>
+            </div>
+          </form>
+        </div>
+      )}
+      {scoutYearDeleteRequest && (
+        <div className="scout-year-delete-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) cancelScoutYearDelete(); }}>
+          <form ref={scoutYearDeleteModalRef} className="scout-year-delete-modal" role="alertdialog" aria-modal="true" aria-labelledby="scout-year-delete-title" aria-describedby="scout-year-delete-description" onSubmit={(event) => { event.preventDefault(); confirmScoutYearDelete(); }} onKeyDown={handleScoutYearDeleteModalKeyDown}>
+            <button type="button" className="modal-close-button" aria-label="Cancel scouting year deletion" disabled={scoutYearBackups[scoutYearDeleteRequest.yearId]?.status === "deleting"} onClick={cancelScoutYearDelete}>
+              <InteractiveIcon icon={X} size={18} />
+            </button>
+            <p className="eyebrow">Permanent deletion</p>
+            <h2 id="scout-year-delete-title">Delete {scoutYearDeleteRequest.label}?</h2>
+            <p id="scout-year-delete-description">This permanently deletes the inactive year and its operational records. The complete backup must be retained for recovery.</p>
+            <label htmlFor="scout-year-delete-label">
+              Type <strong>{scoutYearDeleteRequest.label}</strong> exactly to confirm
+            </label>
+            <input ref={scoutYearDeleteInputRef} id="scout-year-delete-label" value={scoutYearDeleteLabel} onChange={(event) => setScoutYearDeleteLabel(event.target.value)} autoComplete="off" spellCheck="false" disabled={scoutYearBackups[scoutYearDeleteRequest.yearId]?.status === "deleting"} />
+            <div className="action-row">
+              <button type="button" className="inline-action" disabled={scoutYearBackups[scoutYearDeleteRequest.yearId]?.status === "deleting"} onClick={cancelScoutYearDelete}>Cancel</button>
+              <button type="submit" className="danger-action scout-year-delete-action" disabled={scoutYearDeleteLabel !== scoutYearDeleteRequest.label || !hasValidScoutYearReceipt(scoutYearDeleteRequest.yearId) || scoutYearBackups[scoutYearDeleteRequest.yearId]?.status === "deleting"}>
+                {scoutYearBackups[scoutYearDeleteRequest.yearId]?.status === "deleting" ? "Deleting scouting year..." : "Delete scouting year"}
+              </button>
             </div>
           </form>
         </div>
