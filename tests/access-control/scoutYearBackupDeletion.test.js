@@ -32,6 +32,7 @@ test("receipts remain private and survive deletion as consumed audit evidence", 
 test("only normalized retention permission and its MFA authorize deletion", () => {
   const deletion = body("delete_scout_year_with_backup");
   assert.match(sql, /ON CONFLICT \(id\) DO UPDATE SET[\s\S]*requires_mfa = EXCLUDED\.requires_mfa,[\s\S]*is_active = true;/i);
+  assert.match(sql, /INSERT INTO public\.role_permissions\s*\(role_id, permission_id\)[\s\S]*'system_administrator', 'registration\.retention\.manage'[\s\S]*ON CONFLICT.*DO NOTHING/i);
   assert.match(deletion, /target_year_id uuid,\s*target_receipt_id uuid,\s*expected_label text/i);
   assert.match(deletion, /RETURNS jsonb[\s\S]*SECURITY DEFINER[\s\S]*SET search_path = pg_catalog, public, pg_temp[\s\S]*SET timezone = 'UTC'/i);
   assert.match(deletion, /actor_id uuid := auth\.uid\(\)/i);
@@ -40,6 +41,17 @@ test("only normalized retention permission and its MFA authorize deletion", () =
   assert.doesNotMatch(deletion, /is_admin\(|user_permissions|role\s*=\s*'admin'/i);
   assert.match(sql, /REVOKE DELETE ON TABLE public\.scout_years FROM PUBLIC, anon, authenticated/i);
   assert.match(sql, /GRANT EXECUTE ON FUNCTION public\.delete_scout_year_with_backup\(uuid, uuid, text\) TO authenticated/i);
+});
+
+test("database claims protect cleanup, require completion, and support guarded release", () => {
+  for (const name of ["claim_scout_year_deletion", "complete_scout_year_cleanup", "abort_scout_year_deletion", "guard_scout_year_deletion_write"]) assert.notEqual(body(name), "", name);
+  assert.match(body("delete_scout_year_with_backup"), /cleanup_not_complete/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.scout_year_deletion_claim/);
+  assert.match(sql, /storage_reference_survives/);
+  assert.match(sql, /FOR SHARE/);
+  assert.match(body("abort_scout_year_deletion"), /restore_cleanup_objects_before_abort/);
+  assert.match(sql, /CREATE TRIGGER scout_year_deletion_storage_guard/);
+  assert.match(body("guard_scout_year_storage_write"), /scout_year_deletion_in_progress/);
 });
 
 test("backup snapshot records deterministic rows, not counts alone", () => {
@@ -186,6 +198,23 @@ test("storage inventory honors configured upload bucket and fails closed on unma
     assert.throws(() => collectStorageReferences(fixtureSnapshot({ gallery_images: [{ storage_path: path }] })), /storage reference/i);
   }
   assert.throws(() => collectStorageReferences(fixtureSnapshot({ new_dataset: [{ storage_path: "unknown.pdf" }] })), /storage reference/i);
+});
+
+test("deleted registration document tombstones remain metadata and cannot hide malformed or live references", async () => {
+  const helper = await helpers();
+  const documentId = "33333333-3333-4333-8333-333333333333";
+  const path = `${callerId}/${documentId}/${yearId}.deleted`;
+  const doc = { id: documentId, submission_id: callerId, bucket_id: "identity-documents", object_path: path, verification_status: "deleted", deleted_at: "2026-09-25T00:00:00Z" };
+  const snapshot = fixtureSnapshot({ scout_registration_documents: [doc] });
+  assert.deepEqual(helper.collectStorageReferences(snapshot), []);
+  const csvs = helper.createCsvExports(snapshot);
+  assert.match(new TextDecoder().decode(csvs.find((f) => f.dataset === "scout_registration_documents").bytes), /\.deleted/);
+  const manifest = await helper.createBackupManifest(snapshot, csvs, [], [], new Date().toISOString());
+  assert.equal(manifest.complete, true);
+  assert.equal(manifest.counts.scout_registration_documents, 1);
+  for (const change of [{ verification_status: "verified" }, { deleted_at: null }, { deleted_at: "invalid" }, { object_path: `${yearId}/${documentId}/${yearId}.deleted` }, { object_path: `${callerId}/${documentId}/../fake.deleted` }, { object_path: "live.webp" }]) {
+    assert.throws(() => helper.collectStorageReferences(fixtureSnapshot({ scout_registration_documents: [{ ...doc, ...change }] })), /tombstone/i);
+  }
 });
 
 test("archived year snapshots map their real nested public-content shape without deletion ownership", async () => {
@@ -408,6 +437,12 @@ async function deletionHarness(options = {}) {
     ...options.receipt
   };
   const events = [], audits = [], logs = [], removals = [], rpcCalls = [];
+  const claimId = "44444444-4444-4444-8444-444444444444";
+  let cleanupAttempts = 0;
+  let claimed = false;
+  let cleanupRunning = false;
+  let cleanupComplete = false;
+  let deletionAttempts = 0;
   const storageObjects = new Map(refs.map((ref) => [`${ref.bucket}/${ref.path}`, "original bytes"]));
   storageObjects.set(`scout-year-backups/${receipt.archive_path}`, "backup bytes");
   const survivingRecords = options.survivingRecords ?? [];
@@ -428,6 +463,23 @@ async function deletionHarness(options = {}) {
       } }) };
     },
     rpc: async (name, payload) => {
+      if (name === "start_scout_year_cleanup") {
+        events.push("start-cleanup");
+        if (cleanupComplete) return { data: { started: true, complete: true }, error: null };
+        if (cleanupRunning) return { data: null, error: { message: "cleanup_in_progress" } };
+        cleanupRunning = true;
+        return { data: { started: true }, error: options.startFailure ? { message: "invalid_deletion_claim" } : null };
+      }
+      if (name === "release_scout_year_cleanup") {
+        events.push("release-cleanup"); cleanupRunning = false;
+        return { data: null, error: null };
+      }
+      if (name === "complete_scout_year_cleanup") {
+        events.push("complete-cleanup");
+        assert.equal(payload.target_claim_id, claimId);
+        if (!options.completeFailure) { cleanupRunning = false; cleanupComplete = true; }
+        return { data: { complete: true }, error: options.completeFailure ? { message: "cleanup_not_complete" } : null };
+      }
       assert.equal(name, "get_scout_year_backup_snapshot");
       assert.equal(payload.target_year_id, yearId);
       events.push("snapshot");
@@ -435,12 +487,24 @@ async function deletionHarness(options = {}) {
     },
     storage: { from(bucket) { return { remove: async (paths) => {
       events.push("remove"); removals.push({ bucket, paths });
+      assert.equal(receipt.used_at, null, "year must remain until cleanup succeeds");
+      if (options.removalGate) await options.removalGate;
+      if (options.cleanupFailure && cleanupAttempts++ === 0) return { data: null, error: { message: "secret storage failure" } };
       for (const path of paths) storageObjects.delete(`${bucket}/${path}`);
       return { data: [], error: null };
     } }; } }
   };
   const userClient = { rpc: async (name, payload) => {
+    if (name === "claim_scout_year_deletion") {
+      events.push("claim");
+      if (!claimed && Date.parse(receipt.expires_at) <= Date.now()) return { data: null, error: { message: "receipt_expired" } };
+      if (options.claimError || options.rpcError) return { data: null, error: { message: options.claimError ?? options.rpcError } };
+      if (refs.some((ref) => ref.deleteWithYear && ref.bucket === (options.uploadBucket ?? "scouts-files") && !ref.path.startsWith(`registration/${yearId}/`))) return { data: null, error: { message: "unsafe_cleanup_path" } };
+      claimed = true;
+      return { data: { claimId, inventory: survivingRecords.length ? [] : refs.filter((ref) => ref.deleteWithYear).map(({ bucket, path }) => ({ bucket, path })) }, error: null };
+    }
     events.push("delete-rpc"); rpcCalls.push({ name, payload });
+    if (options.deletionFailureOnce && deletionAttempts++ === 0) return { data: null, error: { message: "internal transaction failure" } };
     if (options.rpcError) return { data: null, error: { message: options.rpcError } };
     receipt.used_at = new Date().toISOString();
     receipt.scout_year_id = null;
@@ -470,19 +534,23 @@ async function deletionHarness(options = {}) {
     handler(new Request("http://localhost/delete", { method, ...(method === "POST" ? { body: typeof body === "string" ? body : JSON.stringify(body) } : {}) })) };
 }
 
-test("deletion commits through the caller RPC and retains source objects pending atomic ownership verification", async () => {
+test("deletion claims the snapshot, removes exclusive source objects, completes cleanup, then commits", async () => {
   const harness = await deletionHarness();
   const response = await harness.request({ scoutYearId: yearId, receiptId, expectedLabel: "2024-2025", paths: ["unrelated"], bucket: "finance-private", files: [{ path: "arbitrary" }] });
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { deleted: true, yearId, receiptId, storageCleanupPending: true, storageCleanupReason: "ownership_check_unavailable" });
+  assert.deepEqual(await response.json(), { deleted: true, yearId, receiptId, storageCleanupPending: false });
   assert.ok(harness.events.indexOf("authorize") < harness.events.indexOf("receipt"));
   assert.ok(harness.events.indexOf("snapshot") < harness.events.indexOf("delete-rpc"));
   assert.ok(harness.events.indexOf("delete-rpc") < harness.events.indexOf("audit"));
   assert.deepEqual(JSON.parse(JSON.stringify(harness.rpcCalls)), [{ name: "delete_scout_year_with_backup", payload: { target_year_id: yearId, target_receipt_id: receiptId, expected_label: "2024-2025" } }]);
-  assert.deepEqual(harness.removals, []);
-  assert.ok(harness.audits.some((audit) => audit.outcome === "failed" && audit.metadata.receiptId === receiptId
-    && audit.metadata.deleted === true && audit.metadata.code === "ownership_check_unavailable" && audit.metadata.pendingFileCount === 1));
-  assert.equal(harness.storageObjects.get(`scouts-files/registration/${yearId}/source.xlsx`), "original bytes");
+  assert.ok(harness.events.indexOf("claim") < harness.events.indexOf("remove"));
+  assert.ok(harness.events.indexOf("claim") < harness.events.indexOf("start-cleanup"));
+  assert.ok(harness.events.indexOf("start-cleanup") < harness.events.indexOf("remove"));
+  assert.ok(harness.events.indexOf("remove") < harness.events.indexOf("complete-cleanup"));
+  assert.ok(harness.events.indexOf("complete-cleanup") < harness.events.indexOf("delete-rpc"));
+  assert.equal(harness.removals.length, 1);
+  assert.ok(harness.audits.some((audit) => audit.outcome === "success"));
+  assert.equal(harness.storageObjects.has(`scouts-files/registration/${yearId}/source.xlsx`), false);
   assert.equal(harness.storageObjects.get(`scout-year-backups/${callerId}/${yearId}/archive.zip`), "backup bytes");
 });
 
@@ -496,21 +564,18 @@ for (const [name, record] of [
     const response = await harness.request();
     assert.equal(response.status, 200);
     const result = await response.json();
-    assert.equal(result.deleted, true); assert.equal(result.storageCleanupPending, true);
+    assert.equal(result.deleted, true); assert.equal(result.storageCleanupPending, false);
     assert.equal(harness.survivingRecords[0].storage_path, path);
     assert.equal(harness.storageObjects.get(`scouts-files/${path}`), "original bytes", "surviving reference must keep resolving");
     assert.equal(harness.removals.length, 0);
   });
 }
 
-test("cleanup retention is unconditional for valid and foreign year path prefixes until an atomic claim exists", async () => {
-  for (const path of [`registration/${yearId}/source.xlsx`, `registration/${callerId}/source.xlsx`, "legacy/source.xlsx"]) {
+test("foreign and legacy paths cannot acquire cleanup ownership", async () => {
+  for (const path of [`registration/${callerId}/source.xlsx`, "legacy/source.xlsx"]) {
     const harness = await deletionHarness({ snapshot: fixtureSnapshot({ registration_uploads: [{ scout_year_id: yearId, storage_path: path }] }) });
     const response = await harness.request();
-    assert.equal(response.status, 200);
-    const result = await response.json();
-    assert.equal(result.storageCleanupPending, true);
-    assert.equal(result.storageCleanupReason, "ownership_check_unavailable");
+    assert.equal(response.status, 409);
     assert.equal(harness.storageObjects.get(`scouts-files/${path}`), "original bytes");
     assert.equal(harness.removals.length, 0);
   }
@@ -580,8 +645,8 @@ test("deletion rejects malformed or forged inventory against the shared trusted 
   }
   const custom = await deletionHarness({ uploadBucket: "custom-uploads" });
   assert.equal((await custom.request()).status, 200);
-  assert.equal(custom.removals.length, 0);
-  assert.equal(custom.storageObjects.get(`custom-uploads/registration/${yearId}/source.xlsx`), "original bytes");
+  assert.equal(custom.removals.length, 1);
+  assert.equal(custom.storageObjects.has(`custom-uploads/registration/${yearId}/source.xlsx`), false);
 });
 
 test("stale snapshots and RPC transaction failures never trigger source storage deletion", async () => {
@@ -595,17 +660,73 @@ test("stale snapshots and RPC transaction failures never trigger source storage 
   }
 });
 
-test("unavailable cleanup reports committed deletion and rejects consumed-receipt retries", async () => {
-    const harness = await deletionHarness();
+test("cleanup failure leaves the year undeleted and the staged backup recoverable; retry resumes", async () => {
+    const harness = await deletionHarness({ cleanupFailure: true });
     const response = await harness.request();
-    assert.equal(response.status, 200);
+    assert.equal(response.status, 500);
     const result = await response.json();
-    assert.equal(result.deleted, true); assert.equal(result.storageCleanupPending, true);
-    assert.ok(harness.audits.some((audit) => audit.outcome === "failed" && audit.metadata.storageCleanupPending === true));
+    assert.equal(result.deleted, undefined);
+    assert.equal(harness.rpcCalls.length, 0);
+    assert.equal(harness.events.includes("complete-cleanup"), false);
+    assert.equal(harness.events.includes("release-cleanup"), true);
+    assert.ok(harness.audits.some((audit) => audit.outcome === "failed"));
+    assert.equal(harness.storageObjects.get(`scout-year-backups/${callerId}/${yearId}/archive.zip`), "backup bytes");
     assert.ok(!JSON.stringify([result, harness.audits, harness.logs]).includes("secret"));
     const retry = await harness.request();
-    assert.equal(retry.status, 409, "consumed receipt retry must fail closed");
-    assert.equal(harness.rpcCalls.length, 1); assert.equal(harness.removals.length, 0);
+    assert.equal(retry.status, 200);
+    assert.equal(harness.rpcCalls.length, 1); assert.equal(harness.removals.length, 2);
+});
+
+test("an incomplete database cleanup confirmation prevents final deletion", async () => {
+  const harness = await deletionHarness({ completeFailure: true });
+  assert.ok((await harness.request()).status >= 400);
+  assert.equal(harness.rpcCalls.length, 0);
+});
+
+test("a released claim cannot start storage work", async () => {
+  const harness = await deletionHarness({ startFailure: true });
+  assert.ok((await harness.request()).status >= 400);
+  assert.equal(harness.removals.length, 0);
+  assert.equal(harness.rpcCalls.length, 0);
+});
+
+test("concurrent same-receipt workers cannot overlap Storage removal or release each other's fence", async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const harness = await deletionHarness({ removalGate: gate });
+  const first = harness.request();
+  while (!harness.events.includes("remove")) await new Promise((resolve) => setImmediate(resolve));
+  assert.equal((await harness.request()).status, 409);
+  assert.equal(harness.removals.length, 1);
+  assert.equal(harness.events.includes("release-cleanup"), false);
+  assert.equal(harness.rpcCalls.length, 0);
+  release();
+  assert.equal((await first).status, 200);
+});
+
+test("a database failure after successful cleanup retries without another Storage removal", async () => {
+  const harness = await deletionHarness({ deletionFailureOnce: true });
+  assert.equal((await harness.request()).status, 500);
+  assert.equal(harness.removals.length, 1);
+  assert.equal((await harness.request()).status, 200);
+  assert.equal(harness.removals.length, 1);
+  assert.equal(harness.rpcCalls.length, 2);
+});
+
+test("backup Edge exports tombstone metadata without requesting nonexistent bytes", async () => {
+  const doc = { id: receiptId, submission_id: callerId, bucket_id: "identity-documents", object_path: `${callerId}/${receiptId}/${yearId}.deleted`, verification_status: "deleted", deleted_at: "2026-09-25T00:00:00Z" };
+  const harness = await edgeHarness({ snapshot: fixtureSnapshot({ scout_registration_documents: [doc] }) });
+  assert.equal((await harness.request()).status, 200);
+  assert.ok(!harness.events.some((event) => event.startsWith("download:")));
+  assert.equal(harness.receipts[0].manifest.counts.scout_registration_documents, 1);
+});
+
+test("a missing live registration document still blocks receipt issuance", async () => {
+  const doc = { id: receiptId, submission_id: callerId, bucket_id: "identity-documents", object_path: `${yearId}/${callerId}/live.webp`, verification_status: "pending", deleted_at: null };
+  const harness = await edgeHarness({ snapshot: fixtureSnapshot({ scout_registration_documents: [doc] }), missingFile: true });
+  assert.equal((await harness.request()).status, 409);
+  assert.equal(harness.receipts.length, 0);
+  assert.ok(harness.events.some((event) => event.startsWith("download:identity-documents/")));
 });
 
 test("an Edge audit outage after commit cannot turn completed deletion into an error", async () => {

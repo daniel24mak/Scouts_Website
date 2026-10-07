@@ -55,7 +55,7 @@ function deletionHarness(overrides = {}) {
     })),
     deleteScoutYear: overrides.deleteScoutYear ?? (async (payload) => {
       events.push(["delete", payload]);
-      return { deleted: true, storageCleanupPending: true };
+      return { deleted: true, storageCleanupPending: false };
     }),
     document: overrides.document ?? {
       body: {
@@ -263,7 +263,7 @@ test("delete requires the case-sensitive label and current matching receipt", as
   assert.equal(flow.events.some((event) => Array.isArray(event) && event[0] === "delete"), false, "modal receipt cannot cross-wire with a replacement backup");
 });
 
-test("successful deletion is duplicate-safe, reports pending cleanup, clears state, and refreshes once", async () => {
+test("successful deletion is duplicate-safe, reports completed cleanup, clears state, and refreshes once", async () => {
   let resolveDelete;
   let calls = 0;
   const flow = deletionHarness({
@@ -281,7 +281,7 @@ test("successful deletion is duplicate-safe, reports pending cleanup, clears sta
   const first = flow.confirmScoutYearDelete();
   const duplicate = flow.confirmScoutYearDelete();
   assert.equal(calls, 1);
-  resolveDelete({ deleted: true, storageCleanupPending: true });
+  resolveDelete({ deleted: true, storageCleanupPending: false });
   await Promise.all([first, duplicate]);
   assert.deepEqual(flow.events.find((event) => Array.isArray(event) && event[0] === "delete")[1], {
     scoutYearId: flow.year.id,
@@ -289,7 +289,7 @@ test("successful deletion is duplicate-safe, reports pending cleanup, clears sta
     expectedLabel: flow.year.label
   });
   assert.equal(flow.events.filter((event) => event === "refresh").length, 1);
-  assert.match(flow.events.find((event) => Array.isArray(event) && event[0] === "message")[1], /database records were deleted.*storage cleanup is pending/i);
+  assert.match(flow.events.find((event) => Array.isArray(event) && event[0] === "message")[1], /owned records and files were deleted successfully/i);
   assert.equal(flow.state().scoutYearBackups[flow.year.id], undefined);
   assert.equal(flow.state().scoutYearDeleteRequest, null);
 });
@@ -307,6 +307,26 @@ test("deletion errors preserve the year receipt and expose the server message", 
   assert.equal(flow.state().scoutYearBackups[flow.year.id].receiptId, "receipt-a");
   assert.equal(flow.events.filter((event) => event === "refresh").length, 0);
   assert.match(flow.events.find((event) => Array.isArray(event) && event[0] === "message")[1], /Snapshot changed; download a fresh backup\./);
+});
+
+test("failed cleanup retains its recovery receipt past expiry for a server-validated retry", () => {
+  const backup = { yearId: "year-a", status: "ready", receiptId: "receipt-a", deletionAttempted: true, expiresAt: "2000-01-01T00:00:00Z" };
+  const flow = deletionHarness({ initialBackups: { "year-a": backup } });
+  assert.equal(flow.expireScoutYearReceipts({ "year-a": backup }, Date.now())["year-a"].receiptId, "receipt-a");
+  flow.openScoutYearDelete(flow.year);
+  assert.equal(flow.state().scoutYearDeleteRequest.yearId, "year-a");
+});
+
+test("an incomplete success response does not remove the year or refresh", async () => {
+  const flow = deletionHarness({
+    initialBackups: { "year-a": { yearId: "year-a", status: "ready", receiptId: "receipt-a", expiresAt: "2099-01-01T00:00:00Z" } },
+    deleteScoutYear: async () => ({ deleted: false })
+  });
+  flow.openScoutYearDelete(flow.year);
+  flow.setDeleteLabel(flow.year.label);
+  await flow.confirmScoutYearDelete();
+  assert.equal(flow.events.includes("refresh"), false);
+  assert.equal(flow.state().scoutYearBackups["year-a"].receiptId, "receipt-a");
 });
 
 test("deleting the selected registration year clears pending import state and selects a remaining year", async () => {

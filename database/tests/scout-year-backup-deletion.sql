@@ -86,13 +86,16 @@ DECLARE
   registration_document_id uuid := gen_random_uuid();
   cross_year_document_id uuid := gen_random_uuid();
   duplicate_id uuid := gen_random_uuid();
+  cleanup_claim jsonb;
+  source_path text := 'registration/' || target_year::text || '/fixture.csv';
 BEGIN
   INSERT INTO public.roles (id, name) VALUES ('year_backup_test_role', 'Year backup SQL fixture') ON CONFLICT DO NOTHING;
   INSERT INTO public.user_profiles (id, full_name, role, account_status) VALUES
     (requesting_user, 'Year deletion requester', 'year_backup_test_role', 'active'),
     (another_user, 'Another requester', 'year_backup_test_role', 'active');
-  INSERT INTO public.user_permission_overrides (user_id, permission_id, effect, scope_type, reason, assigned_by)
-  VALUES (requesting_user, 'registration.retention.manage', 'allow', 'global', 'Rollback SQL fixture', requesting_user);
+  INSERT INTO public.user_role_assignments (user_id, role_id, scope_type, assigned_by, assignment_reason)
+  VALUES (requesting_user, 'system_administrator', 'global', requesting_user, 'Rollback SQL fixture');
+  ASSERT NOT EXISTS (SELECT 1 FROM public.user_permission_overrides WHERE user_id = requesting_user), 'fixture must test role authorization without an override';
   INSERT INTO public.groups (id, name, assignment_basis, grade_start, grade_end, age_start, age_end)
   VALUES (group_key, 'Year deletion fixture', 'age', 1, 12, 1, 99);
   INSERT INTO public.scout_years (id, label) VALUES (target_year, target_label), (other_year, 'Other ' || other_year::text);
@@ -103,7 +106,7 @@ BEGIN
   INSERT INTO public.chief_attendance_sessions (id, scout_year_id, date) VALUES (chief_attendance_id, target_year, current_date);
   INSERT INTO public.chief_attendance_records (session_id, chief_id, status) VALUES (chief_attendance_id, requesting_user, 'present');
   INSERT INTO public.scout_equipe_assignments (scout_id, group_id) VALUES (target_scout, group_key);
-  INSERT INTO public.registration_uploads (scout_year_id, file_name, storage_path) VALUES (target_year, 'fixture.csv', target_year::text || '/fixture.csv');
+  INSERT INTO public.registration_uploads (scout_year_id, file_name, storage_path) VALUES (target_year, 'fixture.csv', source_path);
   INSERT INTO public.posts (id, scout_year_id, slug, title, body, status) VALUES (post_id, target_year, post_id::text, 'Preserve post', 'Original body', 'draft');
   INSERT INTO public.gallery_albums (id, scout_year_id, title, status) VALUES (album_id, target_year, 'Preserve album', 'draft');
   INSERT INTO public.post_revisions (id, original_content_id, proposed_data) VALUES (post_revision_id, post_id, '{"title":"Revised post"}');
@@ -137,7 +140,7 @@ BEGIN
     INSERT INTO public.scout_registration_reviews (submission_id, review_type, decision, reviewed_by)
     VALUES (owned_submission_id, 'approval', 'approved', requesting_user);
     INSERT INTO public.scout_registration_documents (id, submission_id, question_id, bucket_id, object_path, document_type, original_format, mime_type, size_bytes)
-    VALUES (registration_document_id, owned_submission_id, 'headshot', 'scout-headshots', owned_campaign_id::text || '/' || registration_document_id::text || '.webp', 'headshot', 'webp', 'image/webp', 10),
+    VALUES (registration_document_id, owned_submission_id, 'headshot', 'scout-headshots', owned_campaign_id::text || '/' || owned_submission_id::text || '/' || registration_document_id::text || '.webp', 'headshot', 'webp', 'image/webp', 10),
       (cross_year_document_id, other_submission_id, 'headshot', 'scout-headshots', other_campaign_id::text || '/' || cross_year_document_id::text || '.webp', 'headshot', 'webp', 'image/webp', 10);
     UPDATE public.scout_registration_documents SET original_document_id = registration_document_id WHERE id = cross_year_document_id;
     INSERT INTO public.registration_document_access_logs (document_id, submission_id, actor_id, action, purpose)
@@ -150,6 +153,7 @@ BEGIN
   END IF;
 
   PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', requesting_user, 'role', 'authenticated', 'aal', 'aal2')::text, true);
+  ASSERT public.has_permission('registration.retention.manage') AND public.has_required_aal('registration.retention.manage'), 'AAL2 system administrator cannot authorize retention without an override';
   ASSERT pg_catalog.to_regclass('pg_constraint') = pg_catalog.to_regclass('pg_temp.pg_constraint'), 'temporary catalog shadow fixture is not active';
   snapshot := public.get_scout_year_backup_snapshot(target_year);
   original_snapshot := snapshot;
@@ -214,7 +218,56 @@ BEGIN
 
   snapshot := public.get_scout_year_backup_snapshot(target_year);
   UPDATE public.scout_year_backup_receipts SET snapshot_hash = snapshot->>'snapshotHash',
-    manifest = snapshot - 'data' || jsonb_build_object('complete', true, 'filesComplete', true) WHERE id = receipt_id;
+    manifest = snapshot - 'data' || jsonb_build_object('complete', true, 'filesComplete', true, 'files', jsonb_build_array(jsonb_build_object('bucket', 'scouts-files', 'path', source_path, 'deleteWithYear', true))) WHERE id = receipt_id;
+  PERFORM pg_temp.expect_year_deletion_error(target_year, receipt_id, target_label, 'cleanup_not_complete');
+  INSERT INTO storage.buckets (id, name, public) VALUES ('scouts-files', 'scouts-files', false) ON CONFLICT DO NOTHING;
+  INSERT INTO storage.objects (bucket_id, name) VALUES ('scouts-files', source_path);
+
+  -- Global surviving references include null-year nested metadata. Shared files
+  -- remain available, while exclusively owned files require cleanup.
+  UPDATE public.archived_years SET snapshot = jsonb_build_object('deep', jsonb_build_object('storagePath', source_path)) WHERE id = archived_id;
+  snapshot := public.get_scout_year_backup_snapshot(target_year);
+  UPDATE public.scout_year_backup_receipts SET snapshot_hash = snapshot->>'snapshotHash', manifest = manifest || jsonb_build_object('snapshotHash', snapshot->>'snapshotHash', 'counts', snapshot->'counts') WHERE id = receipt_id;
+  cleanup_claim := public.claim_scout_year_deletion(target_year, receipt_id, target_label);
+  ASSERT cleanup_claim->'inventory' = '[]'::jsonb, 'surviving nested reference selected for deletion';
+  PERFORM public.abort_scout_year_deletion((cleanup_claim->>'claimId')::uuid);
+  UPDATE public.archived_years SET snapshot = '{}' WHERE id = archived_id;
+  snapshot := public.get_scout_year_backup_snapshot(target_year);
+  UPDATE public.scout_year_backup_receipts SET snapshot_hash = snapshot->>'snapshotHash', manifest = manifest || jsonb_build_object('snapshotHash', snapshot->>'snapshotHash', 'counts', snapshot->'counts') WHERE id = receipt_id;
+  IF to_regclass('public.scout_registration_documents') IS NOT NULL THEN
+    UPDATE public.scout_year_backup_receipts SET manifest = jsonb_set(manifest, '{files}', manifest->'files' || jsonb_build_array(jsonb_build_object(
+      'bucket', 'scout-headshots', 'path', owned_campaign_id::text || '/' || owned_submission_id::text || '/' || registration_document_id::text || '.webp', 'deleteWithYear', true))) WHERE id = receipt_id;
+    INSERT INTO storage.objects (bucket_id, name) VALUES ('scout-headshots', owned_campaign_id::text || '/' || owned_submission_id::text || '/' || registration_document_id::text || '.webp');
+  END IF;
+  cleanup_claim := public.claim_scout_year_deletion(target_year, receipt_id, target_label);
+  ASSERT jsonb_array_length(cleanup_claim->'inventory') = CASE WHEN to_regclass('public.scout_registration_documents') IS NOT NULL THEN 2 ELSE 1 END, 'exclusive source file or document missing';
+  ASSERT cleanup_claim = public.claim_scout_year_deletion(target_year, receipt_id, target_label), 'claim retry is not idempotent';
+  BEGIN
+    UPDATE public.scouts SET name = 'Unsafe mutation' WHERE id = target_scout;
+    RAISE EXCEPTION 'claim did not freeze target rows';
+  EXCEPTION WHEN SQLSTATE '55000' THEN NULL; END;
+  BEGIN
+    INSERT INTO public.reports (title, report_type, storage_path) VALUES ('Unsafe reference', 'test', source_path);
+    RAISE EXCEPTION 'claim did not freeze new references';
+  EXCEPTION WHEN SQLSTATE '55000' THEN NULL; END;
+  INSERT INTO public.reports (title, report_type) VALUES ('Unrelated report remains writable', 'test');
+  PERFORM pg_temp.expect_year_deletion_error(target_year, receipt_id, target_label, 'cleanup_not_complete');
+  PERFORM public.start_scout_year_cleanup((cleanup_claim->>'claimId')::uuid, requesting_user);
+  BEGIN
+    PERFORM public.abort_scout_year_deletion((cleanup_claim->>'claimId')::uuid);
+    RAISE EXCEPTION 'abort raced a storage worker';
+  EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'cleanup_started_resume_required' THEN RAISE; END IF; END;
+  BEGIN
+    PERFORM public.complete_scout_year_cleanup((cleanup_claim->>'claimId')::uuid, requesting_user);
+    RAISE EXCEPTION 'cleanup accepted a surviving source object';
+  EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'cleanup_not_complete' THEN RAISE; END IF; END;
+  -- Simulate successful idempotent Storage removal while the year still exists.
+  DELETE FROM storage.objects WHERE bucket_id = 'scouts-files' AND name = source_path;
+  DELETE FROM storage.objects WHERE bucket_id = 'scout-headshots' AND name = owned_campaign_id::text || '/' || owned_submission_id::text || '/' || registration_document_id::text || '.webp';
+  ASSERT EXISTS (SELECT 1 FROM public.scout_years WHERE id = target_year), 'year disappeared before cleanup completion';
+  UPDATE public.scout_year_backup_receipts SET expires_at = now() - interval '1 minute' WHERE id = receipt_id;
+  ASSERT cleanup_claim = public.claim_scout_year_deletion(target_year, receipt_id, target_label), 'partial cleanup cannot resume after receipt expiry';
+  PERFORM public.complete_scout_year_cleanup((cleanup_claim->>'claimId')::uuid, requesting_user);
   -- Force failure after all deletion statements to prove transaction rollback.
   EXECUTE 'CREATE FUNCTION pg_temp.reject_year_audit() RETURNS trigger LANGUAGE plpgsql AS $trigger$ BEGIN RAISE EXCEPTION ''fixture_audit_failure''; END; $trigger$';
   EXECUTE 'CREATE TRIGGER reject_year_audit BEFORE INSERT ON public.audit_logs FOR EACH ROW WHEN (NEW.action = ''scout_year.deleted_with_backup'') EXECUTE FUNCTION pg_temp.reject_year_audit()';

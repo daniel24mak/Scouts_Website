@@ -20,6 +20,11 @@ const rpcFailures: Record<string, [string, number]> = {
   incomplete_manifest: ["The backup inventory is incomplete. Create a fresh backup", 409],
   stale_snapshot: ["Scouting year data changed. Create a fresh backup", 409],
   archive_not_found: ["The backup archive is unavailable. Create a fresh backup", 409],
+  deletion_claim_busy: ["Another scouting year deletion is in progress", 409],
+  invalid_deletion_claim: ["The deletion claim is no longer valid", 409],
+  unsafe_cleanup_path: ["A source file does not have verified scouting year ownership", 409],
+  cleanup_not_complete: ["Source file cleanup has not completed. Retry deletion with this backup", 409],
+  cleanup_in_progress: ["Source file cleanup is already in progress for this backup", 409],
   unsupported_year_dependency: ["Scouting year dependencies must be reviewed before deletion", 409]
 };
 
@@ -92,6 +97,7 @@ Deno.serve(async (req) => {
   let scoutYearId: string | null = null;
   let receiptId: string | null = null;
   let failureCode = "authorization_failed";
+  let cleanupClaimId: string | null = null;
   try {
     context = await requireDashboardPermission(req, "registration.retention.manage");
     failureCode = "invalid_request";
@@ -110,7 +116,7 @@ Deno.serve(async (req) => {
     // retries report the completed consumption rather than the absent FK.
     if (receipt.used_at !== null) reject("receipt_used");
     if (receipt.scout_year_id !== scoutYearId) reject("receipt_wrong_year");
-    if (!Number.isFinite(Date.parse(receipt.expires_at)) || Date.parse(receipt.expires_at) <= Date.now()) reject("receipt_expired");
+    if (!Number.isFinite(Date.parse(receipt.expires_at))) reject("receipt_expired");
     const manifest = validateManifest(receipt.manifest, scoutYearId, receipt.snapshot_hash);
 
     failureCode = "snapshot_validation_failed";
@@ -128,10 +134,46 @@ Deno.serve(async (req) => {
       throw new AuthorizationError("Scouting year backup inventory could not be verified. Create a fresh backup", 409);
     }
 
+    failureCode = "deletion_claim_failed";
+    const { data: claim, error: claimError } = await context.userClient.rpc("claim_scout_year_deletion", {
+      target_year_id: scoutYearId, target_receipt_id: receiptId, expected_label: body.expectedLabel
+    });
+    if (claimError) {
+      if (Object.prototype.hasOwnProperty.call(rpcFailures, claimError.message)) { failureCode = claimError.message; reject(failureCode); }
+      throw new Error("Scouting year deletion could not be claimed");
+    }
+    if (!isObject(claim) || typeof claim.claimId !== "string" || !Array.isArray(claim.inventory)) throw new Error("Invalid deletion claim");
+    // SQL may remove shared objects from the cleanup inventory, but can never
+    // add paths beyond this independently reconstructed, trusted inventory.
+    const allowed = new Set(cleanup.map(({ bucket, path }) => JSON.stringify([bucket, path])));
+    for (const file of claim.inventory) {
+      if (!isObject(file) || !allowed.delete(JSON.stringify([file.bucket, file.path]))) throw new Error("Invalid claimed cleanup inventory");
+    }
+    failureCode = "cleanup_start_failed";
+    const { data: started, error: startError } = await context.adminClient.rpc("start_scout_year_cleanup", {
+      target_claim_id: claim.claimId, target_caller_id: context.callerId
+    });
+    if (startError) {
+      if (Object.prototype.hasOwnProperty.call(rpcFailures, startError.message)) { failureCode = startError.message; reject(failureCode); }
+      throw new Error("Storage cleanup claim is no longer valid");
+    }
+    if (started?.started !== true) throw new Error("Storage cleanup claim is no longer valid");
+    if (!started.complete) cleanupClaimId = claim.claimId;
+    failureCode = "storage_cleanup_failed";
+    for (const file of (started.complete ? [] : claim.inventory) as { bucket: string; path: string }[]) {
+      // Storage removal is idempotent for absent objects, so partial cleanup can
+      // resume on the same durable claim without requiring a new backup.
+      const { error } = await context.adminClient.storage.from(file.bucket).remove([file.path]);
+      if (error) throw new Error("Source storage cleanup failed");
+    }
+    failureCode = "cleanup_confirmation_failed";
+    const { data: completion, error: completionError } = await context.adminClient.rpc("complete_scout_year_cleanup", {
+      target_claim_id: claim.claimId, target_caller_id: context.callerId
+    });
+    if (completionError || completion?.complete !== true) throw new Error("Source storage cleanup could not be confirmed");
+    cleanupClaimId = null;
+
     failureCode = "deletion_transaction_failed";
-    // The caller JWT/AAL remains authoritative. The SQL transaction rechecks
-    // permission, active state, exact label, receipt, archive, and snapshot under
-    // locks; no operational object is removed before the transaction succeeds.
     const { data: result, error: deletionError } = await context.userClient.rpc("delete_scout_year_with_backup", {
       target_year_id: scoutYearId, target_receipt_id: receiptId, expected_label: body.expectedLabel
     });
@@ -144,22 +186,13 @@ Deno.serve(async (req) => {
     }
     if (result?.deleted !== true || result.yearId !== scoutYearId || result.receiptId !== receiptId) throw new Error("Deletion result could not be verified");
 
-    // The year snapshot cannot establish exclusive ownership across all other
-    // years, null-year content, and nested JSON storage references. A separate
-    // reference-query RPC/advisory transaction lock would end before the Storage
-    // HTTP request, leaving concurrent cleanup and new-reference races open.
-    // Until an atomic database-backed claim protects that entire operation,
-    // retain every source object, including paths with the expected year prefix.
-    // A future reconciler must verify every surviving schema reference and path
-    // ownership while holding that claim; the receipt preserves its inventory.
-    const pendingFileCount = cleanup.length;
-    const storageCleanupPending = pendingFileCount > 0;
-    const storageCleanupReason = "ownership_check_unavailable";
+    const pendingFileCount = 0;
+    const storageCleanupPending = false;
     let auditPending = false;
     try {
-      await auditDeletion(context, scoutYearId, storageCleanupPending ? "failed" : "success", {
+      await auditDeletion(context, scoutYearId, "success", {
         receiptId, deleted: true, storageCleanupPending, pendingFileCount,
-        fileCount: cleanup.length, code: storageCleanupPending ? storageCleanupReason : "deletion_completed"
+        fileCount: claim.inventory.length, code: "deletion_completed"
       });
     } catch {
       // SQL already wrote the durable deletion audit in the committed transaction.
@@ -171,17 +204,27 @@ Deno.serve(async (req) => {
     // that the client may still be downloading immediately after deletion.
     return jsonResponse(req, {
       deleted: true, yearId: scoutYearId, receiptId, storageCleanupPending,
-      ...(storageCleanupPending ? { storageCleanupReason } : {}),
       ...(auditPending ? { auditPending: true } : {})
     });
   } catch (error) {
     const status = error instanceof AuthorizationError ? error.status : 500;
     if (context) {
+      if (cleanupClaimId) {
+        try {
+          const { error: releaseError } = await context.adminClient.rpc("release_scout_year_cleanup", {
+            target_claim_id: cleanupClaimId, target_caller_id: context.callerId
+          });
+          if (releaseError) throw new Error("Worker release failed");
+        } catch { console.error("scout_year.cleanup_worker_release_failed", { yearId: scoutYearId, receiptId }); }
+      }
       try { await auditDeletion(context, scoutYearId, "failed", { receiptId, code: failureCode, status }); }
       catch { console.error("scout_year.deletion_audit_failed", { callerId: context.callerId, yearId: scoutYearId, receiptId, code: failureCode, status }); }
     } else {
       console.warn("scout_year.deletion_denied", { status });
     }
-    return jsonResponse(req, { error: error instanceof AuthorizationError ? error.message : "Scouting year deletion failed", code: failureCode }, status);
+    return jsonResponse(req, { error: error instanceof AuthorizationError ? error.message
+      : failureCode === "storage_cleanup_failed" || failureCode === "cleanup_confirmation_failed"
+        ? "Source file cleanup failed. The scouting year was not deleted. Retry using this backup; the staged ZIP is retained for recovery."
+        : "Scouting year deletion failed", code: failureCode }, status);
   }
 });

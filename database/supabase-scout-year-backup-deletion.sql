@@ -13,6 +13,11 @@ ON CONFLICT (id) DO UPDATE SET
   requires_mfa = EXCLUDED.requires_mfa,
   is_active = true;
 
+INSERT INTO public.role_permissions (role_id, permission_id)
+SELECT 'system_administrator', 'registration.retention.manage'
+FROM public.roles WHERE id = 'system_administrator'
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS public.scout_year_backup_receipts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   -- NULL only after the referenced year has been deleted; manifest retains its ID.
@@ -130,6 +135,312 @@ $$;
 REVOKE ALL ON FUNCTION public.get_scout_year_backup_snapshot(uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_scout_year_backup_snapshot(uuid) TO service_role;
 
+-- A permanent mutex row closes the gap between database transactions and the
+-- Storage HTTP API. FOR SHARE in write guards also detects obsolete snapshots
+-- under REPEATABLE READ. Only overlapping rows/paths are frozen, not whole tables.
+CREATE TABLE IF NOT EXISTS public.scout_year_deletion_claim (
+  singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
+  claim_id uuid,
+  year_id uuid,
+  receipt_id uuid,
+  caller_id uuid,
+  snapshot_hash text,
+  protected_ids text[] NOT NULL DEFAULT '{}',
+  inventory jsonb NOT NULL DEFAULT '[]',
+  cleanup_complete boolean NOT NULL DEFAULT false,
+  cleanup_started boolean NOT NULL DEFAULT false,
+  cleanup_running boolean NOT NULL DEFAULT false,
+  renewed_at timestamptz
+);
+ALTER TABLE public.scout_year_deletion_claim ADD COLUMN IF NOT EXISTS cleanup_started boolean NOT NULL DEFAULT false;
+ALTER TABLE public.scout_year_deletion_claim ADD COLUMN IF NOT EXISTS cleanup_running boolean NOT NULL DEFAULT false;
+INSERT INTO public.scout_year_deletion_claim (singleton) VALUES (true) ON CONFLICT DO NOTHING;
+ALTER TABLE public.scout_year_deletion_claim ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.scout_year_deletion_claim FROM PUBLIC, anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.scout_year_json_strings(value jsonb)
+RETURNS SETOF text LANGUAGE sql IMMUTABLE SET search_path = pg_catalog, public, pg_temp AS $$
+  WITH RECURSIVE leaves(item) AS (
+    SELECT value
+    UNION ALL
+    SELECT child.item FROM leaves
+    CROSS JOIN LATERAL (
+      SELECT entry.value AS item FROM jsonb_each(CASE WHEN jsonb_typeof(leaves.item) = 'object' THEN leaves.item ELSE '{}' END) entry
+      UNION ALL
+      SELECT element FROM jsonb_array_elements(CASE WHEN jsonb_typeof(leaves.item) = 'array' THEN leaves.item ELSE '[]' END) element
+    ) child
+  ) SELECT item #>> '{}' FROM leaves WHERE jsonb_typeof(item) = 'string';
+$$;
+
+CREATE OR REPLACE FUNCTION public.scout_year_decode_reference(value text)
+RETURNS text LANGUAGE plpgsql IMMUTABLE SET search_path = pg_catalog, public, pg_temp AS $$
+DECLARE encoded text; decoded text; round integer;
+BEGIN
+  -- Inspect both raw and URL-encoded references, including nested JSON URLs.
+  FOR round IN 1..5 LOOP
+    encoded := substring(value FROM '(?:%[0-9a-fA-F]{2})+');
+    EXIT WHEN encoded IS NULL;
+    BEGIN decoded := convert_from(decode(replace(encoded, '%', ''), 'hex'), 'UTF8');
+    EXCEPTION WHEN OTHERS THEN RETURN lower(value); END;
+    value := replace(value, encoded, decoded);
+  END LOOP;
+  RETURN lower(value);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.scout_year_row_mentions(value jsonb, ids text[], files jsonb)
+RETURNS boolean LANGUAGE sql IMMUTABLE SET search_path = pg_catalog, public, pg_temp AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.scout_year_json_strings(value) leaf
+    WHERE leaf = ANY(ids) OR EXISTS (
+      SELECT 1 FROM jsonb_array_elements(files) file
+      WHERE strpos(public.scout_year_decode_reference(leaf), public.scout_year_decode_reference(file->>'path')) > 0
+    )
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.guard_scout_year_deletion_write()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
+DECLARE claim public.scout_year_deletion_claim%ROWTYPE;
+BEGIN
+  SELECT * INTO claim FROM public.scout_year_deletion_claim WHERE singleton FOR SHARE;
+  IF claim.claim_id IS NOT NULL AND (
+    (TG_OP <> 'INSERT' AND public.scout_year_row_mentions(to_jsonb(OLD), claim.protected_ids, claim.inventory))
+    OR (TG_OP <> 'DELETE' AND public.scout_year_row_mentions(to_jsonb(NEW), claim.protected_ids, claim.inventory))
+  ) THEN
+    RAISE EXCEPTION 'scout_year_deletion_in_progress' USING ERRCODE = '55000';
+  END IF;
+  IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- Guard every public row shape, including nested JSON and otherwise unrelated
+-- tables that could begin referencing a claimed object. Audit/receipt evidence
+-- is intentionally excluded. These guards do not change RLS or grants.
+DO $guards$
+DECLARE item record;
+BEGIN
+  FOR item IN SELECT c.relname FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relkind = 'r'
+      AND c.relname NOT IN ('audit_logs', 'scout_year_backup_receipts', 'scout_year_deletion_claim')
+    ORDER BY c.relname
+  LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS scout_year_deletion_write_guard ON public.%I', item.relname);
+    EXECUTE format('CREATE TRIGGER scout_year_deletion_write_guard BEFORE INSERT OR UPDATE OR DELETE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.guard_scout_year_deletion_write()', item.relname);
+  END LOOP;
+END;
+$guards$;
+
+CREATE OR REPLACE FUNCTION public.guard_scout_year_storage_write()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
+DECLARE claim public.scout_year_deletion_claim%ROWTYPE; receipt public.scout_year_backup_receipts%ROWTYPE; object_row jsonb;
+BEGIN
+  SELECT * INTO claim FROM public.scout_year_deletion_claim WHERE singleton FOR SHARE;
+  IF claim.claim_id IS NOT NULL THEN
+    SELECT * INTO receipt FROM public.scout_year_backup_receipts WHERE id = claim.receipt_id;
+    FOR object_row IN SELECT value FROM jsonb_array_elements(
+      CASE WHEN TG_OP = 'INSERT' THEN jsonb_build_array(to_jsonb(NEW)) WHEN TG_OP = 'DELETE' THEN jsonb_build_array(to_jsonb(OLD)) ELSE jsonb_build_array(to_jsonb(OLD), to_jsonb(NEW)) END)
+    LOOP
+      IF (object_row->>'bucket_id' = 'scout-year-backups' AND object_row->>'name' = receipt.archive_path)
+        OR (EXISTS (SELECT 1 FROM jsonb_array_elements(receipt.manifest->'files') file WHERE file->>'bucket' = object_row->>'bucket_id' AND file->>'path' = object_row->>'name')
+          AND NOT (TG_OP = 'DELETE' AND claim.cleanup_running AND EXISTS (SELECT 1 FROM jsonb_array_elements(claim.inventory) file WHERE file->>'bucket' = object_row->>'bucket_id' AND file->>'path' = object_row->>'name'))) THEN
+        RAISE EXCEPTION 'scout_year_deletion_in_progress' USING ERRCODE = '55000';
+      END IF;
+    END LOOP;
+  END IF;
+  IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS scout_year_deletion_storage_guard ON storage.objects;
+CREATE TRIGGER scout_year_deletion_storage_guard BEFORE INSERT OR UPDATE OR DELETE ON storage.objects
+FOR EACH ROW EXECUTE FUNCTION public.guard_scout_year_storage_write();
+REVOKE ALL ON FUNCTION public.guard_scout_year_storage_write() FROM PUBLIC, anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.claim_scout_year_deletion(target_year_id uuid, target_receipt_id uuid, expected_label text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp SET timezone = 'UTC' AS $$
+DECLARE
+  claim public.scout_year_deletion_claim%ROWTYPE;
+  receipt public.scout_year_backup_receipts%ROWTYPE;
+  selected_year public.scout_years%ROWTYPE;
+  snapshot jsonb; source record; file jsonb; row_value jsonb;
+  cleanup jsonb := '[]'; protected text[]; owned boolean; survives boolean;
+  campaign text; owner_id text;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.has_permission('registration.retention.manage')
+    OR NOT public.has_required_aal('registration.retention.manage') THEN
+    RAISE EXCEPTION 'permission_denied' USING ERRCODE = '42501';
+  END IF;
+  -- Always take data-table locks before the mutex, matching write-trigger order.
+  -- Waiting writers then see the committed claim (or serialization failure).
+  FOR source IN SELECT c.oid, c.relname FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relkind = 'r'
+      AND c.relname NOT IN ('audit_logs', 'scout_year_backup_receipts', 'scout_year_deletion_claim')
+    ORDER BY c.relname
+  LOOP
+    IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_trigger t WHERE t.tgrelid = source.oid
+      AND t.tgname = 'scout_year_deletion_write_guard' AND t.tgenabled IN ('O', 'A')) THEN
+      RAISE EXCEPTION 'unsupported_year_dependency';
+    END IF;
+    EXECUTE format('LOCK TABLE public.%I IN SHARE ROW EXCLUSIVE MODE', source.relname);
+  END LOOP;
+  LOCK TABLE storage.objects IN SHARE ROW EXCLUSIVE MODE;
+  SELECT * INTO claim FROM public.scout_year_deletion_claim WHERE singleton FOR UPDATE;
+  IF claim.claim_id IS NOT NULL AND (claim.caller_id IS DISTINCT FROM auth.uid()
+    OR claim.year_id IS DISTINCT FROM target_year_id OR claim.receipt_id IS DISTINCT FROM target_receipt_id) THEN
+    RAISE EXCEPTION 'deletion_claim_busy';
+  END IF;
+  SELECT * INTO selected_year FROM public.scout_years WHERE id = target_year_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'year_not_found'; END IF;
+  IF selected_year.is_active THEN RAISE EXCEPTION 'active_year'; END IF;
+  IF selected_year.label IS DISTINCT FROM expected_label THEN RAISE EXCEPTION 'label_mismatch'; END IF;
+  SELECT * INTO receipt FROM public.scout_year_backup_receipts WHERE id = target_receipt_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'receipt_not_found'; END IF;
+  IF receipt.requested_by IS DISTINCT FROM auth.uid() THEN RAISE EXCEPTION 'receipt_wrong_user'; END IF;
+  IF receipt.used_at IS NOT NULL THEN RAISE EXCEPTION 'receipt_used'; END IF;
+  IF receipt.scout_year_id IS DISTINCT FROM target_year_id THEN RAISE EXCEPTION 'receipt_wrong_year'; END IF;
+  -- A partial cleanup remains resumable after expiry; only the identical claim
+  -- may bypass expiry. Its frozen data and recovery archive are still required.
+  IF receipt.expires_at <= clock_timestamp() AND claim.claim_id IS NULL THEN RAISE EXCEPTION 'receipt_expired'; END IF;
+  IF receipt.manifest->'complete' IS DISTINCT FROM 'true'::jsonb
+    OR receipt.manifest->'filesComplete' IS DISTINCT FROM 'true'::jsonb
+    OR receipt.manifest->>'yearId' IS DISTINCT FROM target_year_id::text
+    OR receipt.manifest->>'snapshotHash' IS DISTINCT FROM receipt.snapshot_hash
+    OR jsonb_typeof(receipt.manifest->'files') IS DISTINCT FROM 'array' THEN RAISE EXCEPTION 'incomplete_manifest'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM storage.objects WHERE bucket_id = 'scout-year-backups' AND name = receipt.archive_path) THEN RAISE EXCEPTION 'archive_not_found'; END IF;
+  snapshot := public.get_scout_year_backup_snapshot(target_year_id);
+  IF snapshot->>'snapshotHash' IS DISTINCT FROM receipt.snapshot_hash
+    OR snapshot->'counts' IS DISTINCT FROM receipt.manifest->'counts' THEN RAISE EXCEPTION 'stale_snapshot'; END IF;
+  IF claim.claim_id IS NOT NULL THEN
+    UPDATE public.scout_year_deletion_claim SET renewed_at = clock_timestamp() WHERE singleton;
+    RETURN jsonb_build_object('claimId', claim.claim_id, 'inventory', claim.inventory);
+  END IF;
+
+  FOR file IN SELECT value FROM jsonb_array_elements(receipt.manifest->'files') WHERE value->'deleteWithYear' = 'true'::jsonb LOOP
+    IF file->>'bucket' !~ '^[a-zA-Z0-9][a-zA-Z0-9_-]*$'
+      OR file->>'path' IS NULL OR file->>'path' ~ '(^/|\\|:|%|(^|/)\.\.?(/|$)|[[:cntrl:]])' THEN RAISE EXCEPTION 'unsafe_cleanup_path'; END IF;
+    owned := false;
+    -- The receipt is server-issued; ownership additionally requires the current
+    -- source row AND canonical year/campaign/owner path, never a flag alone.
+    IF file->>'path' LIKE 'registration/' || target_year_id::text || '/%' THEN
+      owned := EXISTS (SELECT 1 FROM public.registration_uploads WHERE scout_year_id = target_year_id AND storage_path = file->>'path');
+    ELSIF file->>'bucket' IN ('scout-headshots', 'identity-documents', 'form-attachments') THEN
+      FOR row_value IN SELECT value FROM jsonb_array_elements(snapshot->'data'->'scout_registration_documents') LOOP
+        owner_id := COALESCE(row_value->>'submission_id', row_value->>'draft_id');
+        SELECT value->>'campaign_id' INTO campaign FROM jsonb_array_elements(
+          (snapshot->'data'->'scout_registration_submissions') || (snapshot->'data'->'scout_registration_drafts'))
+          WHERE value->>'id' = owner_id;
+        IF row_value->>'object_path' = file->>'path' AND row_value->>'bucket_id' = file->>'bucket'
+          AND row_value->>'deleted_at' IS NULL AND row_value->>'verification_status' IS DISTINCT FROM 'deleted'
+          AND EXISTS (SELECT 1 FROM jsonb_array_elements(snapshot->'data'->'registration_campaigns') c WHERE c->>'id' = campaign AND c->>'scout_year_id' = target_year_id::text)
+          AND file->>'path' LIKE campaign || '/' || owner_id || '/%' THEN owned := true; END IF;
+      END LOOP;
+    END IF;
+    IF NOT owned THEN RAISE EXCEPTION 'unsafe_cleanup_path'; END IF;
+    survives := false;
+    FOR source IN SELECT c.relname FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public' AND c.relkind = 'r'
+        AND c.relname NOT IN ('audit_logs', 'scout_year_backup_receipts', 'scout_year_deletion_claim') ORDER BY c.relname
+    LOOP
+      FOR row_value IN EXECUTE format('SELECT to_jsonb(r) FROM public.%I r', source.relname) LOOP
+        IF NOT public.scout_year_row_mentions(row_value, '{}', jsonb_build_array(file)) THEN CONTINUE; END IF;
+        IF source.relname = 'registration_uploads' AND row_value->>'scout_year_id' = target_year_id::text AND row_value->>'storage_path' = file->>'path' THEN CONTINUE; END IF;
+        IF source.relname = 'scout_registration_documents' AND row_value->>'object_path' = file->>'path' AND row_value->>'bucket_id' = file->>'bucket'
+          AND EXISTS (SELECT 1 FROM jsonb_array_elements((snapshot->'data'->'scout_registration_submissions') || (snapshot->'data'->'scout_registration_drafts')) s
+            WHERE s->>'id' = COALESCE(row_value->>'submission_id', row_value->>'draft_id')
+            AND EXISTS (SELECT 1 FROM jsonb_array_elements(snapshot->'data'->'registration_campaigns') c WHERE c->>'id' = s->>'campaign_id' AND c->>'scout_year_id' = target_year_id::text)) THEN CONTINUE; END IF;
+        survives := true; EXIT;
+      END LOOP;
+      EXIT WHEN survives;
+    END LOOP;
+    IF survives THEN
+      INSERT INTO public.audit_logs(actor_id, action, entity_type, entity_id, metadata)
+        VALUES (auth.uid(), 'scout_year.storage_reference_survives', 'scout_year', target_year_id::text, jsonb_build_object('receiptId', target_receipt_id));
+    ELSE cleanup := cleanup || jsonb_build_array(jsonb_build_object('bucket', file->>'bucket', 'path', file->>'path')); END IF;
+  END LOOP;
+  SELECT array_agg(DISTINCT id) INTO protected FROM (
+    SELECT target_year_id::text AS id UNION ALL
+    SELECT item.value->>'id' FROM jsonb_each(snapshot->'data') datasets
+    CROSS JOIN LATERAL jsonb_array_elements(datasets.value) item WHERE item.value->>'id' IS NOT NULL
+  ) ids;
+  UPDATE public.scout_year_deletion_claim SET claim_id = gen_random_uuid(), year_id = target_year_id,
+    receipt_id = target_receipt_id, caller_id = auth.uid(), snapshot_hash = receipt.snapshot_hash,
+    protected_ids = protected, inventory = cleanup, cleanup_complete = false, cleanup_started = false, cleanup_running = false, renewed_at = clock_timestamp()
+    WHERE singleton RETURNING * INTO claim;
+  INSERT INTO public.audit_logs(actor_id, action, entity_type, entity_id, metadata)
+    VALUES (auth.uid(), 'scout_year.deletion_claimed', 'scout_year', target_year_id::text, jsonb_build_object('receiptId', target_receipt_id, 'claimId', claim.claim_id));
+  RETURN jsonb_build_object('claimId', claim.claim_id, 'inventory', claim.inventory);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.start_scout_year_cleanup(target_claim_id uuid, target_caller_id uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
+DECLARE claim public.scout_year_deletion_claim%ROWTYPE;
+BEGIN
+  SELECT * INTO claim FROM public.scout_year_deletion_claim WHERE singleton FOR UPDATE;
+  IF claim.claim_id IS NULL OR claim.claim_id IS DISTINCT FROM target_claim_id OR claim.caller_id IS DISTINCT FROM target_caller_id THEN RAISE EXCEPTION 'invalid_deletion_claim'; END IF;
+  IF claim.cleanup_complete THEN RETURN jsonb_build_object('started', true, 'complete', true); END IF;
+  IF claim.cleanup_running THEN RAISE EXCEPTION 'cleanup_in_progress'; END IF;
+  UPDATE public.scout_year_deletion_claim SET cleanup_started = true, cleanup_running = true, renewed_at = clock_timestamp() WHERE singleton;
+  RETURN jsonb_build_object('started', true);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.complete_scout_year_cleanup(target_claim_id uuid, target_caller_id uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
+DECLARE claim public.scout_year_deletion_claim%ROWTYPE;
+BEGIN
+  SELECT * INTO claim FROM public.scout_year_deletion_claim WHERE singleton FOR UPDATE;
+  IF claim.claim_id IS NULL OR claim.claim_id IS DISTINCT FROM target_claim_id OR claim.caller_id IS DISTINCT FROM target_caller_id THEN RAISE EXCEPTION 'invalid_deletion_claim'; END IF;
+  IF NOT claim.cleanup_started THEN RAISE EXCEPTION 'cleanup_not_complete'; END IF;
+  IF EXISTS (SELECT 1 FROM jsonb_array_elements(claim.inventory) file JOIN storage.objects o ON o.bucket_id = file->>'bucket' AND o.name = file->>'path') THEN RAISE EXCEPTION 'cleanup_not_complete'; END IF;
+  UPDATE public.scout_year_deletion_claim SET cleanup_complete = true, cleanup_running = false, renewed_at = clock_timestamp() WHERE singleton;
+  RETURN jsonb_build_object('complete', true);
+END;
+$$;
+
+-- Called only by the trusted coordinator after its awaited Storage request
+-- fails. A terminated worker is deliberately not auto-expired: an operator must
+-- first verify no request remains in flight, then use this audited release.
+CREATE OR REPLACE FUNCTION public.release_scout_year_cleanup(target_claim_id uuid, target_caller_id uuid)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
+DECLARE claim public.scout_year_deletion_claim%ROWTYPE;
+BEGIN
+  SELECT * INTO claim FROM public.scout_year_deletion_claim WHERE singleton FOR UPDATE;
+  IF claim.claim_id IS NULL OR claim.claim_id IS DISTINCT FROM target_claim_id OR claim.caller_id IS DISTINCT FROM target_caller_id THEN RAISE EXCEPTION 'invalid_deletion_claim'; END IF;
+  UPDATE public.scout_year_deletion_claim SET cleanup_running = false, renewed_at = clock_timestamp() WHERE singleton;
+  INSERT INTO public.audit_logs(actor_id, action, entity_type, entity_id, metadata)
+    VALUES (claim.caller_id, 'scout_year.cleanup_worker_released', 'scout_year', claim.year_id::text, jsonb_build_object('claimId', claim.claim_id, 'receiptId', claim.receipt_id));
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.abort_scout_year_deletion(target_claim_id uuid)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
+DECLARE claim public.scout_year_deletion_claim%ROWTYPE;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.has_permission('registration.retention.manage') OR NOT public.has_required_aal('registration.retention.manage') THEN RAISE EXCEPTION 'permission_denied'; END IF;
+  SELECT * INTO claim FROM public.scout_year_deletion_claim WHERE singleton FOR UPDATE;
+  IF claim.claim_id IS NULL OR claim.claim_id IS DISTINCT FROM target_claim_id OR claim.caller_id IS DISTINCT FROM auth.uid() THEN RAISE EXCEPTION 'invalid_deletion_claim'; END IF;
+  -- A caller must not release the guards while a Storage HTTP request might
+  -- still be in flight. Once work starts the same claim must be resumed.
+  IF claim.cleanup_started THEN RAISE EXCEPTION 'cleanup_started_resume_required'; END IF;
+  IF EXISTS (SELECT 1 FROM jsonb_array_elements(claim.inventory) file WHERE NOT EXISTS (SELECT 1 FROM storage.objects o WHERE o.bucket_id = file->>'bucket' AND o.name = file->>'path')) THEN
+    RAISE EXCEPTION 'restore_cleanup_objects_before_abort';
+  END IF;
+  INSERT INTO public.audit_logs(actor_id, action, entity_type, entity_id, metadata)
+    VALUES (auth.uid(), 'scout_year.deletion_aborted', 'scout_year', claim.year_id::text, jsonb_build_object('receiptId', claim.receipt_id, 'claimId', claim.claim_id));
+  UPDATE public.scout_year_deletion_claim SET claim_id = NULL, protected_ids = '{}', inventory = '[]', cleanup_complete = false WHERE singleton;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.scout_year_json_strings(jsonb), public.scout_year_decode_reference(text), public.scout_year_row_mentions(jsonb, text[], jsonb), public.guard_scout_year_deletion_write() FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.claim_scout_year_deletion(uuid, uuid, text), public.abort_scout_year_deletion(uuid), public.start_scout_year_cleanup(uuid, uuid), public.complete_scout_year_cleanup(uuid, uuid), public.release_scout_year_cleanup(uuid, uuid) FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.claim_scout_year_deletion(uuid, uuid, text), public.abort_scout_year_deletion(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.start_scout_year_cleanup(uuid, uuid), public.complete_scout_year_cleanup(uuid, uuid), public.release_scout_year_cleanup(uuid, uuid) TO service_role;
+
 CREATE OR REPLACE FUNCTION public.delete_scout_year_with_backup(
   target_year_id uuid,
   target_receipt_id uuid,
@@ -145,8 +456,10 @@ DECLARE
   actor_id uuid := auth.uid();
   selected_year public.scout_years%ROWTYPE;
   receipt public.scout_year_backup_receipts%ROWTYPE;
+  claim public.scout_year_deletion_claim%ROWTYPE;
   current_snapshot jsonb;
   dependent_table text;
+  locked_table record;
   campaign_ids uuid[] := '{}';
   submission_ids uuid[] := '{}';
   draft_ids uuid[] := '{}';
@@ -162,6 +475,12 @@ BEGIN
   -- Rare destructive operation: serialize all affected writes, including inserts.
   -- Row locks alone cannot protect against new children after the snapshot check.
   -- Consistent table order also serializes concurrent deletions of different years.
+  FOR locked_table IN SELECT c.relname FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relkind = 'r'
+      AND c.relname NOT IN ('audit_logs', 'scout_year_backup_receipts', 'scout_year_deletion_claim') ORDER BY c.relname
+  LOOP
+    EXECUTE format('LOCK TABLE public.%I IN SHARE ROW EXCLUSIVE MODE', locked_table.relname);
+  END LOOP;
   LOCK TABLE public.scout_years IN SHARE ROW EXCLUSIVE MODE;
   FOREACH dependent_table IN ARRAY ARRAY[
     'album_revisions',
@@ -264,7 +583,9 @@ BEGIN
   IF receipt.requested_by IS DISTINCT FROM actor_id THEN RAISE EXCEPTION 'receipt_wrong_user' USING ERRCODE = '42501'; END IF;
   IF receipt.used_at IS NOT NULL THEN RAISE EXCEPTION 'receipt_used' USING ERRCODE = '22023'; END IF;
   IF receipt.scout_year_id IS DISTINCT FROM target_year_id THEN RAISE EXCEPTION 'receipt_wrong_year' USING ERRCODE = '22023'; END IF;
-  IF receipt.expires_at <= clock_timestamp() THEN RAISE EXCEPTION 'receipt_expired' USING ERRCODE = '22023'; END IF;
+  LOCK TABLE storage.objects IN SHARE ROW EXCLUSIVE MODE;
+  SELECT * INTO claim FROM public.scout_year_deletion_claim WHERE singleton FOR UPDATE;
+  IF receipt.expires_at <= clock_timestamp() AND NOT (claim.claim_id IS NOT NULL AND claim.receipt_id = target_receipt_id AND claim.caller_id = actor_id AND claim.year_id = target_year_id) THEN RAISE EXCEPTION 'receipt_expired' USING ERRCODE = '22023'; END IF;
   IF receipt.manifest->'version' IS DISTINCT FROM '1'::jsonb
     OR receipt.manifest->'complete' IS DISTINCT FROM 'true'::jsonb
     OR receipt.manifest->'filesComplete' IS DISTINCT FROM 'true'::jsonb
@@ -285,6 +606,16 @@ BEGIN
     OR current_snapshot->'counts' IS DISTINCT FROM receipt.manifest->'counts' THEN
     RAISE EXCEPTION 'stale_snapshot' USING ERRCODE = '40001';
   END IF;
+
+  IF claim.claim_id IS NULL OR claim.receipt_id IS DISTINCT FROM target_receipt_id
+    OR claim.caller_id IS DISTINCT FROM actor_id OR claim.year_id IS DISTINCT FROM target_year_id
+    OR claim.snapshot_hash IS DISTINCT FROM receipt.snapshot_hash OR NOT claim.cleanup_complete THEN
+    RAISE EXCEPTION 'cleanup_not_complete';
+  END IF;
+  IF EXISTS (SELECT 1 FROM jsonb_array_elements(claim.inventory) file JOIN storage.objects o ON o.bucket_id = file->>'bucket' AND o.name = file->>'path') THEN RAISE EXCEPTION 'cleanup_not_complete'; END IF;
+  -- Clearing within this transaction lets its own guarded writes proceed;
+  -- other transactions still see the claim or wait until deletion commits.
+  UPDATE public.scout_year_deletion_claim SET claim_id = NULL, protected_ids = '{}', inventory = '[]', cleanup_complete = false WHERE singleton;
 
   UPDATE public.posts SET scout_year_id = NULL WHERE scout_year_id = target_year_id;
   UPDATE public.gallery_albums SET scout_year_id = NULL WHERE scout_year_id = target_year_id;

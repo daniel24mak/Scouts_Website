@@ -129,6 +129,18 @@ export function collectStorageReferences(snapshot: BackupSnapshot, uploadBucket 
         if (typeof row.bucket_id !== "string" || !registrationDocumentBuckets.has(row.bucket_id)) {
           throw new Error("Invalid or unmapped storage reference");
         }
+        const tombstone = row.verification_status === "deleted" || row.deleted_at != null || String(row.object_path).endsWith(".deleted");
+        if (tombstone) {
+          const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+          const parts = typeof row.object_path === "string" ? row.object_path.split("/") : [];
+          if (row.verification_status !== "deleted" || typeof row.deleted_at !== "string" || !Number.isFinite(Date.parse(row.deleted_at))
+            || parts.length !== 3 || parts[0] !== row.submission_id || parts[1] !== row.id
+            || !uuid.test(parts[0]) || !uuid.test(parts[1]) || !parts[2].endsWith(".deleted") || !uuid.test(parts[2].slice(0, -8))) {
+            throw new Error("Invalid registration document tombstone");
+          }
+          consumedPathFields.set(row, new Set(["object_path"]));
+          continue;
+        }
         addPath(row, ["object_path"], row.bucket_id, submissions.has(row.submission_id) || drafts.has(row.draft_id));
       } else if (dataset === "archived_years" && isRecord(row.snapshot)) {
         if (Array.isArray(row.snapshot.posts)) for (const post of row.snapshot.posts) {

@@ -1006,7 +1006,7 @@ export default function AdminDashboardPage({
   scoutYearsRef.current = data.scoutYears ?? [];
   const expireScoutYearReceipts = (current, now) => {
     return Object.fromEntries(Object.entries(current).map(([yearId, backup]) => {
-      if (backup?.status === "deleting" || !backup?.receiptId || Date.parse(backup.expiresAt) > now) return [yearId, backup];
+      if (backup?.status === "deleting" || backup?.deletionAttempted || !backup?.receiptId || Date.parse(backup.expiresAt) > now) return [yearId, backup];
       return [yearId, { ...backup, status: "expired", receiptId: undefined, downloadUrl: undefined }];
     }));
   };
@@ -2022,7 +2022,7 @@ export default function AdminDashboardPage({
       backup?.yearId === yearId
       && backup.receiptId
       && Number.isFinite(Date.parse(backup.expiresAt))
-      && Date.parse(backup.expiresAt) > Date.now()
+      && (backup.deletionAttempted || Date.parse(backup.expiresAt) > Date.now())
     );
   };
   const invalidateScoutYearBackup = (yearId) => {
@@ -2170,7 +2170,7 @@ export default function AdminDashboardPage({
     scoutYearDeleteBusyRef.current = true;
     setScoutYearBackups((current) => ({
       ...current,
-      [targetYear.id]: { ...current[targetYear.id], status: "deleting", error: "" }
+      [targetYear.id]: { ...current[targetYear.id], status: "deleting", deletionAttempted: true, error: "" }
     }));
     try {
       const result = await deleteScoutYear({
@@ -2178,6 +2178,7 @@ export default function AdminDashboardPage({
         receiptId: receipt.receiptId,
         expectedLabel: scoutYearDeleteRequest.label
       });
+      if (result?.deleted !== true || result.storageCleanupPending === true) throw new Error("Scouting year deletion was not confirmed. Retry with this backup.");
       if (!scoutYearOperationsMountedRef.current || scoutYearDeleteVersionRef.current !== requestVersion) return;
       setScoutYearBackups((current) => {
         const next = { ...current };
@@ -2192,9 +2193,7 @@ export default function AdminDashboardPage({
         if (registrationTargetMode === "existing") cancelRegistrationUpload();
         setRegistrationYearId(nextRegistrationYear?.id ?? "");
       }
-      setSaveMessage(result.storageCleanupPending
-        ? `Scouting year ${targetYear.label} deleted. Database records were deleted successfully; storage cleanup is pending.`
-        : `Scouting year ${targetYear.label} and its owned records were deleted successfully.`);
+      setSaveMessage(`Scouting year ${targetYear.label} and its owned records and files were deleted successfully.`);
       try {
         await refresh();
       } catch (error) {
