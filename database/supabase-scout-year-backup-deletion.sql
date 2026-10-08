@@ -158,6 +158,60 @@ INSERT INTO public.scout_year_deletion_claim (singleton) VALUES (true) ON CONFLI
 ALTER TABLE public.scout_year_deletion_claim ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.scout_year_deletion_claim FROM PUBLIC, anon, authenticated, service_role;
 
+-- Read-only recovery deliberately omits file locations and does not renew or
+-- release the worker fence. Active claims remain resumable after receipt expiry.
+CREATE OR REPLACE FUNCTION public.get_scout_year_deletion_recovery()
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp SET timezone = 'UTC' AS $$
+DECLARE result jsonb;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.has_permission('registration.retention.manage')
+    OR NOT public.has_required_aal('registration.retention.manage') THEN
+    RAISE EXCEPTION 'permission_denied' USING ERRCODE = '42501';
+  END IF;
+  SELECT COALESCE(jsonb_agg(jsonb_build_object(
+    'yearId', c.year_id, 'receiptId', c.receipt_id, 'claimId', c.claim_id,
+    'expiresAt', r.expires_at, 'cleanupStarted', c.cleanup_started,
+    'cleanupRunning', c.cleanup_running, 'cleanupComplete', c.cleanup_complete
+  )), '[]'::jsonb) INTO result
+  FROM public.scout_year_deletion_claim c
+  JOIN public.scout_year_backup_receipts r ON r.id = c.receipt_id AND r.scout_year_id = c.year_id
+  JOIN public.scout_years y ON y.id = c.year_id
+  WHERE c.singleton AND c.claim_id IS NOT NULL AND c.caller_id = auth.uid()
+    AND r.requested_by = auth.uid() AND r.used_at IS NULL AND y.is_active = false;
+  RETURN result;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.get_scout_year_deletion_recovery() FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_scout_year_deletion_recovery() TO authenticated;
+
+-- Fast preflight plus an insert-time guard close the race with claim creation.
+-- Neither a new backup nor another caller may supersede a claimed year's receipt.
+CREATE OR REPLACE FUNCTION public.assert_scout_year_backup_available(target_year_id uuid)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
+DECLARE claim public.scout_year_deletion_claim%ROWTYPE;
+BEGIN
+  SELECT * INTO claim FROM public.scout_year_deletion_claim WHERE singleton FOR SHARE;
+  IF claim.claim_id IS NOT NULL AND claim.year_id = target_year_id THEN
+    RAISE EXCEPTION 'deletion_claim_active' USING ERRCODE = '55000';
+  END IF;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.assert_scout_year_backup_available(uuid) FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.assert_scout_year_backup_available(uuid) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.guard_scout_year_backup_receipt_insert()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
+BEGIN
+  PERFORM public.assert_scout_year_backup_available(NEW.scout_year_id);
+  RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.guard_scout_year_backup_receipt_insert() FROM PUBLIC, anon, authenticated, service_role;
+DROP TRIGGER IF EXISTS scout_year_backup_receipt_insert_guard ON public.scout_year_backup_receipts;
+CREATE TRIGGER scout_year_backup_receipt_insert_guard BEFORE INSERT ON public.scout_year_backup_receipts
+FOR EACH ROW EXECUTE FUNCTION public.guard_scout_year_backup_receipt_insert();
+
 CREATE OR REPLACE FUNCTION public.scout_year_json_strings(value jsonb)
 RETURNS SETOF text LANGUAGE sql IMMUTABLE SET search_path = pg_catalog, public, pg_temp AS $$
   WITH RECURSIVE leaves(item) AS (

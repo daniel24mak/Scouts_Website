@@ -41,6 +41,14 @@ Deno.serve(async (req) => {
     if (!year) throw new AuthorizationError("Scouting year was not found", 404);
     if (year.is_active !== false) throw new AuthorizationError("The active scouting year cannot be backed up for deletion", 409);
 
+    failureCode = "deletion_recovery_check_failed";
+    const { error: claimError } = await context.adminClient.rpc("assert_scout_year_backup_available", { target_year_id: scoutYearId });
+    if (claimError?.message === "deletion_claim_active") {
+      failureCode = "deletion_claim_active";
+      throw new AuthorizationError("This scouting year has an active deletion claim. Resume or abort that claim before creating another backup", 409);
+    }
+    if (claimError) throw new Error("Scouting year deletion recovery could not be checked");
+
     failureCode = "snapshot_failed";
     const { data, error: snapshotError } = await context.adminClient.rpc("get_scout_year_backup_snapshot", { target_year_id: scoutYearId });
     if (snapshotError) throw new Error("Scouting year snapshot could not be read");
@@ -84,6 +92,10 @@ Deno.serve(async (req) => {
       archive_path: stagedPath, snapshot_hash: snapshot.snapshotHash, manifest,
       expires_at: expiresAt, used_at: null
     }).select("id").single();
+    if (receiptError?.message === "deletion_claim_active") {
+      failureCode = "deletion_claim_active";
+      throw new AuthorizationError("This scouting year has an active deletion claim. Keep the original backup to resume deletion", 409);
+    }
     if (receiptError || !receipt?.id) throw new Error("Backup receipt could not be saved");
 
     failureCode = "download_url_failed";

@@ -18,6 +18,10 @@ export function deleteScoutYear({ scoutYearId, receiptId, expectedLabel }) {
   return invokeSupabaseFunction("delete-scout-year", { scoutYearId, receiptId, expectedLabel });
 }
 
+export function getScoutYearDeletionRecovery() {
+  return invokeSupabaseFunction("delete-scout-year", { action: "recovery" });
+}
+
 export async function getActiveScoutYearId() {
   const [activeYear] = await getSupabaseRows("scout_years", "select=id&is_active=eq.true&limit=1");
   return activeYear?.id ?? null;

@@ -53,6 +53,9 @@ BEGIN
   ASSERT has_function_privilege('authenticated', 'public.delete_scout_year_with_backup(uuid,uuid,text)', 'EXECUTE'), 'authenticated RPC missing';
   ASSERT NOT has_function_privilege('authenticated', 'public.get_scout_year_backup_snapshot(uuid)', 'EXECUTE'), 'client snapshot access';
   ASSERT has_function_privilege('service_role', 'public.get_scout_year_backup_snapshot(uuid)', 'EXECUTE'), 'server snapshot access missing';
+  ASSERT has_function_privilege('authenticated', 'public.get_scout_year_deletion_recovery()', 'EXECUTE'), 'caller recovery RPC missing';
+  ASSERT NOT has_function_privilege('anon', 'public.get_scout_year_deletion_recovery()', 'EXECUTE'), 'anonymous recovery access';
+  ASSERT NOT has_function_privilege('authenticated', 'public.assert_scout_year_backup_available(uuid)', 'EXECUTE'), 'client global claim probe';
   ASSERT EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'scout-year-backups' AND NOT public), 'backup bucket is public or absent';
 END;
 $$;
@@ -249,6 +252,7 @@ BEGIN
   cleanup_claim := public.claim_scout_year_deletion(target_year, receipt_id, target_label);
   ASSERT cleanup_claim->'inventory' = '[]'::jsonb, 'surviving nested reference selected for deletion';
   PERFORM public.abort_scout_year_deletion((cleanup_claim->>'claimId')::uuid);
+  ASSERT public.get_scout_year_deletion_recovery() = '[]'::jsonb, 'aborted claim still recoverable';
   UPDATE public.archived_years SET snapshot = '{}' WHERE id = archived_id;
   snapshot := public.get_scout_year_backup_snapshot(target_year);
   UPDATE public.scout_year_backup_receipts SET snapshot_hash = snapshot->>'snapshotHash', manifest = manifest || jsonb_build_object('snapshotHash', snapshot->>'snapshotHash', 'counts', snapshot->'counts') WHERE id = receipt_id;
@@ -260,6 +264,29 @@ BEGIN
   cleanup_claim := public.claim_scout_year_deletion(target_year, receipt_id, target_label);
   ASSERT jsonb_array_length(cleanup_claim->'inventory') = CASE WHEN to_regclass('public.scout_registration_documents') IS NOT NULL THEN 2 ELSE 1 END, 'exclusive source file or document missing';
   ASSERT cleanup_claim = public.claim_scout_year_deletion(target_year, receipt_id, target_label), 'claim retry is not idempotent';
+  result := public.get_scout_year_deletion_recovery();
+  ASSERT result->0->>'receiptId' = receipt_id::text AND result->0->>'claimId' = cleanup_claim->>'claimId', 'original claim/receipt not recoverable';
+  ASSERT NOT (result->0 ?| ARRAY['archive_path', 'manifest', 'inventory', 'snapshot_hash', 'downloadUrl']), 'recovery exposed private backup details';
+  BEGIN
+    PERFORM public.assert_scout_year_backup_available(target_year);
+    RAISE EXCEPTION 'claimed year allowed a fresh backup';
+  EXCEPTION WHEN SQLSTATE '55000' THEN NULL; END;
+  PERFORM public.assert_scout_year_backup_available(other_year);
+  BEGIN
+    INSERT INTO public.scout_year_backup_receipts (scout_year_id, requested_by, archive_path, snapshot_hash, manifest, expires_at)
+    VALUES (target_year, requesting_user, 'replacement-' || gen_random_uuid()::text || '.zip', snapshot->>'snapshotHash', receipt_manifest, now() + interval '1 hour');
+    RAISE EXCEPTION 'receipt insert bypassed active-claim guard';
+  EXCEPTION WHEN SQLSTATE '55000' THEN NULL; END;
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', requesting_user, 'role', 'authenticated', 'aal', 'aal1')::text, true);
+  BEGIN
+    PERFORM public.get_scout_year_deletion_recovery();
+    RAISE EXCEPTION 'AAL1 recovered a deletion claim';
+  EXCEPTION WHEN SQLSTATE '42501' THEN NULL; END;
+  INSERT INTO public.user_role_assignments (user_id, role_id, scope_type, assigned_by, assignment_reason)
+  VALUES (another_user, 'system_administrator', 'global', another_user, 'Recovery isolation fixture');
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', another_user, 'role', 'authenticated', 'aal', 'aal2')::text, true);
+  ASSERT public.get_scout_year_deletion_recovery() = '[]'::jsonb, 'another authorized caller recovered the owner claim';
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', requesting_user, 'role', 'authenticated', 'aal', 'aal2')::text, true);
   BEGIN
     UPDATE public.scouts SET name = 'Unsafe mutation' WHERE id = target_scout;
     RAISE EXCEPTION 'claim did not freeze target rows';
@@ -288,6 +315,7 @@ BEGIN
   PERFORM pg_temp.expect_year_deletion_error(target_year, receipt_id, target_label, 'cleanup_not_complete');
   UPDATE public.scout_year_backup_receipts SET expires_at = now() - interval '1 minute' WHERE id = receipt_id;
   ASSERT cleanup_claim = public.claim_scout_year_deletion(target_year, receipt_id, target_label), 'partial cleanup cannot resume after receipt expiry';
+  ASSERT public.get_scout_year_deletion_recovery()->0->>'receiptId' = receipt_id::text, 'expired claimed receipt cannot be recovered';
   PERFORM public.complete_scout_year_cleanup((cleanup_claim->>'claimId')::uuid, requesting_user);
   -- Force failure after all deletion statements to prove transaction rollback.
   EXECUTE 'CREATE FUNCTION pg_temp.reject_year_audit() RETURNS trigger LANGUAGE plpgsql AS $trigger$ BEGIN RAISE EXCEPTION ''fixture_audit_failure''; END; $trigger$';
@@ -299,6 +327,7 @@ BEGIN
   EXECUTE 'DROP TRIGGER reject_year_audit ON public.audit_logs';
 
   result := public.delete_scout_year_with_backup(target_year, receipt_id, target_label);
+  ASSERT public.get_scout_year_deletion_recovery() = '[]'::jsonb, 'final deletion did not clear recovery';
   ASSERT result->>'deleted' = 'true', 'success response missing';
   ASSERT NOT EXISTS (SELECT 1 FROM public.scout_years WHERE id = target_year), 'year retained';
   ASSERT NOT EXISTS (SELECT 1 FROM public.scouts WHERE id = target_scout), 'scout retained';

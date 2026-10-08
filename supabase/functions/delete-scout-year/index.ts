@@ -103,6 +103,20 @@ Deno.serve(async (req) => {
     context = await requireDashboardPermission(req, "registration.retention.manage");
     failureCode = "invalid_request";
     const body = await req.json().catch(() => { throw new AuthorizationError("Invalid JSON request", 400); });
+    if (body?.action === "recovery") {
+      failureCode = "recovery_read_failed";
+      // The caller-scoped SQL function enforces permission/MFA independently.
+      // Explicit projection prevents storage locations or receipt secrets leaking.
+      const { data, error } = await context.userClient.rpc("get_scout_year_deletion_recovery");
+      if (error || !Array.isArray(data)) throw new Error("Deletion recovery state could not be read");
+      const claims = data.map((claim) => ({
+        yearId: claim.yearId, receiptId: claim.receiptId, claimId: claim.claimId,
+        expiresAt: claim.expiresAt, cleanupStarted: claim.cleanupStarted,
+        cleanupRunning: claim.cleanupRunning, cleanupComplete: claim.cleanupComplete
+      }));
+      return jsonResponse(req, { claims });
+    }
+    if (body?.action !== undefined) throw new AuthorizationError("Unsupported deletion action", 400);
     scoutYearId = parseUuid(body?.scoutYearId, "Scouting year").toLowerCase();
     receiptId = parseUuid(body?.receiptId, "Backup receipt").toLowerCase();
     if (typeof body?.expectedLabel !== "string" || !body.expectedLabel.trim()) throw new AuthorizationError("Enter the scouting year label", 400);

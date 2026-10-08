@@ -32,6 +32,8 @@ function deletionHarness(overrides = {}) {
   ].map(functionSource).concat([
     optionalFunctionSource("expireScoutYearReceipts", "(current) => current"),
     optionalFunctionSource("cleanupScoutYearOperations", "() => {}"),
+    optionalFunctionSource("hasPendingScoutYearDeletion", "() => false"),
+    optionalFunctionSource("hydrateScoutYearDeletionRecovery", "async () => {}"),
     optionalFunctionSource("focusScoutYearDeleteEnabledControl", "() => {}")
   ]).join("\n");
   const events = [];
@@ -40,6 +42,9 @@ function deletionHarness(overrides = {}) {
   const scope = {
     events,
     initialBackups: overrides.initialBackups ?? {},
+    initialRecoveryStatus: overrides.recoveryStatus ?? "ready",
+    user: { id: "caller" },
+    getScoutYearDeletionRecovery: overrides.getScoutYearDeletionRecovery ?? (async () => ({ claims: [] })),
     initialRequest: null,
     initialLabel: "",
     initialRegistrationYearId: overrides.registrationYearId ?? year.id,
@@ -80,6 +85,10 @@ function deletionHarness(overrides = {}) {
   };
   const factory = new Function(...Object.keys(scope), `
     let scoutYearBackups = initialBackups;
+    let scoutYearRecoveryStatus = initialRecoveryStatus;
+    const scoutYearRecoveryVersionRef = { current: 0 };
+    const scoutYearOperationUserRef = { current: user.id };
+    const setScoutYearRecoveryStatus = (status) => { scoutYearRecoveryStatus = status; };
     let scoutYearDeleteRequest = initialRequest;
     let scoutYearDeleteLabel = initialLabel;
     let registrationYearId = initialRegistrationYearId;
@@ -110,6 +119,7 @@ function deletionHarness(overrides = {}) {
     ${sources}
     return {
       hasValidScoutYearReceipt,
+      hydrateScoutYearDeletionRecovery,
       invalidateScoutYearBackup,
       downloadScoutYearBackup,
       openScoutYearDelete,
@@ -121,6 +131,8 @@ function deletionHarness(overrides = {}) {
       focusScoutYearDeleteEnabledControl,
       setDeleteLabel: setScoutYearDeleteLabel,
       replaceBackups: setScoutYearBackups,
+      replaceUser: (id) => { scoutYearOperationUserRef.current = id; },
+      remountOperations: () => { scoutYearOperationsMountedRef.current = true; },
       replaceYears: (years) => { scoutYearsRef.current = years; },
       focusModal: () => { document.activeElement = scoutYearDeleteModalElement; },
       focusOutside: () => { document.activeElement = { outside: true }; },
@@ -140,6 +152,163 @@ test("dashboard API exposes Supabase-only backup and deletion wrappers", () => {
   assert.match(backupWrapper, /createScoutYearBackupInSupabase\(scoutYearId\)/);
   assert.match(deleteWrapper, /deleteScoutYearInSupabase\(payload\)/);
   assert.doesNotMatch(`${backupWrapper}\n${deleteWrapper}`, /request\(/);
+});
+
+test("failed cleanup blocks new backup and preserves its original local receipt", async () => {
+  let backupCalls = 0;
+  const flow = deletionHarness({
+    initialBackups: { "year-a": { yearId: "year-a", status: "ready", receiptId: "original", expiresAt: "2099-01-01T00:00:00Z" } },
+    createScoutYearBackup: async () => { backupCalls += 1; throw new Error("must not replace recovery"); },
+    deleteScoutYear: async () => { throw new Error("Source cleanup is ambiguous; operator action required"); }
+  });
+  flow.openScoutYearDelete(flow.year);
+  flow.setDeleteLabel(flow.year.label);
+  await flow.confirmScoutYearDelete();
+  await flow.downloadScoutYearBackup(flow.year);
+  flow.invalidateScoutYearBackup(flow.year.id);
+  assert.equal(backupCalls, 0);
+  assert.equal(flow.state().scoutYearBackups[flow.year.id].receiptId, "original");
+  assert.equal(flow.hasValidScoutYearReceipt(flow.year.id), true);
+});
+
+test("reload hydrates expired active-claim receipt and resumes with the original ID", async () => {
+  const flow = deletionHarness({ getScoutYearDeletionRecovery: async () => ({ claims: [
+    { yearId: "year-a", receiptId: "original", claimId: "claim-a", expiresAt: "2000-01-01T00:00:00Z", cleanupStarted: true, cleanupRunning: false, cleanupComplete: false }
+  ] }) });
+  await flow.hydrateScoutYearDeletionRecovery();
+  assert.equal(flow.state().scoutYearBackups[flow.year.id]?.receiptId, "original");
+  assert.equal(flow.hasValidScoutYearReceipt(flow.year.id), true);
+  flow.openScoutYearDelete(flow.year);
+  flow.setDeleteLabel(flow.year.label);
+  await flow.confirmScoutYearDelete();
+  assert.equal(flow.events.find((event) => Array.isArray(event) && event[0] === "delete")?.[1].receiptId, "original");
+  assert.equal(flow.state().scoutYearBackups[flow.year.id], undefined);
+});
+
+test("recovery loading or failure blocks fresh backup without erasing a receipt", async () => {
+  for (const recoveryStatus of ["loading", "error"]) {
+    let called = false;
+    const flow = deletionHarness({ recoveryStatus, initialBackups: { "year-a": { receiptId: "original" } }, createScoutYearBackup: async () => { called = true; } });
+    await flow.downloadScoutYearBackup(flow.year);
+    assert.equal(called, false);
+    assert.equal(flow.state().scoutYearBackups[flow.year.id]?.receiptId, "original");
+  }
+});
+
+test("recovery late after unmount or account switch never hydrates another session", async () => {
+  for (const stop of [(flow) => flow.cleanupScoutYearOperations(), (flow) => flow.replaceUser("other-caller")]) {
+    let resolveRecovery;
+    const flow = deletionHarness({ getScoutYearDeletionRecovery: () => new Promise((resolve) => { resolveRecovery = resolve; }) });
+    const request = flow.hydrateScoutYearDeletionRecovery();
+    assert.equal(typeof resolveRecovery, "function", "recovery must load from server");
+    stop(flow);
+    resolveRecovery({ claims: [{ yearId: "year-a", receiptId: "original", claimId: "claim-a", expiresAt: "2000-01-01T00:00:00Z" }] });
+    await request;
+    assert.equal(flow.state().scoutYearBackups[flow.year.id], undefined);
+  }
+});
+
+test("recovery API and dashboard load/refresh wiring remain server-backed", () => {
+  assert.match(client, /export function getScoutYearDeletionRecovery\(\)/);
+  assert.match(client, /getScoutYearDeletionRecoveryInSupabase\(\)/);
+  assert.match(dashboard, /hydrateScoutYearDeletionRecovery\(\);[\s\S]*?\[user\?\.id, data\.scoutYears\]/);
+  assert.match(dashboard, /disabled=\{[^}]*hasPendingScoutYearDeletion\(year\.id\)/);
+});
+
+test("recovery hydration wins over an older pending backup response", async () => {
+  let resolveBackup;
+  const flow = deletionHarness({
+    createScoutYearBackup: () => new Promise((resolve) => { resolveBackup = resolve; }),
+    getScoutYearDeletionRecovery: async () => ({ claims: [{ yearId: "year-a", receiptId: "original", claimId: "claim-a", expiresAt: "2000-01-01T00:00:00Z", cleanupStarted: true, cleanupRunning: false, cleanupComplete: false }] })
+  });
+  const backup = flow.downloadScoutYearBackup(flow.year);
+  await flow.hydrateScoutYearDeletionRecovery();
+  resolveBackup({ receiptId: "replacement", downloadUrl: "https://signed.example/new.zip", expiresAt: "2099-01-01T00:00:00Z" });
+  await backup;
+  assert.equal(flow.state().scoutYearBackups[flow.year.id].receiptId, "original");
+  assert.equal(flow.events.some((event) => Array.isArray(event) && event[0] === "click"), false);
+});
+
+test("only a successful recovery read may clear an externally finalized or aborted claim", async () => {
+  let readCount = 0;
+  const flow = deletionHarness({
+    initialBackups: { "year-a": { yearId: "year-a", receiptId: "original", recoverable: true, deletionAttempted: true, status: "ready" } },
+    getScoutYearDeletionRecovery: async () => { if (readCount++ === 0) throw new Error("offline"); return { claims: [] }; }
+  });
+  await flow.hydrateScoutYearDeletionRecovery();
+  assert.equal(flow.state().scoutYearBackups[flow.year.id].receiptId, "original");
+  await flow.hydrateScoutYearDeletionRecovery();
+  assert.equal(flow.state().scoutYearBackups[flow.year.id], undefined);
+});
+
+test("session cleanup cannot reuse a pending backup generation on same-user remount", async () => {
+  const resolveBackups = [];
+  const flow = deletionHarness({ createScoutYearBackup: () => new Promise((resolve) => resolveBackups.push(resolve)) });
+  const oldRequest = flow.downloadScoutYearBackup(flow.year);
+  flow.cleanupScoutYearOperations();
+  flow.remountOperations();
+  const newRequest = flow.downloadScoutYearBackup(flow.year);
+  resolveBackups[0]({ receiptId: "old-session", downloadUrl: "https://signed.example/old.zip", expiresAt: "2099-01-01T00:00:00Z" });
+  await oldRequest;
+  assert.equal(flow.state().scoutYearBackups[flow.year.id]?.receiptId, undefined);
+  resolveBackups[1]({ receiptId: "new-session", downloadUrl: "https://signed.example/new.zip", expiresAt: "2099-01-01T00:00:00Z" });
+  await newRequest;
+  assert.equal(flow.state().scoutYearBackups[flow.year.id]?.receiptId, "new-session");
+});
+
+test("hydrated ambiguous worker fence requires operator reconciliation before another deletion", async () => {
+  const flow = deletionHarness({ getScoutYearDeletionRecovery: async () => ({ claims: [
+    { yearId: "year-a", receiptId: "original", claimId: "claim-a", expiresAt: "2000-01-01T00:00:00Z", cleanupStarted: true, cleanupRunning: true, cleanupComplete: false }
+  ] }) });
+  await flow.hydrateScoutYearDeletionRecovery();
+  flow.openScoutYearDelete(flow.year);
+  assert.equal(flow.state().scoutYearDeleteRequest, null);
+  assert.equal(flow.state().scoutYearBackups[flow.year.id].receiptId, "original");
+});
+
+test("a backup started earlier cannot replace the receipt once deletion has been attempted", async () => {
+  let resolveBackup;
+  const flow = deletionHarness({
+    initialBackups: { "year-a": { yearId: "year-a", receiptId: "original", status: "ready", expiresAt: "2099-01-01T00:00:00Z" } },
+    createScoutYearBackup: () => new Promise((resolve) => { resolveBackup = resolve; }),
+    deleteScoutYear: async () => { throw new Error("ambiguous cleanup"); }
+  });
+  flow.openScoutYearDelete(flow.year);
+  flow.setDeleteLabel(flow.year.label);
+  const backup = flow.downloadScoutYearBackup(flow.year);
+  await flow.confirmScoutYearDelete();
+  resolveBackup({ receiptId: "replacement", downloadUrl: "https://signed.example/new.zip", expiresAt: "2099-01-01T00:00:00Z" });
+  await backup;
+  assert.equal(flow.state().scoutYearBackups[flow.year.id].receiptId, "original");
+  assert.equal(flow.state().scoutYearBackups[flow.year.id].deletionAttempted, true);
+});
+
+test("refresh after an audited worker release restores retry without a stale operator warning", async () => {
+  let cleanupRunning = true;
+  const flow = deletionHarness({ getScoutYearDeletionRecovery: async () => ({ claims: [
+    { yearId: "year-a", receiptId: "original", claimId: "claim-a", expiresAt: "2000-01-01T00:00:00Z", cleanupStarted: true, cleanupRunning, cleanupComplete: false }
+  ] }) });
+  await flow.hydrateScoutYearDeletionRecovery();
+  cleanupRunning = false;
+  await flow.hydrateScoutYearDeletionRecovery();
+  assert.equal(flow.state().scoutYearBackups[flow.year.id].error, "");
+  flow.openScoutYearDelete(flow.year);
+  assert.equal(flow.state().scoutYearDeleteRequest?.receiptId, "original");
+});
+
+test("a recovery response read before successful final deletion cannot resurrect the claim", async () => {
+  let resolveRecovery;
+  const flow = deletionHarness({
+    initialBackups: { "year-a": { yearId: "year-a", receiptId: "original", claimId: "claim-a", recoverable: true, deletionAttempted: true, status: "ready", expiresAt: "2000-01-01T00:00:00Z" } },
+    getScoutYearDeletionRecovery: () => new Promise((resolve) => { resolveRecovery = resolve; })
+  });
+  const read = flow.hydrateScoutYearDeletionRecovery();
+  flow.openScoutYearDelete(flow.year);
+  flow.setDeleteLabel(flow.year.label);
+  await flow.confirmScoutYearDelete();
+  resolveRecovery({ claims: [{ yearId: "year-a", receiptId: "original", claimId: "claim-a", expiresAt: "2000-01-01T00:00:00Z" }] });
+  await read;
+  assert.equal(flow.state().scoutYearBackups[flow.year.id], undefined);
 });
 
 test("year rows expose an active lock and receipt-gated destructive controls", () => {
@@ -177,7 +346,7 @@ test("signed backup starts only after completion, stores a per-year receipt, and
   assert.equal(flow.hasValidScoutYearReceipt(flow.year.id), true);
 });
 
-test("expired, failed, and stale backups never unlock deletion", async () => {
+test("expired and stale receipts stay locked while replacement failures preserve the last backup", async () => {
   const expired = deletionHarness({
     initialBackups: {
       "year-a": { yearId: "year-a", status: "ready", receiptId: "old", expiresAt: "2000-01-01T00:00:00.000Z" }
@@ -194,7 +363,7 @@ test("expired, failed, and stale backups never unlock deletion", async () => {
     createScoutYearBackup: async () => { throw new Error("archive incomplete"); }
   });
   await failed.downloadScoutYearBackup(failed.year);
-  assert.equal(failed.state().scoutYearBackups[failed.year.id].receiptId, undefined);
+  assert.equal(failed.state().scoutYearBackups[failed.year.id].receiptId, "old", "a failed replacement must preserve the last backup receipt");
   assert.match(failed.state().scoutYearBackups[failed.year.id].error, /archive incomplete/);
 
   let resolveBackup;

@@ -35,6 +35,7 @@ import {
   createScout,
   createScoutYear,
   deleteScoutYear as deleteScoutYearInSupabase,
+  getScoutYearDeletionRecovery as getScoutYearDeletionRecoveryInSupabase,
   importRegistrationSheetToSupabase,
   saveGroupingRules,
   setActiveScoutYear,
@@ -426,6 +427,14 @@ export function deleteScoutYear(payload) {
   }
 
   return deleteScoutYearInSupabase(payload);
+}
+
+export function getScoutYearDeletionRecovery() {
+  if (!isSupabaseConfigured) {
+    return Promise.reject(new Error("Supabase is required to recover a scouting year deletion."));
+  }
+
+  return getScoutYearDeletionRecoveryInSupabase();
 }
 
 export function parseRegistrationSheet(payload) {

@@ -312,11 +312,11 @@ async function edgeHarness(options = {}) {
   class AuthorizationError extends Error { constructor(message, status) { super(message); this.status = status; } }
   const snapshot = options.snapshot ?? fixtureSnapshot({ registration_uploads: [{ scout_year_id: yearId, storage_path: "registration/source.xlsx" }] });
   const adminClient = {
-    rpc: async (name) => { events.push(name); return { data: snapshot, error: null }; },
+    rpc: async (name) => { events.push(name); return { data: snapshot, error: name === "assert_scout_year_backup_available" && options.activeClaim ? { message: "deletion_claim_active" } : null }; },
     from(table) {
       if (table === "scout_years") return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: options.missingYear ? null : snapshot.data.scout_years[0], error: null }) }) }) };
       if (table === "audit_logs") return { insert: async (row) => { audits.push(row); return { error: options.auditFailure ? { message: "private audit error" } : null }; } };
-      if (table === "scout_year_backup_receipts") return { insert: (row) => { receipts.push(row); return { select: () => ({ single: async () => ({ data: options.receiptFailure ? null : { id: "receipt-id" }, error: options.receiptFailure ? { message: "private receipt error" } : null }) }) }; } };
+      if (table === "scout_year_backup_receipts") return { insert: (row) => { receipts.push(row); return { select: () => ({ single: async () => ({ data: options.receiptFailure || options.receiptClaimRace ? null : { id: "receipt-id" }, error: options.receiptClaimRace ? { message: "deletion_claim_active" } : options.receiptFailure ? { message: "private receipt error" } : null }) }) }; } };
       throw new Error(`Unexpected table ${table}`);
     },
     storage: { from(bucket) { return {
@@ -514,6 +514,10 @@ async function deletionHarness(options = {}) {
     } }; } }
   };
   const userClient = { rpc: async (name, payload) => {
+    if (name === "get_scout_year_deletion_recovery") {
+      events.push("recovery");
+      return { data: options.recoveryClaims ?? (claimed && !receipt.used_at ? [{ yearId, receiptId, claimId, expiresAt: receipt.expires_at, cleanupStarted: true, cleanupRunning, cleanupComplete }] : []), error: null };
+    }
     if (name === "claim_scout_year_deletion") {
       events.push("claim");
       if (!claimed && Date.parse(receipt.expires_at) <= Date.now()) return { data: null, error: { message: "receipt_expired" } };
@@ -837,6 +841,73 @@ async function frontendServices(options = {}) {
   });
   return { requests, removedKeys, services: serviceModule.exports, client: clientModule.exports };
 }
+
+test("recovery SQL is caller-owned and MFA-gated without receipt expiry or storage secrets", () => {
+  const recovery = body("get_scout_year_deletion_recovery");
+  assert.match(recovery, /registration\.retention\.manage/);
+  assert.match(recovery, /has_required_aal\('registration\.retention\.manage'\)/);
+  assert.match(recovery, /caller_id\s*=\s*auth\.uid\(\)/);
+  assert.match(recovery, /requested_by\s*=\s*auth\.uid\(\)/);
+  assert.match(recovery, /used_at IS NULL/);
+  assert.match(recovery, /is_active = false/);
+  assert.doesNotMatch(recovery, /expires_at\s*>|archive_path|manifest|snapshot_hash|inventory|signed/i);
+  assert.match(sql, /GRANT EXECUTE ON FUNCTION public\.get_scout_year_deletion_recovery\(\) TO authenticated/);
+  assert.match(body("assert_scout_year_backup_available"), /FOR SHARE/);
+  assert.match(body("assert_scout_year_backup_available"), /deletion_claim_active/);
+  assert.match(sql, /BEFORE INSERT ON public\.scout_year_backup_receipts/);
+  assert.match(body("guard_scout_year_backup_receipt_insert"), /assert_scout_year_backup_available\(NEW\.scout_year_id\)/);
+  assert.match(sql, /REVOKE ALL ON FUNCTION public\.assert_scout_year_backup_available\(uuid\) FROM PUBLIC, anon, authenticated, service_role/);
+});
+
+test("recovery action returns only minimal caller RPC state and needs authorization", async () => {
+  const claim = { yearId, receiptId, claimId: "44444444-4444-4444-8444-444444444444", expiresAt: "2000-01-01T00:00:00.000Z", cleanupStarted: true, cleanupRunning: true, cleanupComplete: false };
+  const harness = await deletionHarness({ recoveryClaims: [{ ...claim, archive_path: "private.zip", manifest: { secret: true } }] });
+  const response = await harness.request({ action: "recovery", callerId: "ignored-other-user" });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { claims: [claim] });
+  assert.deepEqual(harness.events, ["authorize", "recovery"]);
+  const denied = await deletionHarness({ denied: true });
+  assert.equal((await denied.request({ action: "recovery" })).status, 403);
+  assert.deepEqual(denied.events, ["authorize"]);
+});
+
+test("a failed cleanup remains discoverable with its original receipt", async () => {
+  const harness = await deletionHarness({ cleanupThrows: new TypeError("network failed") });
+  assert.equal((await harness.request()).status, 503);
+  const response = await harness.request({ action: "recovery" });
+  assert.equal(response.status, 200);
+  const { claims } = await response.json();
+  assert.equal(claims[0].receiptId, receiptId);
+  assert.equal(claims[0].cleanupRunning, true);
+  assert.equal(harness.events.includes("delete-rpc"), false);
+});
+
+test("fresh backup is rejected before reading or storing files while a deletion claim exists", async () => {
+  const harness = await edgeHarness({ activeClaim: true });
+  assert.equal((await harness.request()).status, 409);
+  assert.equal(harness.events.includes("get_scout_year_backup_snapshot"), false);
+  assert.equal(harness.archives.length, 0);
+  assert.equal(harness.receipts.length, 0);
+});
+
+test("a claim acquired during ZIP preparation blocks receipt issuance and cleans only the new archive", async () => {
+  const harness = await edgeHarness({ receiptClaimRace: true });
+  const response = await harness.request();
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).code, "deletion_claim_active");
+  assert.ok(harness.events.includes("upload"));
+  assert.ok(harness.events.includes("cleanup"));
+  assert.equal(harness.events.some((event) => event.startsWith("sign:")), false);
+});
+
+test("frontend recovery service sends no caller, paths, or receipt secrets", async () => {
+  const { services, requests } = await frontendServices();
+  assert.equal(typeof services.getScoutYearDeletionRecovery, "function");
+  await services.getScoutYearDeletionRecovery();
+  assert.equal(requests[0].headers.Authorization, "Bearer user-access-token");
+  assert.equal(requests[0].url, "https://supabase.test/functions/v1/delete-scout-year");
+  assert.deepEqual(JSON.parse(requests[0].body), { action: "recovery" });
+});
 
 test("frontend backup and deletion services invoke the authenticated Edge endpoints with bounded payloads", async () => {
   const { services, requests } = await frontendServices();
