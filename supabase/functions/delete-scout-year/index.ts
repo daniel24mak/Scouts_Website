@@ -98,6 +98,7 @@ Deno.serve(async (req) => {
   let receiptId: string | null = null;
   let failureCode = "authorization_failed";
   let cleanupClaimId: string | null = null;
+  let cleanupOutcomeAmbiguous = false;
   try {
     context = await requireDashboardPermission(req, "registration.retention.manage");
     failureCode = "invalid_request";
@@ -162,15 +163,24 @@ Deno.serve(async (req) => {
     failureCode = "storage_cleanup_failed";
     for (const file of (started.complete ? [] : claim.inventory) as { bucket: string; path: string }[]) {
       // Storage removal is idempotent for absent objects, so partial cleanup can
-      // resume on the same durable claim without requiring a new backup.
-      const { error } = await context.adminClient.storage.from(file.bucket).remove([file.path]);
-      if (error) throw new Error("Source storage cleanup failed");
+      // resume after confirmed completion. A transport failure does not prove
+      // the remote request stopped: keep its fence until operator reconciliation.
+      const bucket = context.adminClient.storage.from(file.bucket);
+      cleanupOutcomeAmbiguous = true;
+      const removal = await bucket.remove([file.path]);
+      if (removal?.error !== null || !Array.isArray(removal.data)) throw new Error("Source storage cleanup outcome is unknown");
+      cleanupOutcomeAmbiguous = false;
     }
     failureCode = "cleanup_confirmation_failed";
+    cleanupOutcomeAmbiguous = cleanupClaimId !== null;
     const { data: completion, error: completionError } = await context.adminClient.rpc("complete_scout_year_cleanup", {
       target_claim_id: claim.claimId, target_caller_id: context.callerId
     });
+    // Only a definitive SQL rejection proves this completion transaction is
+    // finished. A lost response could otherwise race the next cleanup worker.
+    if (completionError?.code === "P0001" && completionError.message === "cleanup_not_complete") cleanupOutcomeAmbiguous = false;
     if (completionError || completion?.complete !== true) throw new Error("Source storage cleanup could not be confirmed");
+    cleanupOutcomeAmbiguous = false;
     cleanupClaimId = null;
 
     failureCode = "deletion_transaction_failed";
@@ -207,9 +217,12 @@ Deno.serve(async (req) => {
       ...(auditPending ? { auditPending: true } : {})
     });
   } catch (error) {
-    const status = error instanceof AuthorizationError ? error.status : 500;
+    const operatorActionRequired = cleanupOutcomeAmbiguous || failureCode === "cleanup_start_failed";
+    if (operatorActionRequired) failureCode = failureCode === "storage_cleanup_failed" ? "storage_cleanup_ambiguous"
+      : failureCode === "cleanup_start_failed" ? "cleanup_start_ambiguous" : "cleanup_confirmation_ambiguous";
+    const status = operatorActionRequired ? 503 : error instanceof AuthorizationError ? error.status : 500;
     if (context) {
-      if (cleanupClaimId) {
+      if (cleanupClaimId && !operatorActionRequired) {
         try {
           const { error: releaseError } = await context.adminClient.rpc("release_scout_year_cleanup", {
             target_claim_id: cleanupClaimId, target_caller_id: context.callerId
@@ -217,14 +230,17 @@ Deno.serve(async (req) => {
           if (releaseError) throw new Error("Worker release failed");
         } catch { console.error("scout_year.cleanup_worker_release_failed", { yearId: scoutYearId, receiptId }); }
       }
-      try { await auditDeletion(context, scoutYearId, "failed", { receiptId, code: failureCode, status }); }
+      try { await auditDeletion(context, scoutYearId, "failed", { receiptId, code: failureCode, status, ...(operatorActionRequired ? { operatorActionRequired: true } : {}) }); }
       catch { console.error("scout_year.deletion_audit_failed", { callerId: context.callerId, yearId: scoutYearId, receiptId, code: failureCode, status }); }
     } else {
       console.warn("scout_year.deletion_denied", { status });
     }
-    return jsonResponse(req, { error: error instanceof AuthorizationError ? error.message
+    return jsonResponse(req, { error: operatorActionRequired
+      ? "Cleanup completion is unknown. The scouting year was not deleted and its backup is retained. An operator must confirm that no storage request remains in flight before releasing the cleanup worker."
+      : error instanceof AuthorizationError ? error.message
       : failureCode === "storage_cleanup_failed" || failureCode === "cleanup_confirmation_failed"
         ? "Source file cleanup failed. The scouting year was not deleted. Retry using this backup; the staged ZIP is retained for recovery."
-        : "Scouting year deletion failed", code: failureCode }, status);
+        : "Scouting year deletion failed", code: failureCode,
+      ...(operatorActionRequired ? { operatorActionRequired: true, cleanupStatus: "unknown" } : {}) }, status);
   }
 });

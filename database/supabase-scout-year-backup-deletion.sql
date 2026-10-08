@@ -174,14 +174,20 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.scout_year_decode_reference(value text)
 RETURNS text LANGUAGE plpgsql IMMUTABLE SET search_path = pg_catalog, public, pg_temp AS $$
-DECLARE encoded text; decoded text; round integer;
+DECLARE encoded text; decoded text; work_bytes bigint := 0;
 BEGIN
-  -- Inspect both raw and URL-encoded references, including nested JSON URLs.
-  FOR round IN 1..5 LOOP
+  -- Decode until no encoded run remains, not an arbitrary number of layers.
+  -- Each successful replacement strictly shortens the input. Bound both input
+  -- size and cumulative scanning work; NULL means uncertain, never "no match".
+  IF strpos(value, '%') = 0 THEN RETURN lower(value); END IF;
+  IF octet_length(value) > 65536 THEN RETURN NULL; END IF;
+  LOOP
+    work_bytes := work_bytes + octet_length(value);
+    IF work_bytes > 1048576 THEN RETURN NULL; END IF;
     encoded := substring(value FROM '(?:%[0-9a-fA-F]{2})+');
     EXIT WHEN encoded IS NULL;
     BEGIN decoded := convert_from(decode(replace(encoded, '%', ''), 'hex'), 'UTF8');
-    EXCEPTION WHEN OTHERS THEN RETURN lower(value); END;
+    EXCEPTION WHEN OTHERS THEN RETURN NULL; END;
     value := replace(value, encoded, decoded);
   END LOOP;
   RETURN lower(value);
@@ -194,7 +200,7 @@ RETURNS boolean LANGUAGE sql IMMUTABLE SET search_path = pg_catalog, public, pg_
     SELECT 1 FROM public.scout_year_json_strings(value) leaf
     WHERE leaf = ANY(ids) OR EXISTS (
       SELECT 1 FROM jsonb_array_elements(files) file
-      WHERE strpos(public.scout_year_decode_reference(leaf), public.scout_year_decode_reference(file->>'path')) > 0
+      WHERE COALESCE(strpos(public.scout_year_decode_reference(leaf), public.scout_year_decode_reference(file->>'path')) > 0, true)
     )
   );
 $$;

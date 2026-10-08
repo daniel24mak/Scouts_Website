@@ -54,6 +54,17 @@ test("database claims protect cleanup, require completion, and support guarded r
   assert.match(body("guard_scout_year_storage_write"), /scout_year_deletion_in_progress/);
 });
 
+test("storage reference decoding reaches a fixed point or conservatively reports uncertainty", () => {
+  const decoder = body("scout_year_decode_reference");
+  assert.doesNotMatch(decoder, /FOR round IN 1\.\.5/);
+  assert.match(decoder, /octet_length\(value\)/);
+  assert.match(decoder, /work_bytes/);
+  assert.match(decoder, /RETURN NULL/);
+  assert.match(body("scout_year_row_mentions"), /COALESCE\(strpos\([\s\S]*, true\)/i);
+  const fixture = fs.readFileSync(new URL("../../database/tests/scout-year-backup-deletion.sql", import.meta.url), "utf8");
+  assert.match(fixture, /deeply_encoded_path/);
+});
+
 test("backup snapshot records deterministic rows, not counts alone", () => {
   const snapshot = body("get_scout_year_backup_snapshot");
   assert.match(snapshot, /SET search_path = pg_catalog, public, pg_temp/i);
@@ -467,8 +478,10 @@ async function deletionHarness(options = {}) {
         events.push("start-cleanup");
         if (cleanupComplete) return { data: { started: true, complete: true }, error: null };
         if (cleanupRunning) return { data: null, error: { message: "cleanup_in_progress" } };
+        if (options.startFailure) return { data: null, error: { message: "invalid_deletion_claim" } };
         cleanupRunning = true;
-        return { data: { started: true }, error: options.startFailure ? { message: "invalid_deletion_claim" } : null };
+        if (options.startThrows) throw new TypeError("cleanup start response lost");
+        return { data: { started: true }, error: null };
       }
       if (name === "release_scout_year_cleanup") {
         events.push("release-cleanup"); cleanupRunning = false;
@@ -477,20 +490,26 @@ async function deletionHarness(options = {}) {
       if (name === "complete_scout_year_cleanup") {
         events.push("complete-cleanup");
         assert.equal(payload.target_claim_id, claimId);
+        if (options.completeThrows) throw new TypeError("cleanup RPC network failure");
+        if (options.completeUnknown) return { data: null, error: { message: "cleanup RPC response lost" } };
         if (!options.completeFailure) { cleanupRunning = false; cleanupComplete = true; }
-        return { data: { complete: true }, error: options.completeFailure ? { message: "cleanup_not_complete" } : null };
+        return { data: { complete: true }, error: options.completeFailure ? { code: "P0001", message: "cleanup_not_complete" } : null };
       }
       assert.equal(name, "get_scout_year_backup_snapshot");
       assert.equal(payload.target_year_id, yearId);
       events.push("snapshot");
       return { data: options.staleSnapshot ? { ...snapshot, snapshotHash: "b".repeat(64) } : snapshot, error: null };
     },
-    storage: { from(bucket) { return { remove: async (paths) => {
+    storage: { from(bucket) {
+      if (options.preRequestFailure && cleanupAttempts++ === 0) throw new Error("local storage client initialization failed");
+      return { remove: async (paths) => {
       events.push("remove"); removals.push({ bucket, paths });
       assert.equal(receipt.used_at, null, "year must remain until cleanup succeeds");
       if (options.removalGate) await options.removalGate;
       if (options.cleanupFailure && cleanupAttempts++ === 0) return { data: null, error: { message: "secret storage failure" } };
+      if (options.cleanupThrows) throw options.cleanupThrows;
       for (const path of paths) storageObjects.delete(`${bucket}/${path}`);
+      if (options.cleanupResponse !== undefined) return options.cleanupResponse;
       return { data: [], error: null };
     } }; } }
   };
@@ -660,8 +679,8 @@ test("stale snapshots and RPC transaction failures never trigger source storage 
   }
 });
 
-test("cleanup failure leaves the year undeleted and the staged backup recoverable; retry resumes", async () => {
-    const harness = await deletionHarness({ cleanupFailure: true });
+test("a definite pre-request failure keeps the year and releases its worker for a safe retry", async () => {
+    const harness = await deletionHarness({ preRequestFailure: true });
     const response = await harness.request();
     assert.equal(response.status, 500);
     const result = await response.json();
@@ -674,12 +693,67 @@ test("cleanup failure leaves the year undeleted and the staged backup recoverabl
     assert.ok(!JSON.stringify([result, harness.audits, harness.logs]).includes("secret"));
     const retry = await harness.request();
     assert.equal(retry.status, 200);
-    assert.equal(harness.rpcCalls.length, 1); assert.equal(harness.removals.length, 2);
+    assert.equal(harness.rpcCalls.length, 1); assert.equal(harness.removals.length, 1);
+});
+
+test("ambiguous Storage outcomes preserve the worker fence and cannot retry or finalize", async () => {
+  for (const options of [
+    { cleanupFailure: true },
+    { cleanupThrows: new TypeError("fetch failed") },
+    { cleanupThrows: new Error("The request timed out") },
+    { cleanupResponse: { data: null, error: { name: "StorageUnknownError", message: "network unavailable" } } },
+    { cleanupResponse: { data: null, error: { name: "StorageApiError", status: 504, message: "gateway timeout" } } },
+    { cleanupResponse: { data: null, error: { name: "StorageApiError", status: 500, message: "server failed after dispatch" } } },
+    { cleanupResponse: { data: null, error: { name: "StorageApiError", status: 403, message: "unproven failure source" } } },
+    { cleanupResponse: { data: null, error: null } },
+    { cleanupResponse: undefined, cleanupThrows: new SyntaxError("response JSON could not be parsed") }
+  ]) {
+    const harness = await deletionHarness(options);
+    const response = await harness.request();
+    assert.equal(response.status, 503);
+    const result = await response.json();
+    assert.equal(result.code, "storage_cleanup_ambiguous");
+    assert.equal(result.operatorActionRequired, true);
+    assert.match(result.error, /operator/i);
+    assert.equal(harness.events.includes("release-cleanup"), false);
+    assert.equal(harness.events.includes("complete-cleanup"), false);
+    assert.equal(harness.rpcCalls.length, 0);
+    assert.equal((await harness.request()).status, 409);
+    assert.equal(harness.removals.length, 1);
+    assert.equal(harness.rpcCalls.length, 0);
+    assert.equal(harness.storageObjects.get(`scout-year-backups/${callerId}/${yearId}/archive.zip`), "backup bytes");
+    assert.ok(harness.audits.some((audit) => audit.metadata.code === "storage_cleanup_ambiguous"));
+  }
 });
 
 test("an incomplete database cleanup confirmation prevents final deletion", async () => {
   const harness = await deletionHarness({ completeFailure: true });
   assert.ok((await harness.request()).status >= 400);
+  assert.equal(harness.rpcCalls.length, 0);
+  assert.equal(harness.events.includes("release-cleanup"), true);
+});
+
+test("an ambiguous cleanup confirmation retains the worker fence until operator reconciliation", async () => {
+  for (const options of [{ completeThrows: true }, { completeUnknown: true }]) {
+    const harness = await deletionHarness(options);
+    const response = await harness.request();
+    assert.equal(response.status, 503);
+    assert.equal((await response.json()).operatorActionRequired, true);
+    assert.equal(harness.events.includes("release-cleanup"), false);
+    assert.equal(harness.rpcCalls.length, 0);
+    assert.equal((await harness.request()).status, 409);
+    assert.equal(harness.removals.length, 1);
+  }
+});
+
+test("an ambiguous worker-start response requires operator reconciliation without dispatching Storage", async () => {
+  const harness = await deletionHarness({ startThrows: true });
+  const response = await harness.request();
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).code, "cleanup_start_ambiguous");
+  assert.equal(harness.events.includes("release-cleanup"), false);
+  assert.equal((await harness.request()).status, 409);
+  assert.equal(harness.removals.length, 0);
   assert.equal(harness.rpcCalls.length, 0);
 });
 

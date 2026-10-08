@@ -3,6 +3,24 @@
 -- Storage metadata below is a fixture, not a real uploaded archive.
 BEGIN;
 
+DO $$
+DECLARE
+  source_path text := 'registration/11111111-1111-4111-8111-111111111111/source.xlsx';
+  deeply_encoded_path text;
+  depth integer;
+BEGIN
+  deeply_encoded_path := replace(source_path, '/', '%2F');
+  FOR depth IN 1..24 LOOP deeply_encoded_path := replace(deeply_encoded_path, '%', '%25'); END LOOP;
+  ASSERT public.scout_year_decode_reference(deeply_encoded_path) = source_path, 'deeply encoded path was not fully decoded';
+  ASSERT public.scout_year_row_mentions(jsonb_build_object('nested', jsonb_build_object('href', deeply_encoded_path)), '{}', jsonb_build_array(jsonb_build_object('path', source_path))), 'deeply encoded surviving reference was missed';
+  ASSERT public.scout_year_decode_reference(repeat('x', 65537) || '%2F') IS NULL, 'oversized encoded reference should be indeterminate';
+  ASSERT public.scout_year_row_mentions(jsonb_build_object('href', repeat('x', 65537) || '%2F'), '{}', jsonb_build_array(jsonb_build_object('path', source_path))), 'indeterminate references must prevent cleanup';
+  ASSERT public.scout_year_row_mentions(jsonb_build_object('href', '%FF/' || deeply_encoded_path), '{}', jsonb_build_array(jsonb_build_object('path', source_path))), 'malformed encoding must prevent cleanup';
+  ASSERT public.scout_year_decode_reference('%' || repeat('25', 2048) || '2F') IS NULL, 'exhausted decode work budget must be indeterminate';
+  ASSERT public.scout_year_row_mentions(jsonb_build_object('href', '%' || repeat('25', 2048) || '2F'), '{}', jsonb_build_array(jsonb_build_object('path', source_path))), 'work-budget exhaustion must prevent cleanup';
+END;
+$$;
+
 CREATE FUNCTION pg_temp.expect_year_deletion_error(year_id uuid, receipt_id uuid, label text, expected_error text)
 RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
@@ -265,6 +283,9 @@ BEGIN
   DELETE FROM storage.objects WHERE bucket_id = 'scouts-files' AND name = source_path;
   DELETE FROM storage.objects WHERE bucket_id = 'scout-headshots' AND name = owned_campaign_id::text || '/' || owned_submission_id::text || '/' || registration_document_id::text || '.webp';
   ASSERT EXISTS (SELECT 1 FROM public.scout_years WHERE id = target_year), 'year disappeared before cleanup completion';
+  -- Even if Storage bytes are already removed, an unconfirmed/ambiguous worker
+  -- cannot finalize until trusted cleanup completion has been acknowledged.
+  PERFORM pg_temp.expect_year_deletion_error(target_year, receipt_id, target_label, 'cleanup_not_complete');
   UPDATE public.scout_year_backup_receipts SET expires_at = now() - interval '1 minute' WHERE id = receipt_id;
   ASSERT cleanup_claim = public.claim_scout_year_deletion(target_year, receipt_id, target_label), 'partial cleanup cannot resume after receipt expiry';
   PERFORM public.complete_scout_year_cleanup((cleanup_claim->>'claimId')::uuid, requesting_user);
