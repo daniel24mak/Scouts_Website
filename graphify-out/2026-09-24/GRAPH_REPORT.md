@@ -1,13 +1,18 @@
-# Graph Report - C:\Users\dania\OneDrive\Desktop\Scouts\Web_App\Website  (2026-07-23)
+# Graph Report - Website  (2026-09-24)
 
 ## Corpus Check
-- 240 files · ~216,739 words
+- 297 files · ~254,233 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1360 nodes · 3612 edges · 87 communities (64 shown, 23 thin omitted)
-- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 97 edges (avg confidence: 0.71)
-- Token cost: 64,094 input · 21,297 output
+- 1797 nodes · 4486 edges · 128 communities (99 shown, 29 thin omitted)
+- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 107 edges (avg confidence: 0.7)
+- Token cost: 0 input · 0 output
+
+## Graph Freshness
+- Built from commit: `d26583ce`
+- Run `git rev-parse HEAD` and compare to check if the graph is stale.
+- Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - Content Admin Workflows
@@ -92,18 +97,56 @@
 - Storage Inventory Tests
 - Storage Workflow Tests
 - Workflow Engine Tests
+- InteractiveIcon.jsx
+- utils.ts
+- Form Response Email Design
+- Scout Registration System Implementation Plan
+- registrationImageService.js
+- ChiefsPortalPage.jsx
+- Global Constraints
+- Global Constraints
+- Global Constraints
+- Form Question Display Design
+- instagram.tsx
+- Global Constraints
+- arrow-left.tsx
+- arrow-right.tsx
+- calendar-days.tsx
+- home.tsx
+- map-pin.tsx
+- moon.tsx
+- panel-left-close.tsx
+- panel-left-open.tsx
+- RegistrationCampaigns.jsx
+- package.json
+- bell.tsx
+- menu.tsx
+- sun.tsx
+- upload.tsx
+- users.tsx
+- x.tsx
+- settings.tsx
+- @dnd-kit/utilities
+- heic2any
+- libphonenumber-js
+- motion
+- react-router-dom
+- @tiptap/extension-placeholder
+- @tiptap/react
+- vite
+- scoutRegistrationMigration.test.js
 
 ## God Nodes (most connected - your core abstractions)
 1. `AdminDashboardPage()` - 92 edges
-2. `getSupabaseRows()` - 71 edges
-3. `getCurrentSupabaseUserId()` - 63 edges
-4. `patchSupabaseRows()` - 56 edges
+2. `getSupabaseRows()` - 73 edges
+3. `getCurrentSupabaseUserId()` - 64 edges
+4. `patchSupabaseRows()` - 58 edges
 5. `insertSupabaseRow()` - 49 edges
-6. `useAuth()` - 31 edges
-7. `callSupabaseRpc()` - 31 edges
+6. `callSupabaseRpc()` - 35 edges
+7. `useAuth()` - 31 edges
 8. `deleteSupabaseRows()` - 31 edges
-9. `uploadSupabaseFile()` - 28 edges
-10. `optimizeImageForUpload()` - 27 edges
+9. `uploadSupabaseFile()` - 30 edges
+10. `optimizeImageForUpload()` - 29 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Public and Private Application Surface Separation` --semantically_similar_to--> `Dashboard Workspaces`  [INFERRED] [semantically similar]
@@ -133,19 +176,19 @@
 - **St. Mary's Scouts Visual Identity** — src_assets_smscouts_logo_st_marys_scouts_logo, src_assets_smscouts_logo_fleur_de_lis, src_assets_smscouts_logo_cross, src_assets_smscouts_logo_scouting_and_christian_identity [INFERRED 0.95]
 - **St. Mary's Scouts Bilingual Naming** — src_assets_smscouts_logo_st_marys_scouts_logo, src_assets_smscouts_logo_scout_of_saint_mary, src_assets_smscouts_logo_arabic_scout_name, src_assets_smscouts_logo_bilingual_identity [EXTRACTED 1.00]
 
-## Communities (87 total, 23 thin omitted)
+## Communities (128 total, 29 thin omitted)
 
 ### Community 0 - "Content Admin Workflows"
-Cohesion: 0.06
-Nodes (71): activateScoutingYear(), addAlbumPhotos(), addChief(), addEquipe(), addFaq(), addLeader(), addRegisteredScout(), assignEquipeScouts() (+63 more)
+Cohesion: 0.09
+Nodes (31): addFaq(), deleteDashboardPostedForm(), destroyFaq(), fallbackData, removeContactMessage(), removeDashboardDocumentCategory(), removeLeader(), reviewProfileChange() (+23 more)
 
 ### Community 1 - "Forms Builder System"
 Cohesion: 0.07
-Nodes (63): closeDashboardPostedForm(), deleteDashboardFormTemplate(), deleteDashboardPostedForm(), reopenDashboardPostedForm(), saveDashboardFormTemplate(), saveDashboardPostedForm(), saveDashboardReimbursementDraft(), submitDashboardReimbursement() (+55 more)
+Nodes (58): closeDashboardPostedForm(), deleteDashboardFormTemplate(), reopenDashboardPostedForm(), saveDashboardFormSubmission(), saveDashboardFormTemplate(), saveDashboardPostedForm(), saveDashboardReimbursementDraft(), sendDashboardFormResponseEmail() (+50 more)
 
 ### Community 2 - "Authentication and MFA"
 Cohesion: 0.07
-Nodes (52): AboutPage, AcceptInvitationPage, AdminChiefAttendancePage, AdminDashboardPage, AlbumDetailPage, App(), AttendancePage, BlogDetailPage (+44 more)
+Nodes (54): changeOwnPassword(), AboutPage, AcceptInvitationPage, AdminChiefAttendancePage, AdminDashboardPage, AlbumDetailPage, AttendancePage, BlogDetailPage (+46 more)
 
 ### Community 3 - "Workspace Access Control"
 Cohesion: 0.07
@@ -156,24 +199,24 @@ Cohesion: 0.09
 Nodes (63): addAlbumPhotos(), addRegisteredScout(), columnIndexFromCellRef(), countPattern(), createAlbum(), createBlog(), createChief(), createEvent() (+55 more)
 
 ### Community 5 - "Calendar Management"
-Cohesion: 0.07
-Nodes (54): deleteCalendarEvent(), CalendarManagement(), canSeeEvent(), formatDateKey(), formatEventDateRange(), formatEventTime(), fullDateFormatter, getEventsForDay() (+46 more)
+Cohesion: 0.13
+Nodes (22): deleteCalendarEvent(), updateCalendarEvent(), CalendarManagement(), canSeeEvent(), formatDateKey(), formatEventDateRange(), formatEventTime(), fullDateFormatter (+14 more)
 
 ### Community 6 - "Dashboard Attendance Bootstrap"
-Cohesion: 0.06
-Nodes (44): collectionKeys, normalizeBootstrapData(), objectOrEmpty(), createCalendarEvent(), deleteAttendanceSession(), loadingData, saveChiefAttendance(), saveScoutAttendance() (+36 more)
+Cohesion: 0.08
+Nodes (38): collectionKeys, normalizeBootstrapData(), objectOrEmpty(), deleteAttendanceSession(), getBootstrap(), loadingData, saveChiefAttendance(), saveScoutAttendance() (+30 more)
 
 ### Community 7 - "Dashboard Audit Utilities"
 Cohesion: 0.05
-Nodes (35): arrayBufferToBase64(), auditChangedFields(), auditMetaValue(), auditTitleFromMeta(), chiefDefaults(), contentStatuses, dashboardSectionSearchPlaceholders, downloadCsvFile() (+27 more)
+Nodes (54): activateScoutingYear(), addEquipe(), addLeader(), assignEquipeScouts(), createScoutingYear(), removeDashboardUser(), removeEquipe(), removeFaq() (+46 more)
 
 ### Community 8 - "Supabase Data Operations"
-Cohesion: 0.15
-Nodes (38): updatePhoto(), updatePhotoBatch(), deleteSupabaseAttendanceSession(), saveSupabaseChiefAttendance(), saveSupabaseScoutAttendance(), updateSupabaseAttendanceSessionDate(), updateSupabaseAttendanceSessionLabel(), logAuditEvent() (+30 more)
+Cohesion: 0.17
+Nodes (30): deleteSupabaseAttendanceSession(), saveSupabaseChiefAttendance(), saveSupabaseScoutAttendance(), updateSupabaseAttendanceSessionDate(), updateSupabaseAttendanceSessionLabel(), logAuditEvent(), archiveEquipe(), assignScoutsToEquipe() (+22 more)
 
 ### Community 9 - "Public Data Services"
-Cohesion: 0.12
-Nodes (32): createScoutingYear(), getBootstrap(), getPublicAlbumPage(), getAttendanceData(), deleteSupabaseCalendarEvent(), getCalendarEvents(), getPublicCalendarEvents(), getEquipeData() (+24 more)
+Cohesion: 0.14
+Nodes (22): deleteAlbum(), approved(), getPublicAlbumPage(), getPublicBlogDetailPage(), deleteGalleryAlbum(), deleteGalleryPhotos(), getGallery(), getPublicAlbumPhotos() (+14 more)
 
 ### Community 10 - "People Access Workspace"
 Cohesion: 0.14
@@ -192,8 +235,8 @@ Cohesion: 0.15
 Nodes (21): TransactionTable(), getStorageLeafData(), getStorageOverview(), getStorageSectionData(), manageStorageRecord(), recordStorageMovement(), getStoragePermissionKeys(), getVisibleStorageNavigation() (+13 more)
 
 ### Community 14 - "Site Content Storage"
-Cohesion: 0.20
-Nodes (23): saveWebsiteContent(), prepareEventImage(), createGalleryPhotos(), prepareAlbumData(), optimizedImagePath(), optimizeImageForUpload(), createLeader(), deleteLeader() (+15 more)
+Cohesion: 0.09
+Nodes (51): requestProfileChange(), saveWebsiteContent(), AvatarCropModal(), clamp(), coverGeometry(), cropToFile(), loadImage(), readFileAsDataUrl() (+43 more)
 
 ### Community 15 - "Finance Workspace Core"
 Cohesion: 0.17
@@ -204,16 +247,16 @@ Cohesion: 0.16
 Nodes (17): aed, ScoutingBudgetSummary(), dateLabel(), emptyRequest, itemNames(), ScoutingStoragePanel(), tabs, linkFinanceStorageResource() (+9 more)
 
 ### Community 17 - "User Profile Management"
-Cohesion: 0.21
-Nodes (18): removeDashboardUser(), resetUserPassword(), requestPrivateDownload(), requestPrivateUpload(), invokeSupabaseFunction(), normalizeProfile(), adminResetUserPassword(), createDashboardUser() (+10 more)
+Cohesion: 0.13
+Nodes (30): uploadRegistrationSheet(), getOrderedFormQuestions(), classification(), formatAnswer(), formatBytes(), formatDate(), orderedSubmissionAnswers(), pendingStatuses (+22 more)
 
 ### Community 18 - "Rich Text Rendering"
-Cohesion: 0.20
-Nodes (19): FormattedText(), isSafeHref(), renderInline(), allowedAttributes, allowedCssProperties, allowedTags, cleanStyle(), escapeHtml() (+11 more)
+Cohesion: 0.07
+Nodes (55): sendContactMessage(), fallbackWebsiteData(), getPublicAboutData(), getPublicHomeData(), FadeInSection(), FormattedText(), isSafeHref(), renderInline() (+47 more)
 
 ### Community 19 - "Image Crop Processing"
-Cohesion: 0.19
-Nodes (17): AvatarCropModal(), clamp(), coverGeometry(), cropToFile(), loadImage(), readFileAsDataUrl(), canvasToWebp(), convertHeicToJpeg() (+9 more)
+Cohesion: 0.05
+Nodes (42): Authenticated application, Color, Components, Dashboard And Workflow Refinement, Data And Behavior, Design Direction, Forms, Header (+34 more)
 
 ### Community 20 - "Finance Workflow Modules"
 Cohesion: 0.16
@@ -224,16 +267,16 @@ Cohesion: 0.16
 Nodes (4): createStorageWorkflowRecord(), configs, StorageWorkflowPanel(), titleFor()
 
 ### Community 22 - "Albums and Rich Editing"
-Cohesion: 0.17
-Nodes (14): deletePhotos(), colorOptions, fontOptions, FontSize, fontSizes, highlightOptions, RichTextEditor(), AlbumDetailPage() (+6 more)
+Cohesion: 0.19
+Nodes (25): canShareFormRow(), comparableAnswer(), forcedFullWidthTypes, formatPhoneAnswer(), getAnswerScalar(), getCountryName(), getFormWidthUnits(), moveFormQuestion() (+17 more)
 
 ### Community 23 - "Public Content Fallbacks"
-Cohesion: 0.18
-Nodes (9): approved(), fallbackWebsiteData(), getPublicGalleryPage(), getPublicHomeData(), plannedEvents, registeredScouts, demoUsers, getPublicGalleryAlbums() (+1 more)
+Cohesion: 0.17
+Nodes (19): makeQuestion(), RegistrationCampaignSettings(), asBoolean(), asPositiveInteger(), calculateAgeOnDate(), classifyDuplicateCandidate(), getRegistrationAvailability(), inferRegistrationGroup() (+11 more)
 
 ### Community 24 - "Error Recovery System"
-Cohesion: 0.22
-Nodes (11): ErrorBoundary, readReloadAttempts(), reloadWithRecoveryLimit(), SiteRecoveryPrompt(), writeReloadAttempts(), getErrorSignature(), limitText(), logSiteError() (+3 more)
+Cohesion: 0.16
+Nodes (14): App(), ErrorBoundary, clearRecoveryReloads(), readReloadAttempts(), reloadWithRecoveryLimit(), SiteRecoveryPrompt(), writeReloadAttempts(), authHash (+6 more)
 
 ### Community 25 - "Blog Content Services"
 Cohesion: 0.25
@@ -241,43 +284,43 @@ Nodes (17): applyAuthorProfile(), createPost(), createUniqueSlug(), enrichPostsW
 
 ### Community 26 - "Frontend Dependencies"
 Cohesion: 0.12
-Nodes (17): heic2any, lucide-react, dependencies, heic2any, lucide-react, react-router-dom, @tiptap/extension-placeholder, @tiptap/extension-text-align (+9 more)
+Nodes (17): @dnd-kit/core, @dnd-kit/sortable, lucide-react, dependencies, @dnd-kit/core, @dnd-kit/sortable, lucide-react, @tiptap/extension-link (+9 more)
 
 ### Community 27 - "Settings and Archives"
-Cohesion: 0.22
-Nodes (16): loadDashboardReports(), allowedDocumentExtensions, createArchivedYearSnapshot(), deleteArchivedYearSnapshot(), extensionFromFileName(), getDocumentsWorkspaceData(), getReportsWorkspaceData(), normalizeArchivedYear() (+8 more)
+Cohesion: 0.15
+Nodes (21): loadDashboardReports(), removeArchivedYearSnapshot(), saveArchivedYearSnapshot(), saveDashboardDocument(), saveDashboardDocumentCategory(), uploadDashboardDocumentFiles(), allowedDocumentExtensions, createArchivedYearSnapshot() (+13 more)
 
 ### Community 28 - "Public Data Caching"
-Cohesion: 0.24
-Nodes (16): delay(), getCachedEntry(), getFreshCachedData(), getStaleCachedData(), loadPublicData(), loadWithRetry(), makeCacheKey(), publicDataCache (+8 more)
+Cohesion: 0.21
+Nodes (17): getPublicGalleryPage(), delay(), getCachedEntry(), getFreshCachedData(), getStaleCachedData(), loadPublicData(), loadWithRetry(), makeCacheKey() (+9 more)
 
 ### Community 29 - "Blog Detail Experience"
-Cohesion: 0.21
-Nodes (11): updateBlog(), getPublicBlogDetailPage(), icons, inferToastVariant(), ToastContext, ToastProvider(), useToast(), BlogDetailPage() (+3 more)
+Cohesion: 0.12
+Nodes (19): deletePhotos(), updateAlbum(), updateBlog(), colorOptions, fontOptions, FontSize, fontSizes, highlightOptions (+11 more)
 
 ### Community 30 - "Finance Ledger Services"
 Cohesion: 0.30
 Nodes (13): createFinanceTransaction(), getFinanceLeafData(), getFinanceLedgerAccounts(), getFinanceOverview(), getFinanceSectionData(), getFinanceTransactionLines(), manageFinanceRecord(), postFinanceTransaction() (+5 more)
 
 ### Community 31 - "Legacy Permission Helpers"
-Cohesion: 0.37
-Nodes (14): canOpenSection(), hasChiefAccess(), isSectionAllowed(), canEditScouts(), canManageFormTemplates(), canManageSystem(), canPostForms(), canPublishContent() (+6 more)
+Cohesion: 0.20
+Nodes (23): canAccessGroup(), canManageEquipesForGroup(), canOpenSection(), canSeeDashboardEvent(), getAssignableGroupIds(), getCoordinatorGroupIds(), getPrimaryRole(), getProfileAssignedGroupIds() (+15 more)
 
 ### Community 32 - "Edge Function Authorization"
-Cohesion: 0.34
-Nodes (9): configuredOrigins(), corsHeaders(), jsonResponse(), AuthorizationError, AuthorizedContext, parseUuid(), requireDashboardPermission(), requireSystemAdministrator() (+1 more)
+Cohesion: 0.05
+Nodes (48): aliases, clean(), columnIndex(), genderFrom(), groupFor(), normalizedHeader(), numberFrom(), Rule (+40 more)
 
 ### Community 33 - "Project Tooling"
-Cohesion: 0.14
-Nodes (13): eslint, devDependencies, eslint, @playwright/test, prettier, supabase, name, private (+5 more)
+Cohesion: 0.22
+Nodes (9): eslint, devDependencies, eslint, @playwright/test, prettier, supabase, @playwright/test, prettier (+1 more)
 
 ### Community 34 - "Notifications and Submissions"
-Cohesion: 0.23
-Nodes (13): completeDashboardEntityNotifications(), deleteDashboardNotification(), readAllDashboardNotifications(), readDashboardNotification(), saveDashboardFormSubmission(), saveFormSubmission(), deleteNotification(), getNotifications() (+5 more)
+Cohesion: 0.29
+Nodes (11): completeDashboardEntityNotifications(), deleteDashboardNotification(), readAllDashboardNotifications(), readDashboardNotification(), deleteNotification(), getNotifications(), markAllNotificationsRead(), markNotificationRead() (+3 more)
 
 ### Community 35 - "About Page Content"
-Cohesion: 0.24
-Nodes (13): getPublicAboutData(), scoutGroups, AboutPage(), goals, groupRange(), initials(), parseHistoryMilestones(), parseManagedList() (+5 more)
+Cohesion: 0.15
+Nodes (21): deleteBlog(), removeDashboardDocument(), reviewDashboardWebsiteContentRevision(), createSupabaseCalendarEvent(), deleteSupabaseCalendarEvent(), getCalendarEvents(), getPublicCalendarEvents(), updateSupabaseCalendarEvent() (+13 more)
 
 ### Community 36 - "Website Content Editor"
 Cohesion: 0.20
@@ -292,20 +335,20 @@ Cohesion: 0.17
 Nodes (12): About Us, Blogs / News, Faith, Service, Leadership, Calendar, Empty Main Content Area, Gallery, Home, Log In (+4 more)
 
 ### Community 39 - "Homepage Public Content"
-Cohesion: 0.29
-Nodes (10): sendContactMessage(), FadeInSection(), activityCards, formatEventDate(), formatEventTime(), getUpcomingEvents(), HomePage(), isApproved() (+2 more)
+Cohesion: 0.23
+Nodes (21): blankFormSchema(), closePostedForm(), formQuestionTypes, getFormsData(), insertTemplateVersion(), jsonValue(), normalizeFormAiSummary(), normalizeFormSubmission() (+13 more)
 
 ### Community 40 - "Development Scripts"
 Cohesion: 0.18
 Nodes (11): scripts, api, build, db:reset, db:tables, dev, dev:full, preview (+3 more)
 
 ### Community 41 - "Public Listing Pages"
-Cohesion: 0.31
-Nodes (8): getPublicBlogsPage(), SafeImage(), withRetryParam(), BlogsPage(), formatPostCategory(), getPostCategory(), getPostDate(), GalleryPage()
+Cohesion: 0.39
+Nodes (7): getPublicBlogsPage(), SafeImage(), withRetryParam(), BlogsPage(), formatPostCategory(), getPostCategory(), getPostDate()
 
 ### Community 42 - "Shared UI Components"
-Cohesion: 0.29
-Nodes (7): BlogPostPreview(), formatPostCategory(), formatPostDate(), getInitials(), UserAvatar(), FocusedWorkspaceShell(), WorkspaceSwitcher()
+Cohesion: 0.27
+Nodes (8): BlogPostPreview(), formatPostCategory(), formatPostDate(), InteractiveIcon(), getInitials(), UserAvatar(), FocusedWorkspaceShell(), WorkspaceSwitcher()
 
 ### Community 43 - "Dashboard Shell Checks"
 Cohesion: 0.18
@@ -320,8 +363,8 @@ Cohesion: 0.28
 Nodes (9): Database Authorization Error 42501, is_admin Function, Mobile Navigation Menu, Public Mobile Homepage Screenshot, Page Not Loading Properly Recovery Prompt, Public Mobile Homepage, Reload Page Action, Building Faith, Leadership, and Community Through Scouting (+1 more)
 
 ### Community 46 - "Group Access Helpers"
-Cohesion: 0.25
-Nodes (9): canAccessGroup(), canManageEquipesForGroup(), canSeeDashboardEvent(), getAssignableGroupIds(), getCoordinatorGroupIds(), getPrimaryRole(), getProfileAssignedGroupIds(), getUserRoles() (+1 more)
+Cohesion: 0.24
+Nodes (18): validateEmailAnswer(), clearRegistrationRecovery(), containsFile(), getSerializableRegistrationAnswers(), loadLocalFallback(), loadRegistrationRecovery(), openRecoveryDatabase(), recoveryKey() (+10 more)
 
 ### Community 47 - "Public Desktop Error State"
 Cohesion: 0.25
@@ -371,25 +414,153 @@ Nodes (3): Build Job, Deploy Job, GitHub Pages Deployment Workflow
 Cohesion: 0.67
 Nodes (3): Main JSX Module Entry, React Root Mount, Scouts Group HTML Shell
 
+### Community 69 - "TipTap Link Extension"
+Cohesion: 0.14
+Nodes (14): addAlbumPhotos(), addChief(), addRegisteredScout(), createAlbum(), createBlog(), moveRegisteredScout(), request(), saveAdminRules() (+6 more)
+
+### Community 70 - "TipTap Text Styles"
+Cohesion: 0.20
+Nodes (17): CalendarPage(), dateFormatter, formatDateKey(), formatEventDate(), formatEventRange(), formatEventTime(), getAvailableYears(), getEventColor() (+9 more)
+
+### Community 73 - "TipTap Starter Kit"
+Cohesion: 0.33
+Nodes (16): addDays(), buildDescription(), buildGoogleCalendarUrl(), buildOutlookCalendarUrl(), cleanDate(), cleanTime(), compactDate(), compactDateTime() (+8 more)
+
+### Community 87 - "InteractiveIcon.jsx"
+Cohesion: 0.15
+Nodes (12): animatedIcons, ChevronDownIcon, ChevronDownIconHandle, ChevronDownIconProps, DEFAULT_TRANSITION, ARROW_VARIANTS, ExternalLinkIcon, ExternalLinkIconHandle (+4 more)
+
+### Community 88 - "utils.ts"
+Cohesion: 0.18
+Nodes (10): FILE_TEXT, FileTextIconHandle, FileTextIconProps, PlusIcon, PlusIconHandle, PlusIconProps, SearchIcon, SearchIconHandle (+2 more)
+
+### Community 89 - "Form Response Email Design"
+Cohesion: 0.17
+Nodes (11): Builder Experience, Data Model, Delivery Infrastructure, Deployment, Email Content, Error Handling, Form Response Email Design, Goal (+3 more)
+
+### Community 90 - "Scout Registration System Implementation Plan"
+Cohesion: 0.20
+Nodes (9): Architecture, Deployment prerequisites, Phase 1: Domain and security foundation, Phase 2: Forms extension, Phase 3: Public registration, Phase 4: Dashboard operations, Phase 5: Compatibility and operations, Scout Registration System Implementation Plan (+1 more)
+
+### Community 91 - "registrationImageService.js"
+Cohesion: 0.33
+Nodes (9): browserImageFile(), canvasBlob(), decodeRegistrationImage(), detectFileKind(), loadImageElement(), pdfSignature, processRegistrationFile(), startsWith() (+1 more)
+
+### Community 92 - "ChiefsPortalPage.jsx"
+Cohesion: 0.39
+Nodes (8): createCalendarEvent(), ChiefsPortalPage(), getEquipeName(), getSchoolGrade(), hasChiefAccess(), sortLabels, sortScouts(), canCreateGroupMeetings()
+
+### Community 93 - "Global Constraints"
+Cohesion: 0.25
+Nodes (7): Global Constraints, Premium UI Refinement Implementation Plan, Task 1: Consolidate The Shared Dashboard Shell, Task 2: Normalize Public Layout And Navigation, Task 3: Refine Public Page Hierarchy, Task 4: Refine Dashboard Workflow Surfaces, Task 5: Final Cross-Route Verification
+
+### Community 94 - "Global Constraints"
+Cohesion: 0.25
+Nodes (7): Form Response Email Implementation Plan, Global Constraints, Task 1: Form model and validation, Task 2: Delivery formatter and database log, Task 3: Dashboard final-submission delivery, Task 4: Public registration delivery, Task 5: Full verification and deployment notes
+
+### Community 95 - "Global Constraints"
+Cohesion: 0.29
+Nodes (6): Form Question Display Implementation Plan, Global Constraints, Task 1: Normalize the display setting, Task 2: Add the builder control and renderer behavior, Task 3: Polish unboxed questions, Task 4: Verify
+
+### Community 96 - "Form Question Display Design"
+Cohesion: 0.29
+Nodes (6): Behavior, Form Question Display Design, Goal, Rendering, Testing, Unboxed Questions
+
+### Community 97 - "instagram.tsx"
+Cohesion: 0.29
+Nodes (6): InstagramIcon, InstagramIconHandle, InstagramIconProps, LINE_VARIANTS, PATH_VARIANTS, RECT_VARIANTS
+
+### Community 98 - "Global Constraints"
+Cohesion: 0.33
+Nodes (5): Global Constraints, Lucide Animated Interactive Icons Implementation Plan, Task 1: Shared animated-icon foundation, Task 2: Shared public and dashboard controls, Task 3: Verification
+
+### Community 99 - "arrow-left.tsx"
+Cohesion: 0.33
+Nodes (5): ArrowLeftIcon, ArrowLeftIconHandle, ArrowLeftIconProps, PATH_VARIANTS, SECOND_PATH_VARIANTS
+
+### Community 100 - "arrow-right.tsx"
+Cohesion: 0.33
+Nodes (5): ArrowRightIcon, ArrowRightIconHandle, ArrowRightIconProps, PATH_VARIANTS, SECONDARY_PATH_VARIANTS
+
+### Community 101 - "calendar-days.tsx"
+Cohesion: 0.33
+Nodes (5): CalendarDaysIcon, CalendarDaysIconHandle, CalendarDaysIconProps, DOTS, VARIANTS
+
+### Community 102 - "home.tsx"
+Cohesion: 0.33
+Nodes (5): DEFAULT_TRANSITION, HomeIcon, HomeIconHandle, HomeIconProps, PATH_VARIANTS
+
+### Community 103 - "map-pin.tsx"
+Cohesion: 0.33
+Nodes (5): CIRCLE_VARIANTS, MapPinIcon, MapPinIconHandle, MapPinIconProps, SVG_VARIANTS
+
+### Community 104 - "moon.tsx"
+Cohesion: 0.33
+Nodes (5): MoonIcon, MoonIconHandle, MoonIconProps, SVG_TRANSITION, SVG_VARIANTS
+
+### Community 105 - "panel-left-close.tsx"
+Cohesion: 0.33
+Nodes (5): DEFAULT_TRANSITION, PanelLeftCloseIcon, PanelLeftCloseIconHandle, PanelLeftCloseIconProps, PATH_VARIANTS
+
+### Community 106 - "panel-left-open.tsx"
+Cohesion: 0.33
+Nodes (5): DEFAULT_TRANSITION, PanelLeftOpenIcon, PanelLeftOpenIconHandle, PanelLeftOpenIconProps, PATH_VARIANTS
+
+### Community 107 - "RegistrationCampaigns.jsx"
+Cohesion: 0.60
+Nodes (5): copyLink(), downloadQr(), publicRegistrationUrl(), RegistrationCampaigns(), setRegistrationCampaignStatus()
+
+### Community 108 - "package.json"
+Cohesion: 0.40
+Nodes (4): name, private, type, version
+
+### Community 109 - "bell.tsx"
+Cohesion: 0.40
+Nodes (4): BellIcon, BellIconHandle, BellIconProps, SVG_VARIANTS
+
+### Community 110 - "menu.tsx"
+Cohesion: 0.40
+Nodes (4): LINE_VARIANTS, MenuIcon, MenuIconHandle, MenuIconProps
+
+### Community 111 - "sun.tsx"
+Cohesion: 0.40
+Nodes (4): PATH_VARIANTS, SunIcon, SunIconHandle, SunIconProps
+
+### Community 112 - "upload.tsx"
+Cohesion: 0.40
+Nodes (4): ARROW_VARIANTS, UploadIcon, UploadIconHandle, UploadIconProps
+
+### Community 113 - "users.tsx"
+Cohesion: 0.40
+Nodes (4): PATH_VARIANTS, UsersIcon, UsersIconHandle, UsersIconProps
+
+### Community 114 - "x.tsx"
+Cohesion: 0.40
+Nodes (4): PATH_VARIANTS, XIcon, XIconHandle, XIconProps
+
+### Community 115 - "settings.tsx"
+Cohesion: 0.50
+Nodes (3): SettingsIcon, SettingsIconHandle, SettingsIconProps
+
 ## Knowledge Gaps
-- **206 isolated node(s):** `name`, `version`, `private`, `type`, `dev` (+201 more)
+- **380 isolated node(s):** `name`, `version`, `private`, `type`, `dev` (+375 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **23 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **29 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `sanitizeRichHtml()` connect `Rich Text Rendering` to `Albums and Rich Editing`, `DOMPurify Dependency`?**
-  _High betweenness centrality (0.068) - this node is a cross-community bridge._
-- **Why does `dependencies` connect `Frontend Dependencies` to `React Core Dependency`, `Project Tooling`, `TipTap Color Extension`, `React DOM Dependency`, `TipTap Font Extension`, `TipTap Highlight Extension`, `TipTap Link Extension`, `TipTap Text Styles`, `TipTap Underline Extension`, `TipTap ProseMirror Core`, `TipTap Starter Kit`, `DOMPurify Dependency`?**
-  _High betweenness centrality (0.068) - this node is a cross-community bridge._
+- **Why does `dependencies` connect `Frontend Dependencies` to `React Core Dependency`, `React DOM Dependency`, `TipTap Color Extension`, `TipTap Font Extension`, `TipTap Highlight Extension`, `TipTap Underline Extension`, `TipTap ProseMirror Core`, `package.json`, `@dnd-kit/utilities`, `heic2any`, `libphonenumber-js`, `motion`, `react-router-dom`, `@tiptap/extension-placeholder`, `@tiptap/react`, `vite`, `DOMPurify Dependency`?**
+  _High betweenness centrality (0.069) - this node is a cross-community bridge._
+- **Why does `sanitizeRichHtml()` connect `Rich Text Rendering` to `Blog Detail Experience`, `DOMPurify Dependency`?**
+  _High betweenness centrality (0.069) - this node is a cross-community bridge._
 - **Why does `dompurify` connect `DOMPurify Dependency` to `Frontend Dependencies`, `Rich Text Rendering`?**
-  _High betweenness centrality (0.067) - this node is a cross-community bridge._
+  _High betweenness centrality (0.068) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `AdminDashboardPage()` (e.g. with `query()` and `isRecentOrPendingApproval()`) actually correct?**
   _`AdminDashboardPage()` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `name`, `version`, `private` to the rest of the system?**
-  _206 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _380 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Content Admin Workflows` be split into smaller, more focused modules?**
-  _Cohesion score 0.06050228310502283 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.09291521486643438 - nodes in this community are weakly interconnected._
 - **Should `Forms Builder System` be split into smaller, more focused modules?**
-  _Cohesion score 0.07243195785776997 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07350608143839238 - nodes in this community are weakly interconnected._

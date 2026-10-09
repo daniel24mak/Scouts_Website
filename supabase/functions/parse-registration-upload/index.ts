@@ -89,11 +89,15 @@ Deno.serve(async (req) => {
     if (!body.contentBase64) return jsonResponse(req, { error: "Missing sheet content." }, 400);
 
     const restHeaders = { apikey: anonKey, Authorization: authorization };
-    const [rulesResponse, settingsResponse] = await Promise.all([
+    const [rulesResponse, selectedYearResponse] = await Promise.all([
       fetch(`${supabaseUrl}/rest/v1/grouping_rules?select=group_id,assignment_basis,grade_start,grade_end,age_start,age_end,gender_filter&order=group_id`, { headers: restHeaders }),
-      fetch(`${supabaseUrl}/rest/v1/registration_import_settings?select=assignment_mode&id=eq.1&limit=1`, { headers: restHeaders })
+      body.scoutYearId
+        ? fetch(`${supabaseUrl}/rest/v1/scout_years?select=assignment_mode&id=eq.${encodeURIComponent(body.scoutYearId)}&limit=1`, { headers: restHeaders })
+        : Promise.resolve(null)
     ]);
-    if (!rulesResponse.ok || !settingsResponse.ok) throw new Error("Registration import settings could not be loaded.");
+    if (!rulesResponse.ok || (selectedYearResponse && !selectedYearResponse.ok)) {
+      throw new Error("Registration grouping rules could not be loaded.");
+    }
 
     const rules = (await rulesResponse.json()).map((rule: Record<string, unknown>) => ({
       groupId: rule.group_id,
@@ -104,8 +108,8 @@ Deno.serve(async (req) => {
       ageEnd: rule.age_end,
       genderFilter: rule.gender_filter
     })) as Rule[];
-    const settings = await settingsResponse.json();
-    const assignmentMode = body.assignmentMode ?? settings[0]?.assignment_mode ?? "schoolGrade";
+    const selectedYear = selectedYearResponse ? await selectedYearResponse.json() : [];
+    const assignmentMode = body.assignmentMode ?? selectedYear?.[0]?.assignment_mode ?? "schoolGrade";
     const workbook = XLSX.read(bytesFromBase64(body.contentBase64), { type: "array" });
     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: "" }) as unknown[][];

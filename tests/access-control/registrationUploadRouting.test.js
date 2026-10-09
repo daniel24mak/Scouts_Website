@@ -15,4 +15,10 @@ test("hosted registration uploads parse through an authenticated Supabase functi
   );
   assert.match(edgeFunction, /auth\/v1\/user/);
   assert.match(edgeFunction, /XLSX\.read/);
+  assert.doesNotMatch(edgeFunction, /registration_import_settings/);
+  assert.match(edgeFunction, /scout_years\?select=assignment_mode&id=eq\./);
+  assert.match(
+    edgeFunction,
+    /body\.assignmentMode\s*\?\?\s*selectedYear\?\.\[0\]\?\.assignment_mode\s*\?\?\s*"schoolGrade"/
+  );
 });

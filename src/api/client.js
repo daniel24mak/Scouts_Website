@@ -30,9 +30,12 @@ import {
   updatePhotoUploadBatch
 } from "../services/galleryService.js";
 import {
+  createScoutYearBackup as createScoutYearBackupInSupabase,
   getScoutData,
   createScout,
   createScoutYear,
+  deleteScoutYear as deleteScoutYearInSupabase,
+  getScoutYearDeletionRecovery as getScoutYearDeletionRecoveryInSupabase,
   importRegistrationSheetToSupabase,
   saveGroupingRules,
   setActiveScoutYear,
@@ -409,6 +412,48 @@ export function activateScoutingYear(yearId) {
 
   return Promise.resolve({ id: yearId, is_active: true });
 }
+
+export function createScoutYearBackup(scoutYearId) {
+  if (!isSupabaseConfigured) {
+    return Promise.reject(new Error("Supabase is required to create a scouting year backup."));
+  }
+
+  return createScoutYearBackupInSupabase(scoutYearId);
+}
+
+export function deleteScoutYear(payload) {
+  if (!isSupabaseConfigured) {
+    return Promise.reject(new Error("Supabase is required to delete a scouting year."));
+  }
+
+  return deleteScoutYearInSupabase(payload);
+}
+
+export function getScoutYearDeletionRecovery() {
+  if (!isSupabaseConfigured) {
+    return Promise.reject(new Error("Supabase is required to recover a scouting year deletion."));
+  }
+
+  return getScoutYearDeletionRecoveryInSupabase();
+}
+
+export function parseRegistrationSheet(payload) {
+  if (isSupabaseConfigured) {
+    return invokeSupabaseFunction("parse-registration-upload", payload);
+  }
+
+  return request("/registration/parse", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function confirmRegistrationSheetImport(payloadWithScouts) {
+  if (isSupabaseConfigured) {
+    return importRegistrationSheetToSupabase(payloadWithScouts);
+  }
+
+  return request("/registration/upload", { method: "POST", body: JSON.stringify(payloadWithScouts) });
+}
+
+// Retained for callers that have not yet adopted the explicit parse/confirm flow.
 export function uploadRegistrationSheet(payload) {
   if (isSupabaseConfigured) {
     return invokeSupabaseFunction("parse-registration-upload", payload).then(

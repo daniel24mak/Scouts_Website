@@ -3,11 +3,24 @@ import {
   getSupabaseRows,
   insertSupabaseRow,
   insertSupabaseRows,
+  invokeSupabaseFunction,
   isSupabaseConfigured,
   patchSupabaseRows,
   getCurrentSupabaseUserId,
   uploadSupabaseFile
 } from "./supabaseClient.js";
+
+export function createScoutYearBackup(scoutYearId) {
+  return invokeSupabaseFunction("scout-year-backup", { scoutYearId });
+}
+
+export function deleteScoutYear({ scoutYearId, receiptId, expectedLabel }) {
+  return invokeSupabaseFunction("delete-scout-year", { scoutYearId, receiptId, expectedLabel });
+}
+
+export function getScoutYearDeletionRecovery() {
+  return invokeSupabaseFunction("delete-scout-year", { action: "recovery" });
+}
 
 export async function getActiveScoutYearId() {
   const [activeYear] = await getSupabaseRows("scout_years", "select=id&is_active=eq.true&limit=1");
