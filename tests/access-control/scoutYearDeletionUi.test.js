@@ -407,6 +407,41 @@ test("a busy retry cannot erase uncertainty from an earlier lost deletion respon
   assert.equal(flow.state().scoutYearBackups[flow.year.id].deletionAttempted, true);
 });
 
+test("standalone claim-busy remains locked after empty caller recovery and cannot replace its receipt", async () => {
+  for (const prior of [{}, { recoverable: true, claimId: "previously-owned-claim" }]) {
+    let backupCalls = 0;
+    const flow = deletionHarness({
+      initialBackups: { "year-a": { yearId: "year-a", receiptId: "original", status: "ready", expiresAt: "2099-01-01T00:00:00Z", ...prior } },
+      deleteScoutYear: async () => { throw Object.assign(new Error("Another deletion is in progress"), { code: "deletion_claim_busy", status: 409 }); },
+      getScoutYearDeletionRecovery: async () => ({ claims: [] }),
+      createScoutYearBackup: async () => { backupCalls += 1; }
+    });
+    flow.openScoutYearDelete(flow.year); flow.setDeleteLabel(flow.year.label);
+    await flow.confirmScoutYearDelete();
+    await flow.hydrateScoutYearDeletionRecovery();
+    await flow.hydrateScoutYearDeletionRecovery();
+    await flow.downloadScoutYearBackup(flow.year);
+    assert.equal(backupCalls, 0, "caller-scoped absence cannot disprove another caller's global claim");
+    assert.equal(flow.state().scoutYearBackups[flow.year.id].receiptId, "original");
+    assert.equal(flow.state().scoutYearBackups[flow.year.id].deletionAttempted, true);
+    assert.equal(flow.state().scoutYearBackups[flow.year.id].deletionOutcomeUnknown, true);
+  }
+});
+
+test("a later pre-claim rejection cannot dismiss a known busy lock using a formerly recovered claim", async () => {
+  let attempts = 0;
+  const flow = deletionHarness({
+    initialBackups: { "year-a": { yearId: "year-a", receiptId: "original", claimId: "previously-owned-claim", recoverable: true, status: "ready", expiresAt: "2099-01-01T00:00:00Z" } },
+    deleteScoutYear: async () => { throw Object.assign(new Error("Deletion rejected"), { code: attempts++ === 0 ? "deletion_claim_busy" : "stale_snapshot", status: 409 }); }
+  });
+  flow.openScoutYearDelete(flow.year); flow.setDeleteLabel(flow.year.label);
+  await flow.confirmScoutYearDelete();
+  await flow.confirmScoutYearDelete();
+  await flow.hydrateScoutYearDeletionRecovery();
+  assert.equal(flow.state().scoutYearBackups[flow.year.id]?.receiptId, "original");
+  assert.equal(flow.state().scoutYearBackups[flow.year.id]?.deletionOutcomeUnknown, true);
+});
+
 test("recovery absence read during an attempt cannot later clear its confirmed claim", async () => {
   let rejectDelete, resolveRecovery;
   const flow = deletionHarness({

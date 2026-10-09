@@ -2067,10 +2067,10 @@ export default function AdminDashboardPage({
         for (const [yearId, backup] of Object.entries(next)) {
           // Only the authoritative absence of a previously recovered claim can
           // acknowledge a completed deletion or audited abort from another tab.
-          if (backup.status === "deleting" || result.claims.some((claim) => claim.yearId === yearId)) continue;
+          if (backup.status === "deleting" || backup.deletionOutcomeUnknown || result.claims.some((claim) => claim.yearId === yearId)) continue;
           if (backup.recoverable) {
             delete next[yearId];
-          } else if (backup.deletionAttempted && !backup.deletionOutcomeUnknown) {
+          } else if (backup.deletionAttempted) {
             // A fresh, post-response read may release a provisional attempt.
             // Transport loss is different: its request could still acquire a
             // claim after this read, so absence alone must not unlock it.
@@ -2328,7 +2328,11 @@ export default function AdminDashboardPage({
             recoverable: rejectedBeforeClaim ? false : previous?.recoverable,
             claimStatus: activeClaim ? "active" : undefined,
             operatorActionRequired: error.operatorActionRequired === true || previous?.operatorActionRequired === true,
-            deletionOutcomeUnknown: !rejectedBeforeClaim && !activeClaim && (previous?.deletionOutcomeUnknown === true || error.code !== "deletion_claim_busy")
+            // Busy may refer to another caller's claim. Caller-scoped recovery
+            // cannot establish global absence, even for a formerly owned claim.
+            deletionOutcomeUnknown: error.code === "deletion_claim_busy"
+              || (previous?.deletionOutcomeUnknown === true && error.claimStatus !== "active")
+              || (!rejectedBeforeClaim && !activeClaim)
           }
         };
       });
