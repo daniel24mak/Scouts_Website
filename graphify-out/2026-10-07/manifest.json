@@ -80,8 +80,8 @@
     "semantic_hash": "757c87201132b82842962b0009eeae71"
   },
   "database/supabase-schema.sql": {
-    "mtime": 1791474379.4195237,
-    "ast_hash": "1595bd387f2d0607541ecb94395a2f43",
+    "mtime": 1790330675.7647717,
+    "ast_hash": "ce255ab95cb1a4659a1e11868b7a392e",
     "semantic_hash": ""
   },
   "database/supabase-scouting-reimbursements.sql": {
@@ -170,8 +170,8 @@
     "semantic_hash": "d9ad696cd116517ba80fd7c5b94613f7"
   },
   "src/api/client.js": {
-    "mtime": 1791474384.1987522,
-    "ast_hash": "1ef018adc75622028af4b662c7965cac",
+    "mtime": 1790947329.493014,
+    "ast_hash": "2a251a3e8457ea8efb8edfefdcdeb091",
     "semantic_hash": ""
   },
   "src/api/publicClient.js": {
@@ -520,8 +520,8 @@
     "semantic_hash": "ab7cc392ec89d0b30f5004df5dbfb59b"
   },
   "src/pages/AdminDashboardPage.jsx": {
-    "mtime": 1791548034.2911954,
-    "ast_hash": "bcc6a0d51f4e05a3a45f6d13f631655d",
+    "mtime": 1790949598.3622403,
+    "ast_hash": "b601e0a94fac5b590d76aab8086f86db",
     "semantic_hash": ""
   },
   "src/pages/AlbumDetailPage.jsx": {
@@ -690,8 +690,8 @@
     "semantic_hash": "b1dc12e4d6902cde645d5f6e0014d8f4"
   },
   "src/services/scoutService.js": {
-    "mtime": 1791474383.2430534,
-    "ast_hash": "3b4b1f2511b11384dd0cd0bc6a605bde",
+    "mtime": 1790602132.7161021,
+    "ast_hash": "2648ffd1b021088a1dc8c847b232aa51",
     "semantic_hash": ""
   },
   "src/services/scoutingServices.js": {
@@ -720,8 +720,8 @@
     "semantic_hash": "38bccde3506f7281dc23f503e9ac7c6a"
   },
   "src/services/supabaseClient.js": {
-    "mtime": 1791547510.3766022,
-    "ast_hash": "81c437b565e0c75db028356bea3774ce",
+    "mtime": 1790603382.7929888,
+    "ast_hash": "8583a8937cb710afd2a978ed0dfdfe5d",
     "semantic_hash": ""
   },
   "src/services/supabaseMappers.js": {
@@ -1470,38 +1470,38 @@
     "semantic_hash": ""
   },
   "database/supabase-scout-year-backup-deletion.sql": {
-    "mtime": 1791474378.4557085,
-    "ast_hash": "450bf5c8b2b712ce5c50b9c0c591be06",
+    "mtime": 1790330657.3396282,
+    "ast_hash": "c426d2c274cea443d6620a571cb6259b",
     "semantic_hash": ""
   },
   "database/tests/scout-year-backup-deletion.sql": {
-    "mtime": 1791474624.3773093,
-    "ast_hash": "32228aaf5fa171e9207eed68363b9107",
+    "mtime": 1790330721.3283548,
+    "ast_hash": "ef5e4ae6182fac97260d1c45a1b9f3cb",
     "semantic_hash": ""
   },
   "supabase/functions/_shared/scoutYearBackup.ts": {
-    "mtime": 1791385831.7480655,
-    "ast_hash": "47824033c4b1746383fab22f55bfed64",
+    "mtime": 1790332945.8780646,
+    "ast_hash": "51d828f073204a50adbdb120cc8b6a14",
     "semantic_hash": ""
   },
   "supabase/functions/scout-year-backup/index.ts": {
-    "mtime": 1791474382.309169,
-    "ast_hash": "747a49b6ce16e520895984148d15834a",
+    "mtime": 1790332947.3284564,
+    "ast_hash": "37bc8bd30a55e2ef4859f0367c5a0b3d",
     "semantic_hash": ""
   },
   "tests/access-control/scoutYearBackupDeletion.test.js": {
-    "mtime": 1791547588.59625,
-    "ast_hash": "dbd36b7d14159b557eeb791e30029177",
+    "mtime": 1790602692.8655725,
+    "ast_hash": "05438c58abfd9504a8e235d67f7e2d66",
     "semantic_hash": ""
   },
   "supabase/functions/delete-scout-year/index.ts": {
-    "mtime": 1791547511.295044,
-    "ast_hash": "3a9e521be5f049465dce1784e1f4093d",
+    "mtime": 1790603381.4894943,
+    "ast_hash": "3f169906a3ed43d9f62c97bf3fa917bc",
     "semantic_hash": ""
   },
   "tests/access-control/scoutYearDeletionUi.test.js": {
-    "mtime": 1791548032.9136906,
-    "ast_hash": "15c961e42bdbe1b1940560037632190b",
+    "mtime": 1790949631.6588264,
+    "ast_hash": "94bf94c3eabb6d7ce58f72ddc972590c",
     "semantic_hash": ""
   }
 }

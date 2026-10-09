@@ -520,8 +520,8 @@
     "semantic_hash": "ab7cc392ec89d0b30f5004df5dbfb59b"
   },
   "src/pages/AdminDashboardPage.jsx": {
-    "mtime": 1791548034.2911954,
-    "ast_hash": "bcc6a0d51f4e05a3a45f6d13f631655d",
+    "mtime": 1791547590.1591365,
+    "ast_hash": "43b52e66214f84c0cf062c404122603e",
     "semantic_hash": ""
   },
   "src/pages/AlbumDetailPage.jsx": {
@@ -1500,8 +1500,8 @@
     "semantic_hash": ""
   },
   "tests/access-control/scoutYearDeletionUi.test.js": {
-    "mtime": 1791548032.9136906,
-    "ast_hash": "15c961e42bdbe1b1940560037632190b",
+    "mtime": 1791547587.5861742,
+    "ast_hash": "8880496b59cbedc3caf2201493e84619",
     "semantic_hash": ""
   }
 }

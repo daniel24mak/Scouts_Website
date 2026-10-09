@@ -520,8 +520,8 @@
     "semantic_hash": "ab7cc392ec89d0b30f5004df5dbfb59b"
   },
   "src/pages/AdminDashboardPage.jsx": {
-    "mtime": 1791548034.2911954,
-    "ast_hash": "bcc6a0d51f4e05a3a45f6d13f631655d",
+    "mtime": 1791474622.087664,
+    "ast_hash": "f9e73bdce4b75a902dd7d4b2b72f6536",
     "semantic_hash": ""
   },
   "src/pages/AlbumDetailPage.jsx": {
@@ -720,8 +720,8 @@
     "semantic_hash": "38bccde3506f7281dc23f503e9ac7c6a"
   },
   "src/services/supabaseClient.js": {
-    "mtime": 1791547510.3766022,
-    "ast_hash": "81c437b565e0c75db028356bea3774ce",
+    "mtime": 1790603382.7929888,
+    "ast_hash": "8583a8937cb710afd2a978ed0dfdfe5d",
     "semantic_hash": ""
   },
   "src/services/supabaseMappers.js": {
@@ -1490,18 +1490,18 @@
     "semantic_hash": ""
   },
   "tests/access-control/scoutYearBackupDeletion.test.js": {
-    "mtime": 1791547588.59625,
-    "ast_hash": "dbd36b7d14159b557eeb791e30029177",
+    "mtime": 1791474380.3317904,
+    "ast_hash": "bdee02322cc29164b9b8e38cc5d5cd19",
     "semantic_hash": ""
   },
   "supabase/functions/delete-scout-year/index.ts": {
-    "mtime": 1791547511.295044,
-    "ast_hash": "3a9e521be5f049465dce1784e1f4093d",
+    "mtime": 1791474381.355305,
+    "ast_hash": "60fdf2c0f5c3dd041c739445330ff5eb",
     "semantic_hash": ""
   },
   "tests/access-control/scoutYearDeletionUi.test.js": {
-    "mtime": 1791548032.9136906,
-    "ast_hash": "15c961e42bdbe1b1940560037632190b",
+    "mtime": 1791474575.61094,
+    "ast_hash": "ac3d5c20b8e6bdcb35e88abd98b58682",
     "semantic_hash": ""
   }
 }

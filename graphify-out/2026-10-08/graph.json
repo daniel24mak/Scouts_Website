@@ -171,8 +171,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "package",
-      "community": 33,
-      "community_name": "Project Tooling",
+      "community": 36,
+      "community_name": "package.json",
       "norm_label": "package.json"
     },
     {
@@ -182,8 +182,8 @@
       "source_location": "L2",
       "_origin": "ast",
       "id": "package_name",
-      "community": 33,
-      "community_name": "Project Tooling",
+      "community": 36,
+      "community_name": "package.json",
       "norm_label": "name"
     },
     {
@@ -193,8 +193,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "package_version",
-      "community": 33,
-      "community_name": "Project Tooling",
+      "community": 36,
+      "community_name": "package.json",
       "norm_label": "version"
     },
     {
@@ -204,8 +204,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "package_private",
-      "community": 33,
-      "community_name": "Project Tooling",
+      "community": 36,
+      "community_name": "package.json",
       "norm_label": "private"
     },
     {
@@ -215,8 +215,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "package_type",
-      "community": 33,
-      "community_name": "Project Tooling",
+      "community": 36,
+      "community_name": "package.json",
       "norm_label": "type"
     },
     {
@@ -798,8 +798,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "package_dependencies_react",
-      "community": 122,
-      "community_name": "scout-registration/index.ts",
+      "community": 64,
+      "community_name": "React Core Dependency",
       "norm_label": "react"
     },
     {
@@ -809,8 +809,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "react",
-      "community": 122,
-      "community_name": "scout-registration/index.ts",
+      "community": 64,
+      "community_name": "React Core Dependency",
       "norm_label": "react"
     },
     {
@@ -2052,8 +2052,8 @@
       "source_location": "L138",
       "_origin": "ast",
       "id": "src_api_client_request",
-      "community": 13,
-      "community_name": "Storage Workspace Core",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "request()"
     },
     {
@@ -2063,8 +2063,8 @@
       "source_location": "L152",
       "_origin": "ast",
       "id": "src_api_client_getbootstrap",
-      "community": 6,
-      "community_name": "Dashboard Attendance Bootstrap",
+      "community": 70,
+      "community_name": "TipTap Text Styles",
       "norm_label": "getbootstrap()"
     },
     {
@@ -2074,8 +2074,8 @@
       "source_location": "L234",
       "_origin": "ast",
       "id": "src_api_client_addfaq",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 34,
+      "community_name": "Notifications and Submissions",
       "norm_label": "addfaq()"
     },
     {
@@ -2085,8 +2085,8 @@
       "source_location": "L242",
       "_origin": "ast",
       "id": "src_api_client_savefaq",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 34,
+      "community_name": "Notifications and Submissions",
       "norm_label": "savefaq()"
     },
     {
@@ -2096,8 +2096,8 @@
       "source_location": "L250",
       "_origin": "ast",
       "id": "src_api_client_removefaq",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 34,
+      "community_name": "Notifications and Submissions",
       "norm_label": "removefaq()"
     },
     {
@@ -2151,8 +2151,8 @@
       "source_location": "L290",
       "_origin": "ast",
       "id": "src_api_client_savewebsitecontent",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 14,
+      "community_name": "Site Content Storage",
       "norm_label": "savewebsitecontent()"
     },
     {
@@ -2162,8 +2162,8 @@
       "source_location": "L298",
       "_origin": "ast",
       "id": "src_api_client_addleader",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 31,
+      "community_name": "Legacy Permission Helpers",
       "norm_label": "addleader()"
     },
     {
@@ -2195,8 +2195,8 @@
       "source_location": "L322",
       "_origin": "ast",
       "id": "src_api_client_createcalendarevent",
-      "community": 6,
-      "community_name": "Dashboard Attendance Bootstrap",
+      "community": 7,
+      "community_name": "Dashboard Audit Utilities",
       "norm_label": "createcalendarevent()"
     },
     {
@@ -2206,8 +2206,8 @@
       "source_location": "L330",
       "_origin": "ast",
       "id": "src_api_client_deletecalendarevent",
-      "community": 5,
-      "community_name": "Calendar Management",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "deletecalendarevent()"
     },
     {
@@ -2217,8 +2217,8 @@
       "source_location": "L338",
       "_origin": "ast",
       "id": "src_api_client_updatecalendarevent",
-      "community": 13,
-      "community_name": "Storage Workspace Core",
+      "community": 5,
+      "community_name": "Calendar Management",
       "norm_label": "updatecalendarevent()"
     },
     {
@@ -2228,8 +2228,8 @@
       "source_location": "L346",
       "_origin": "ast",
       "id": "src_api_client_savescoutattendance",
-      "community": 6,
-      "community_name": "Dashboard Attendance Bootstrap",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "savescoutattendance()"
     },
     {
@@ -2272,8 +2272,8 @@
       "source_location": "L377",
       "_origin": "ast",
       "id": "src_api_client_savechiefattendance",
-      "community": 6,
-      "community_name": "Dashboard Attendance Bootstrap",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "savechiefattendance()"
     },
     {
@@ -2283,8 +2283,8 @@
       "source_location": "L387",
       "_origin": "ast",
       "id": "src_api_client_saveadminrules",
-      "community": 13,
-      "community_name": "Storage Workspace Core",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "saveadminrules()"
     },
     {
@@ -2294,8 +2294,8 @@
       "source_location": "L398",
       "_origin": "ast",
       "id": "src_api_client_createscoutingyear",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "createscoutingyear()"
     },
     {
@@ -2305,8 +2305,8 @@
       "source_location": "L408",
       "_origin": "ast",
       "id": "src_api_client_activatescoutingyear",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 35,
+      "community_name": "About Page Content",
       "norm_label": "activatescoutingyear()"
     },
     {
@@ -2338,8 +2338,8 @@
       "source_location": "L432",
       "_origin": "ast",
       "id": "src_api_client_getscoutyeardeletionrecovery",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 31,
+      "community_name": "Legacy Permission Helpers",
       "norm_label": "getscoutyeardeletionrecovery()"
     },
     {
@@ -2349,8 +2349,8 @@
       "source_location": "L440",
       "_origin": "ast",
       "id": "src_api_client_parseregistrationsheet",
-      "community": 7,
-      "community_name": "Dashboard Audit Utilities",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "parseregistrationsheet()"
     },
     {
@@ -2360,8 +2360,8 @@
       "source_location": "L448",
       "_origin": "ast",
       "id": "src_api_client_confirmregistrationsheetimport",
-      "community": 13,
-      "community_name": "Storage Workspace Core",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "confirmregistrationsheetimport()"
     },
     {
@@ -2371,8 +2371,8 @@
       "source_location": "L457",
       "_origin": "ast",
       "id": "src_api_client_uploadregistrationsheet",
-      "community": 7,
-      "community_name": "Dashboard Audit Utilities",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "uploadregistrationsheet()"
     },
     {
@@ -2382,8 +2382,8 @@
       "source_location": "L474",
       "_origin": "ast",
       "id": "src_api_client_moveregisteredscout",
-      "community": 13,
-      "community_name": "Storage Workspace Core",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "moveregisteredscout()"
     },
     {
@@ -2393,8 +2393,8 @@
       "source_location": "L484",
       "_origin": "ast",
       "id": "src_api_client_updateregisteredscout",
-      "community": 13,
-      "community_name": "Storage Workspace Core",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "updateregisteredscout()"
     },
     {
@@ -2404,8 +2404,8 @@
       "source_location": "L495",
       "_origin": "ast",
       "id": "src_api_client_addregisteredscout",
-      "community": 13,
-      "community_name": "Storage Workspace Core",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "addregisteredscout()"
     },
     {
@@ -2415,8 +2415,8 @@
       "source_location": "L503",
       "_origin": "ast",
       "id": "src_api_client_addchief",
-      "community": 13,
-      "community_name": "Storage Workspace Core",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "addchief()"
     },
     {
@@ -2426,8 +2426,8 @@
       "source_location": "L511",
       "_origin": "ast",
       "id": "src_api_client_requestprofilechange",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 129,
+      "community_name": "myWorkModel.js",
       "norm_label": "requestprofilechange()"
     },
     {
@@ -2448,8 +2448,8 @@
       "source_location": "L527",
       "_origin": "ast",
       "id": "src_api_client_changeownpassword",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 2,
+      "community_name": "Authentication and MFA",
       "norm_label": "changeownpassword()"
     },
     {
@@ -2459,8 +2459,8 @@
       "source_location": "L534",
       "_origin": "ast",
       "id": "src_api_client_resetuserpassword",
-      "community": 7,
-      "community_name": "Dashboard Audit Utilities",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "resetuserpassword()"
     },
     {
@@ -2470,8 +2470,8 @@
       "source_location": "L543",
       "_origin": "ast",
       "id": "src_api_client_removedashboarduser",
-      "community": 7,
-      "community_name": "Dashboard Audit Utilities",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "removedashboarduser()"
     },
     {
@@ -2481,8 +2481,8 @@
       "source_location": "L550",
       "_origin": "ast",
       "id": "src_api_client_updatechief",
-      "community": 13,
-      "community_name": "Storage Workspace Core",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "updatechief()"
     },
     {
@@ -2503,8 +2503,8 @@
       "source_location": "L566",
       "_origin": "ast",
       "id": "src_api_client_updateblog",
-      "community": 13,
-      "community_name": "Storage Workspace Core",
+      "community": 41,
+      "community_name": "Public Listing Pages",
       "norm_label": "updateblog()"
     },
     {
@@ -2514,8 +2514,8 @@
       "source_location": "L574",
       "_origin": "ast",
       "id": "src_api_client_deleteblog",
-      "community": 13,
-      "community_name": "Storage Workspace Core",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "deleteblog()"
     },
     {
@@ -2536,8 +2536,8 @@
       "source_location": "L590",
       "_origin": "ast",
       "id": "src_api_client_updatealbum",
-      "community": 13,
-      "community_name": "Storage Workspace Core",
+      "community": 133,
+      "community_name": "external-link.tsx",
       "norm_label": "updatealbum()"
     },
     {
@@ -2569,8 +2569,8 @@
       "source_location": "L614",
       "_origin": "ast",
       "id": "src_api_client_deletealbum",
-      "community": 13,
-      "community_name": "Storage Workspace Core",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "deletealbum()"
     },
     {
@@ -2591,8 +2591,8 @@
       "source_location": "L642",
       "_origin": "ast",
       "id": "src_api_client_deletephotos",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 133,
+      "community_name": "external-link.tsx",
       "norm_label": "deletephotos()"
     },
     {
@@ -2602,8 +2602,8 @@
       "source_location": "L650",
       "_origin": "ast",
       "id": "src_api_client_addequipe",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 8,
+      "community_name": "Supabase Data Operations",
       "norm_label": "addequipe()"
     },
     {
@@ -2613,8 +2613,8 @@
       "source_location": "L658",
       "_origin": "ast",
       "id": "src_api_client_saveequipe",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 8,
+      "community_name": "Supabase Data Operations",
       "norm_label": "saveequipe()"
     },
     {
@@ -2624,8 +2624,8 @@
       "source_location": "L666",
       "_origin": "ast",
       "id": "src_api_client_removeequipe",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 8,
+      "community_name": "Supabase Data Operations",
       "norm_label": "removeequipe()"
     },
     {
@@ -2635,8 +2635,8 @@
       "source_location": "L674",
       "_origin": "ast",
       "id": "src_api_client_assignequipescouts",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 8,
+      "community_name": "Supabase Data Operations",
       "norm_label": "assignequipescouts()"
     },
     {
@@ -2679,8 +2679,8 @@
       "source_location": "L706",
       "_origin": "ast",
       "id": "src_api_client_reviewdashboardpostedform",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 31,
+      "community_name": "Legacy Permission Helpers",
       "norm_label": "reviewdashboardpostedform()"
     },
     {
@@ -2734,8 +2734,8 @@
       "source_location": "L749",
       "_origin": "ast",
       "id": "src_api_client_readdashboardnotification",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 70,
+      "community_name": "TipTap Text Styles",
       "norm_label": "readdashboardnotification()"
     },
     {
@@ -2778,8 +2778,8 @@
       "source_location": "L769",
       "_origin": "ast",
       "id": "src_api_client_readalldashboardnotifications",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 70,
+      "community_name": "TipTap Text Styles",
       "norm_label": "readalldashboardnotifications()"
     },
     {
@@ -2789,8 +2789,8 @@
       "source_location": "L773",
       "_origin": "ast",
       "id": "src_api_client_completedashboardentitynotifications",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 70,
+      "community_name": "TipTap Text Styles",
       "norm_label": "completedashboardentitynotifications()"
     },
     {
@@ -2800,8 +2800,8 @@
       "source_location": "L777",
       "_origin": "ast",
       "id": "src_api_client_deletedashboardnotification",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 70,
+      "community_name": "TipTap Text Styles",
       "norm_label": "deletedashboardnotification()"
     },
     {
@@ -2811,8 +2811,8 @@
       "source_location": "L780",
       "_origin": "ast",
       "id": "src_api_client_submitdashboardwebsitecontentrevision",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 31,
+      "community_name": "Legacy Permission Helpers",
       "norm_label": "submitdashboardwebsitecontentrevision()"
     },
     {
@@ -2822,8 +2822,8 @@
       "source_location": "L784",
       "_origin": "ast",
       "id": "src_api_client_reviewdashboardwebsitecontentrevision",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 0,
+      "community_name": "Content Admin Workflows",
       "norm_label": "reviewdashboardwebsitecontentrevision()"
     },
     {
@@ -2833,8 +2833,8 @@
       "source_location": "L787",
       "_origin": "ast",
       "id": "src_api_client_savedashboarddocumentcategory",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 27,
+      "community_name": "Settings and Archives",
       "norm_label": "savedashboarddocumentcategory()"
     },
     {
@@ -2855,8 +2855,8 @@
       "source_location": "L795",
       "_origin": "ast",
       "id": "src_api_client_uploaddashboarddocumentfiles",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 27,
+      "community_name": "Settings and Archives",
       "norm_label": "uploaddashboarddocumentfiles()"
     },
     {
@@ -2866,8 +2866,8 @@
       "source_location": "L799",
       "_origin": "ast",
       "id": "src_api_client_savedashboarddocument",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 27,
+      "community_name": "Settings and Archives",
       "norm_label": "savedashboarddocument()"
     },
     {
@@ -2877,8 +2877,8 @@
       "source_location": "L803",
       "_origin": "ast",
       "id": "src_api_client_removedashboarddocument",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 0,
+      "community_name": "Content Admin Workflows",
       "norm_label": "removedashboarddocument()"
     },
     {
@@ -2888,8 +2888,8 @@
       "source_location": "L807",
       "_origin": "ast",
       "id": "src_api_client_loaddashboardreports",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 27,
+      "community_name": "Settings and Archives",
       "norm_label": "loaddashboardreports()"
     },
     {
@@ -2899,8 +2899,8 @@
       "source_location": "L811",
       "_origin": "ast",
       "id": "src_api_client_savearchivedyearsnapshot",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 27,
+      "community_name": "Settings and Archives",
       "norm_label": "savearchivedyearsnapshot()"
     },
     {
@@ -2910,8 +2910,8 @@
       "source_location": "L815",
       "_origin": "ast",
       "id": "src_api_client_removearchivedyearsnapshot",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 27,
+      "community_name": "Settings and Archives",
       "norm_label": "removearchivedyearsnapshot()"
     },
     {
@@ -2998,8 +2998,8 @@
       "source_location": "L84",
       "_origin": "ast",
       "id": "src_api_publicclient_getpublicblogspage",
-      "community": 29,
-      "community_name": "Blog Detail Experience",
+      "community": 41,
+      "community_name": "Public Listing Pages",
       "norm_label": "getpublicblogspage()"
     },
     {
@@ -3240,8 +3240,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_auth_authprovider",
-      "community": 130,
-      "community_name": "Layout.jsx",
+      "community": 135,
+      "community_name": "AuthProvider.jsx",
       "norm_label": "authprovider.jsx"
     },
     {
@@ -3251,8 +3251,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "src_auth_authprovider_authcontext",
-      "community": 130,
-      "community_name": "Layout.jsx",
+      "community": 135,
+      "community_name": "AuthProvider.jsx",
       "norm_label": "authcontext"
     },
     {
@@ -3262,8 +3262,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "src_auth_authprovider_logauthstep",
-      "community": 130,
-      "community_name": "Layout.jsx",
+      "community": 135,
+      "community_name": "AuthProvider.jsx",
       "norm_label": "logauthstep()"
     },
     {
@@ -3273,8 +3273,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "src_auth_authprovider_authprovider",
-      "community": 130,
-      "community_name": "Layout.jsx",
+      "community": 135,
+      "community_name": "AuthProvider.jsx",
       "norm_label": "authprovider()"
     },
     {
@@ -3317,8 +3317,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_components_avatarcropmodal",
-      "community": 66,
-      "community_name": "scoutYearBackup.ts",
+      "community": 14,
+      "community_name": "Site Content Storage",
       "norm_label": "avatarcropmodal.jsx"
     },
     {
@@ -3328,8 +3328,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "src_components_avatarcropmodal_clamp",
-      "community": 66,
-      "community_name": "scoutYearBackup.ts",
+      "community": 14,
+      "community_name": "Site Content Storage",
       "norm_label": "clamp()"
     },
     {
@@ -3339,8 +3339,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "src_components_avatarcropmodal_loadimage",
-      "community": 66,
-      "community_name": "scoutYearBackup.ts",
+      "community": 14,
+      "community_name": "Site Content Storage",
       "norm_label": "loadimage()"
     },
     {
@@ -3350,8 +3350,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "src_components_avatarcropmodal_readfileasdataurl",
-      "community": 66,
-      "community_name": "scoutYearBackup.ts",
+      "community": 14,
+      "community_name": "Site Content Storage",
       "norm_label": "readfileasdataurl()"
     },
     {
@@ -3361,8 +3361,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "src_components_avatarcropmodal_covergeometry",
-      "community": 66,
-      "community_name": "scoutYearBackup.ts",
+      "community": 14,
+      "community_name": "Site Content Storage",
       "norm_label": "covergeometry()"
     },
     {
@@ -3372,8 +3372,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "src_components_avatarcropmodal_croptofile",
-      "community": 66,
-      "community_name": "scoutYearBackup.ts",
+      "community": 14,
+      "community_name": "Site Content Storage",
       "norm_label": "croptofile()"
     },
     {
@@ -3383,8 +3383,8 @@
       "source_location": "L66",
       "_origin": "ast",
       "id": "src_components_avatarcropmodal_avatarcropmodal",
-      "community": 66,
-      "community_name": "scoutYearBackup.ts",
+      "community": 14,
+      "community_name": "Site Content Storage",
       "norm_label": "avatarcropmodal()"
     },
     {
@@ -3592,8 +3592,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_components_layout",
-      "community": 70,
-      "community_name": "TipTap Text Styles",
+      "community": 130,
+      "community_name": "Layout.jsx",
       "norm_label": "layout.jsx"
     },
     {
@@ -3603,8 +3603,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_components_layout_navitems",
-      "community": 70,
-      "community_name": "TipTap Text Styles",
+      "community": 130,
+      "community_name": "Layout.jsx",
       "norm_label": "navitems"
     },
     {
@@ -3614,8 +3614,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "src_components_layout_layout",
-      "community": 70,
-      "community_name": "TipTap Text Styles",
+      "community": 130,
+      "community_name": "Layout.jsx",
       "norm_label": "layout()"
     },
     {
@@ -3647,8 +3647,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_components_richtexteditor",
-      "community": 30,
-      "community_name": "Finance Ledger Services",
+      "community": 7,
+      "community_name": "Dashboard Audit Utilities",
       "norm_label": "richtexteditor.jsx"
     },
     {
@@ -3658,8 +3658,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "src_components_richtexteditor_fontoptions",
-      "community": 30,
-      "community_name": "Finance Ledger Services",
+      "community": 7,
+      "community_name": "Dashboard Audit Utilities",
       "norm_label": "fontoptions"
     },
     {
@@ -3669,8 +3669,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "src_components_richtexteditor_fontsizes",
-      "community": 30,
-      "community_name": "Finance Ledger Services",
+      "community": 7,
+      "community_name": "Dashboard Audit Utilities",
       "norm_label": "fontsizes"
     },
     {
@@ -3680,8 +3680,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "src_components_richtexteditor_coloroptions",
-      "community": 30,
-      "community_name": "Finance Ledger Services",
+      "community": 7,
+      "community_name": "Dashboard Audit Utilities",
       "norm_label": "coloroptions"
     },
     {
@@ -3691,8 +3691,8 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "src_components_richtexteditor_highlightoptions",
-      "community": 30,
-      "community_name": "Finance Ledger Services",
+      "community": 7,
+      "community_name": "Dashboard Audit Utilities",
       "norm_label": "highlightoptions"
     },
     {
@@ -3702,8 +3702,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "src_components_richtexteditor_fontsize",
-      "community": 30,
-      "community_name": "Finance Ledger Services",
+      "community": 7,
+      "community_name": "Dashboard Audit Utilities",
       "norm_label": "fontsize"
     },
     {
@@ -3713,8 +3713,8 @@
       "source_location": "L70",
       "_origin": "ast",
       "id": "src_components_richtexteditor_richtexteditor",
-      "community": 30,
-      "community_name": "Finance Ledger Services",
+      "community": 7,
+      "community_name": "Dashboard Audit Utilities",
       "norm_label": "richtexteditor()"
     },
     {
@@ -3845,8 +3845,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_components_toastprovider",
-      "community": 39,
-      "community_name": "Homepage Public Content",
+      "community": 133,
+      "community_name": "external-link.tsx",
       "norm_label": "toastprovider.jsx"
     },
     {
@@ -3856,8 +3856,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "src_components_toastprovider_toastcontext",
-      "community": 39,
-      "community_name": "Homepage Public Content",
+      "community": 133,
+      "community_name": "external-link.tsx",
       "norm_label": "toastcontext"
     },
     {
@@ -3867,8 +3867,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "src_components_toastprovider_icons",
-      "community": 39,
-      "community_name": "Homepage Public Content",
+      "community": 133,
+      "community_name": "external-link.tsx",
       "norm_label": "icons"
     },
     {
@@ -3878,8 +3878,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "src_components_toastprovider_infertoastvariant",
-      "community": 39,
-      "community_name": "Homepage Public Content",
+      "community": 133,
+      "community_name": "external-link.tsx",
       "norm_label": "infertoastvariant()"
     },
     {
@@ -3889,8 +3889,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "src_components_toastprovider_toastprovider",
-      "community": 39,
-      "community_name": "Homepage Public Content",
+      "community": 133,
+      "community_name": "external-link.tsx",
       "norm_label": "toastprovider()"
     },
     {
@@ -3900,8 +3900,8 @@
       "source_location": "L65",
       "_origin": "ast",
       "id": "src_components_toastprovider_usetoast",
-      "community": 132,
-      "community_name": "ChiefContentDashboardPage.jsx",
+      "community": 133,
+      "community_name": "external-link.tsx",
       "norm_label": "usetoast()"
     },
     {
@@ -3977,8 +3977,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "src_components_websitecontenteditor_getsiteimagecropconfig",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 30,
+      "community_name": "Finance Ledger Services",
       "norm_label": "getsiteimagecropconfig()"
     },
     {
@@ -4120,8 +4120,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "src_components_icons_interactiveicon_interactiveicon",
-      "community": 108,
-      "community_name": "scoutYearBackupDeletion.test.js",
+      "community": 130,
+      "community_name": "Layout.jsx",
       "norm_label": "interactiveicon()"
     },
     {
@@ -4384,8 +4384,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_components_icons_lucide_animated_chevron_down",
-      "community": 36,
-      "community_name": "package.json",
+      "community": 87,
+      "community_name": "InteractiveIcon.jsx",
       "norm_label": "chevron-down.tsx"
     },
     {
@@ -4395,8 +4395,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "src_components_icons_lucide_animated_chevron_down_chevrondowniconhandle",
-      "community": 36,
-      "community_name": "package.json",
+      "community": 87,
+      "community_name": "InteractiveIcon.jsx",
       "norm_label": "chevrondowniconhandle"
     },
     {
@@ -4406,8 +4406,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "src_components_icons_lucide_animated_chevron_down_chevrondowniconprops",
-      "community": 36,
-      "community_name": "package.json",
+      "community": 87,
+      "community_name": "InteractiveIcon.jsx",
       "norm_label": "chevrondowniconprops"
     },
     {
@@ -4417,8 +4417,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "src_components_icons_lucide_animated_chevron_down_default_transition",
-      "community": 36,
-      "community_name": "package.json",
+      "community": 87,
+      "community_name": "InteractiveIcon.jsx",
       "norm_label": "default_transition"
     },
     {
@@ -4428,8 +4428,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "src_components_icons_lucide_animated_chevron_down_chevrondownicon",
-      "community": 36,
-      "community_name": "package.json",
+      "community": 87,
+      "community_name": "InteractiveIcon.jsx",
       "norm_label": "chevrondownicon"
     },
     {
@@ -5132,8 +5132,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_components_icons_lucide_animated_settings",
-      "community": 87,
-      "community_name": "InteractiveIcon.jsx",
+      "community": 140,
+      "community_name": "settings.tsx",
       "norm_label": "settings.tsx"
     },
     {
@@ -5143,8 +5143,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_components_icons_lucide_animated_settings_settingsiconhandle",
-      "community": 87,
-      "community_name": "InteractiveIcon.jsx",
+      "community": 140,
+      "community_name": "settings.tsx",
       "norm_label": "settingsiconhandle"
     },
     {
@@ -5154,8 +5154,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "src_components_icons_lucide_animated_settings_settingsiconprops",
-      "community": 87,
-      "community_name": "InteractiveIcon.jsx",
+      "community": 140,
+      "community_name": "settings.tsx",
       "norm_label": "settingsiconprops"
     },
     {
@@ -5165,8 +5165,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "src_components_icons_lucide_animated_settings_settingsicon",
-      "community": 87,
-      "community_name": "InteractiveIcon.jsx",
+      "community": 140,
+      "community_name": "settings.tsx",
       "norm_label": "settingsicon"
     },
     {
@@ -5418,8 +5418,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_components_layoutmodel",
-      "community": 70,
-      "community_name": "TipTap Text Styles",
+      "community": 130,
+      "community_name": "Layout.jsx",
       "norm_label": "layoutmodel.js"
     },
     {
@@ -5429,8 +5429,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_components_layoutmodel_isdashboardpath",
-      "community": 70,
-      "community_name": "TipTap Text Styles",
+      "community": 130,
+      "community_name": "Layout.jsx",
       "norm_label": "isdashboardpath()"
     },
     {
@@ -5440,8 +5440,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_data_attendance",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 29,
+      "community_name": "Blog Detail Experience",
       "norm_label": "attendance.js"
     },
     {
@@ -5451,8 +5451,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_data_calendar",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 29,
+      "community_name": "Blog Detail Experience",
       "norm_label": "calendar.js"
     },
     {
@@ -5462,8 +5462,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_data_content",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 29,
+      "community_name": "Blog Detail Experience",
       "norm_label": "content.js"
     },
     {
@@ -5473,8 +5473,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_data_groups",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 29,
+      "community_name": "Blog Detail Experience",
       "norm_label": "groups.js"
     },
     {
@@ -5484,8 +5484,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_data_mockdata",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 29,
+      "community_name": "Blog Detail Experience",
       "norm_label": "mockdata.js"
     },
     {
@@ -5495,8 +5495,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_data_registration",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 29,
+      "community_name": "Blog Detail Experience",
       "norm_label": "registration.js"
     },
     {
@@ -5506,8 +5506,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "src_data_registration_parseexcelsheet",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 29,
+      "community_name": "Blog Detail Experience",
       "norm_label": "parseexcelsheet()"
     },
     {
@@ -5517,8 +5517,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "src_data_registration_registeredscouts",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 29,
+      "community_name": "Blog Detail Experience",
       "norm_label": "registeredscouts"
     },
     {
@@ -5528,8 +5528,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_data_users",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 29,
+      "community_name": "Blog Detail Experience",
       "norm_label": "users.js"
     },
     {
@@ -6331,8 +6331,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "src_features_finance_financeworkspace_overview",
-      "community": 16,
-      "community_name": "Scouting Workspace Integration",
+      "community": 15,
+      "community_name": "Finance Workspace Core",
       "norm_label": "overview()"
     },
     {
@@ -6342,8 +6342,8 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "src_features_finance_financeworkspace_transactiontable",
-      "community": 16,
-      "community_name": "Scouting Workspace Integration",
+      "community": 13,
+      "community_name": "Storage Workspace Core",
       "norm_label": "transactiontable()"
     },
     {
@@ -6364,8 +6364,8 @@
       "source_location": "L62",
       "_origin": "ast",
       "id": "src_features_finance_financeworkspace_sectiondata",
-      "community": 16,
-      "community_name": "Scouting Workspace Integration",
+      "community": 15,
+      "community_name": "Finance Workspace Core",
       "norm_label": "sectiondata()"
     },
     {
@@ -6507,8 +6507,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "src_features_finance_financeservice_toentry",
-      "community": 15,
-      "community_name": "Finance Workspace Core",
+      "community": 121,
+      "community_name": "financeService.js",
       "norm_label": "toentry()"
     },
     {
@@ -6518,8 +6518,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "src_features_finance_financeservice_toaccount",
-      "community": 15,
-      "community_name": "Finance Workspace Core",
+      "community": 121,
+      "community_name": "financeService.js",
       "norm_label": "toaccount()"
     },
     {
@@ -6529,8 +6529,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "src_features_finance_financeservice_getfinanceoverview",
-      "community": 15,
-      "community_name": "Finance Workspace Core",
+      "community": 121,
+      "community_name": "financeService.js",
       "norm_label": "getfinanceoverview()"
     },
     {
@@ -6540,8 +6540,8 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "src_features_finance_financeservice_getfinanceleafdata",
-      "community": 15,
-      "community_name": "Finance Workspace Core",
+      "community": 121,
+      "community_name": "financeService.js",
       "norm_label": "getfinanceleafdata()"
     },
     {
@@ -6551,8 +6551,8 @@
       "source_location": "L79",
       "_origin": "ast",
       "id": "src_features_finance_financeservice_getfinancesectiondata",
-      "community": 15,
-      "community_name": "Finance Workspace Core",
+      "community": 121,
+      "community_name": "financeService.js",
       "norm_label": "getfinancesectiondata()"
     },
     {
@@ -6793,8 +6793,8 @@
       "source_location": "L176",
       "_origin": "ast",
       "id": "src_features_forms_formsdashboard_makequestion",
-      "community": 23,
-      "community_name": "Public Content Fallbacks",
+      "community": 1,
+      "community_name": "Forms Builder System",
       "norm_label": "makequestion()"
     },
     {
@@ -6991,8 +6991,8 @@
       "source_location": "L361",
       "_origin": "ast",
       "id": "src_features_forms_formsdashboard_getquestionplaceholder",
-      "community": 1,
-      "community_name": "Forms Builder System",
+      "community": 23,
+      "community_name": "Public Content Fallbacks",
       "norm_label": "getquestionplaceholder()"
     },
     {
@@ -7013,8 +7013,8 @@
       "source_location": "L381",
       "_origin": "ast",
       "id": "src_features_forms_formsdashboard_getquestionvalidationerror",
-      "community": 22,
-      "community_name": "Albums and Rich Editing",
+      "community": 1,
+      "community_name": "Forms Builder System",
       "norm_label": "getquestionvalidationerror()"
     },
     {
@@ -7090,8 +7090,8 @@
       "source_location": "L470",
       "_origin": "ast",
       "id": "src_features_forms_formsdashboard_questioninput",
-      "community": 1,
-      "community_name": "Forms Builder System",
+      "community": 23,
+      "community_name": "Public Content Fallbacks",
       "norm_label": "questioninput()"
     },
     {
@@ -7277,8 +7277,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "src_features_forms_formmodel_form_field_widths",
-      "community": 22,
-      "community_name": "Albums and Rich Editing",
+      "community": 1,
+      "community_name": "Forms Builder System",
       "norm_label": "form_field_widths"
     },
     {
@@ -7288,8 +7288,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "src_features_forms_formmodel_form_question_surfaces",
-      "community": 22,
-      "community_name": "Albums and Rich Editing",
+      "community": 1,
+      "community_name": "Forms Builder System",
       "norm_label": "form_question_surfaces"
     },
     {
@@ -7299,8 +7299,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "src_features_forms_formmodel_normalizeformappearancesettings",
-      "community": 1,
-      "community_name": "Forms Builder System",
+      "community": 22,
+      "community_name": "Albums and Rich Editing",
       "norm_label": "normalizeformappearancesettings()"
     },
     {
@@ -7508,8 +7508,8 @@
       "source_location": "L298",
       "_origin": "ast",
       "id": "src_features_forms_formmodel_normalizeformresponseemailsettings",
-      "community": 1,
-      "community_name": "Forms Builder System",
+      "community": 22,
+      "community_name": "Albums and Rich Editing",
       "norm_label": "normalizeformresponseemailsettings()"
     },
     {
@@ -7519,8 +7519,8 @@
       "source_location": "L310",
       "_origin": "ast",
       "id": "src_features_forms_formmodel_validateformresponseemailsettings",
-      "community": 1,
-      "community_name": "Forms Builder System",
+      "community": 22,
+      "community_name": "Albums and Rich Editing",
       "norm_label": "validateformresponseemailsettings()"
     },
     {
@@ -7541,8 +7541,8 @@
       "source_location": "L343",
       "_origin": "ast",
       "id": "src_features_forms_formmodel_getanswerscalar",
-      "community": 1,
-      "community_name": "Forms Builder System",
+      "community": 22,
+      "community_name": "Albums and Rich Editing",
       "norm_label": "getanswerscalar()"
     },
     {
@@ -8619,8 +8619,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "src_features_registration_registrationservice_requestreturningscoutverification",
-      "community": 7,
-      "community_name": "Dashboard Audit Utilities",
+      "community": 17,
+      "community_name": "User Profile Management",
       "norm_label": "requestreturningscoutverification()"
     },
     {
@@ -8630,8 +8630,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "src_features_registration_registrationservice_verifyreturningscoutcode",
-      "community": 7,
-      "community_name": "Dashboard Audit Utilities",
+      "community": 17,
+      "community_name": "User Profile Management",
       "norm_label": "verifyreturningscoutcode()"
     },
     {
@@ -9026,8 +9026,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_features_storage_storageworkspace",
-      "community": 131,
-      "community_name": "inventoryService.js",
+      "community": 13,
+      "community_name": "Storage Workspace Core",
       "norm_label": "storageworkspace.jsx"
     },
     {
@@ -9037,8 +9037,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "src_features_storage_storageworkspace_icons",
-      "community": 131,
-      "community_name": "inventoryService.js",
+      "community": 13,
+      "community_name": "Storage Workspace Core",
       "norm_label": "icons"
     },
     {
@@ -9048,8 +9048,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "src_features_storage_storageworkspace_humanize",
-      "community": 131,
-      "community_name": "inventoryService.js",
+      "community": 13,
+      "community_name": "Storage Workspace Core",
       "norm_label": "humanize()"
     },
     {
@@ -9059,8 +9059,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "src_features_storage_storageworkspace_storagestate",
-      "community": 131,
-      "community_name": "inventoryService.js",
+      "community": 13,
+      "community_name": "Storage Workspace Core",
       "norm_label": "storagestate()"
     },
     {
@@ -9070,8 +9070,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "src_features_storage_storageworkspace_status",
-      "community": 131,
-      "community_name": "inventoryService.js",
+      "community": 13,
+      "community_name": "Storage Workspace Core",
       "norm_label": "status()"
     },
     {
@@ -9081,8 +9081,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "src_features_storage_storageworkspace_movementtable",
-      "community": 131,
-      "community_name": "inventoryService.js",
+      "community": 13,
+      "community_name": "Storage Workspace Core",
       "norm_label": "movementtable()"
     },
     {
@@ -9092,8 +9092,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "src_features_storage_storageworkspace_overview",
-      "community": 16,
-      "community_name": "Scouting Workspace Integration",
+      "community": 13,
+      "community_name": "Storage Workspace Core",
       "norm_label": "overview()"
     },
     {
@@ -9103,8 +9103,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "src_features_storage_storageworkspace_staticstoragefields",
-      "community": 131,
-      "community_name": "inventoryService.js",
+      "community": 13,
+      "community_name": "Storage Workspace Core",
       "norm_label": "staticstoragefields"
     },
     {
@@ -9114,8 +9114,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "src_features_storage_storageworkspace_buildstoragefields",
-      "community": 131,
-      "community_name": "inventoryService.js",
+      "community": 13,
+      "community_name": "Storage Workspace Core",
       "norm_label": "buildstoragefields()"
     },
     {
@@ -9125,8 +9125,8 @@
       "source_location": "L65",
       "_origin": "ast",
       "id": "src_features_storage_storageworkspace_sectiondata",
-      "community": 131,
-      "community_name": "inventoryService.js",
+      "community": 13,
+      "community_name": "Storage Workspace Core",
       "norm_label": "sectiondata()"
     },
     {
@@ -9213,8 +9213,8 @@
       "source_location": "L86",
       "_origin": "ast",
       "id": "src_features_storage_inventoryservice_managestoragerecord",
-      "community": 131,
-      "community_name": "inventoryService.js",
+      "community": 13,
+      "community_name": "Storage Workspace Core",
       "norm_label": "managestoragerecord()"
     },
     {
@@ -9411,8 +9411,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_pages_acceptinvitationpage",
-      "community": 64,
-      "community_name": "React Core Dependency",
+      "community": 2,
+      "community_name": "Authentication and MFA",
       "norm_label": "acceptinvitationpage.jsx"
     },
     {
@@ -9422,8 +9422,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "src_pages_acceptinvitationpage_acceptinvitationpage",
-      "community": 64,
-      "community_name": "React Core Dependency",
+      "community": 2,
+      "community_name": "Authentication and MFA",
       "norm_label": "acceptinvitationpage()"
     },
     {
@@ -9642,8 +9642,8 @@
       "source_location": "L345",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_getcoordinatorgroupids",
-      "community": 9,
-      "community_name": "Public Data Services",
+      "community": 31,
+      "community_name": "Legacy Permission Helpers",
       "norm_label": "getcoordinatorgroupids()"
     },
     {
@@ -9653,8 +9653,8 @@
       "source_location": "L349",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_getprofileassignedgroupids",
-      "community": 9,
-      "community_name": "Public Data Services",
+      "community": 31,
+      "community_name": "Legacy Permission Helpers",
       "norm_label": "getprofileassignedgroupids()"
     },
     {
@@ -9664,8 +9664,8 @@
       "source_location": "L357",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_getuserroles",
-      "community": 9,
-      "community_name": "Public Data Services",
+      "community": 31,
+      "community_name": "Legacy Permission Helpers",
       "norm_label": "getuserroles()"
     },
     {
@@ -9675,8 +9675,8 @@
       "source_location": "L365",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_getprimaryrole",
-      "community": 9,
-      "community_name": "Public Data Services",
+      "community": 31,
+      "community_name": "Legacy Permission Helpers",
       "norm_label": "getprimaryrole()"
     },
     {
@@ -9686,8 +9686,8 @@
       "source_location": "L369",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_getassignablegroupids",
-      "community": 9,
-      "community_name": "Public Data Services",
+      "community": 31,
+      "community_name": "Legacy Permission Helpers",
       "norm_label": "getassignablegroupids()"
     },
     {
@@ -9697,8 +9697,8 @@
       "source_location": "L374",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_canaccessgroup",
-      "community": 9,
-      "community_name": "Public Data Services",
+      "community": 31,
+      "community_name": "Legacy Permission Helpers",
       "norm_label": "canaccessgroup()"
     },
     {
@@ -9719,8 +9719,8 @@
       "source_location": "L389",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_tochiefform",
-      "community": 9,
-      "community_name": "Public Data Services",
+      "community": 31,
+      "community_name": "Legacy Permission Helpers",
       "norm_label": "tochiefform()"
     },
     {
@@ -9752,8 +9752,8 @@
       "source_location": "L450",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_auditmetavalue",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 139,
+      "community_name": "mapDashboardActivityLog",
       "norm_label": "auditmetavalue()"
     },
     {
@@ -9763,8 +9763,8 @@
       "source_location": "L454",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_auditchangedfields",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 139,
+      "community_name": "mapDashboardActivityLog",
       "norm_label": "auditchangedfields()"
     },
     {
@@ -9774,8 +9774,8 @@
       "source_location": "L458",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_audittitlefrommeta",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 139,
+      "community_name": "mapDashboardActivityLog",
       "norm_label": "audittitlefrommeta()"
     },
     {
@@ -9785,8 +9785,8 @@
       "source_location": "L472",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_formatauditdetails",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 139,
+      "community_name": "mapDashboardActivityLog",
       "norm_label": "formatauditdetails()"
     },
     {
@@ -9796,8 +9796,8 @@
       "source_location": "L477",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_mapdashboardactivitylog",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 139,
+      "community_name": "mapDashboardActivityLog",
       "norm_label": "mapdashboardactivitylog()"
     },
     {
@@ -9829,8 +9829,8 @@
       "source_location": "L601",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_canseedashboardevent",
-      "community": 9,
-      "community_name": "Public Data Services",
+      "community": 31,
+      "community_name": "Legacy Permission Helpers",
       "norm_label": "canseedashboardevent()"
     },
     {
@@ -9862,8 +9862,8 @@
       "source_location": "L640",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_canmanageequipesforgroup",
-      "community": 9,
-      "community_name": "Public Data Services",
+      "community": 31,
+      "community_name": "Legacy Permission Helpers",
       "norm_label": "canmanageequipesforgroup()"
     },
     {
@@ -9906,8 +9906,8 @@
       "source_location": "L737",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_formatdubaidatetime",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 139,
+      "community_name": "mapDashboardActivityLog",
       "norm_label": "formatdubaidatetime()"
     },
     {
@@ -10024,7 +10024,7 @@
       "label": "StatusBadge()",
       "file_type": "code",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L5575",
+      "source_location": "L5525",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_statusbadge",
       "community": 31,
@@ -10035,7 +10035,7 @@
       "label": "BlogLinksTable()",
       "file_type": "code",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L5579",
+      "source_location": "L5529",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_bloglinkstable",
       "community": 31,
@@ -10046,7 +10046,7 @@
       "label": "AlbumLinksTable()",
       "file_type": "code",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L5620",
+      "source_location": "L5570",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_albumlinkstable",
       "community": 31,
@@ -10057,7 +10057,7 @@
       "label": "UploadLoadingState()",
       "file_type": "code",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L5661",
+      "source_location": "L5611",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_uploadloadingstate",
       "community": 31,
@@ -10068,7 +10068,7 @@
       "label": "ContentTable()",
       "file_type": "code",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L5680",
+      "source_location": "L5630",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_contenttable",
       "community": 31,
@@ -10079,7 +10079,7 @@
       "label": "AdminLinkPanel()",
       "file_type": "code",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L5758",
+      "source_location": "L5708",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_adminlinkpanel",
       "community": 31,
@@ -10090,7 +10090,7 @@
       "label": "EmptyAdminSection()",
       "file_type": "code",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L5768",
+      "source_location": "L5718",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_emptyadminsection",
       "community": 31,
@@ -10101,7 +10101,7 @@
       "label": "AccessDenied()",
       "file_type": "code",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L5777",
+      "source_location": "L5727",
       "_origin": "ast",
       "id": "src_pages_admindashboardpage_accessdenied",
       "community": 31,
@@ -10566,8 +10566,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_pages_chiefsportalpage",
-      "community": 6,
-      "community_name": "Dashboard Attendance Bootstrap",
+      "community": 7,
+      "community_name": "Dashboard Audit Utilities",
       "norm_label": "chiefsportalpage.jsx"
     },
     {
@@ -10577,8 +10577,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_pages_chiefsportalpage_sortlabels",
-      "community": 6,
-      "community_name": "Dashboard Attendance Bootstrap",
+      "community": 7,
+      "community_name": "Dashboard Audit Utilities",
       "norm_label": "sortlabels"
     },
     {
@@ -10588,8 +10588,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "src_pages_chiefsportalpage_sortscouts",
-      "community": 6,
-      "community_name": "Dashboard Attendance Bootstrap",
+      "community": 7,
+      "community_name": "Dashboard Audit Utilities",
       "norm_label": "sortscouts()"
     },
     {
@@ -10599,8 +10599,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "src_pages_chiefsportalpage_getschoolgrade",
-      "community": 6,
-      "community_name": "Dashboard Attendance Bootstrap",
+      "community": 7,
+      "community_name": "Dashboard Audit Utilities",
       "norm_label": "getschoolgrade()"
     },
     {
@@ -10610,8 +10610,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "src_pages_chiefsportalpage_getequipename",
-      "community": 6,
-      "community_name": "Dashboard Attendance Bootstrap",
+      "community": 7,
+      "community_name": "Dashboard Audit Utilities",
       "norm_label": "getequipename()"
     },
     {
@@ -10621,8 +10621,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "src_pages_chiefsportalpage_haschiefaccess",
-      "community": 6,
-      "community_name": "Dashboard Attendance Bootstrap",
+      "community": 7,
+      "community_name": "Dashboard Audit Utilities",
       "norm_label": "haschiefaccess()"
     },
     {
@@ -10632,8 +10632,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "src_pages_chiefsportalpage_chiefsportalpage",
-      "community": 6,
-      "community_name": "Dashboard Attendance Bootstrap",
+      "community": 7,
+      "community_name": "Dashboard Audit Utilities",
       "norm_label": "chiefsportalpage()"
     },
     {
@@ -10643,8 +10643,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_pages_gallerypage",
-      "community": 28,
-      "community_name": "Public Data Caching",
+      "community": 29,
+      "community_name": "Blog Detail Experience",
       "norm_label": "gallerypage.jsx"
     },
     {
@@ -10654,8 +10654,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "src_pages_gallerypage_gallerypage",
-      "community": 28,
-      "community_name": "Public Data Caching",
+      "community": 29,
+      "community_name": "Blog Detail Experience",
       "norm_label": "gallerypage()"
     },
     {
@@ -11072,8 +11072,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "src_services_attendanceservice_getattendancedata",
-      "community": 6,
-      "community_name": "Dashboard Attendance Bootstrap",
+      "community": 35,
+      "community_name": "About Page Content",
       "norm_label": "getattendancedata()"
     },
     {
@@ -11116,8 +11116,8 @@
       "source_location": "L126",
       "_origin": "ast",
       "id": "src_services_attendanceservice_deletesupabaseattendancesession",
-      "community": 6,
-      "community_name": "Dashboard Attendance Bootstrap",
+      "community": 35,
+      "community_name": "About Page Content",
       "norm_label": "deletesupabaseattendancesession()"
     },
     {
@@ -11226,8 +11226,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "src_services_authservice_authusertoprofile",
-      "community": 2,
-      "community_name": "Authentication and MFA",
+      "community": 135,
+      "community_name": "AuthProvider.jsx",
       "norm_label": "authusertoprofile()"
     },
     {
@@ -11237,8 +11237,8 @@
       "source_location": "L70",
       "_origin": "ast",
       "id": "src_services_authservice_getcurrentauthuser",
-      "community": 130,
-      "community_name": "Layout.jsx",
+      "community": 135,
+      "community_name": "AuthProvider.jsx",
       "norm_label": "getcurrentauthuser()"
     },
     {
@@ -11248,8 +11248,8 @@
       "source_location": "L98",
       "_origin": "ast",
       "id": "src_services_authservice_signinwithpassword",
-      "community": 2,
-      "community_name": "Authentication and MFA",
+      "community": 135,
+      "community_name": "AuthProvider.jsx",
       "norm_label": "signinwithpassword()"
     },
     {
@@ -11259,8 +11259,8 @@
       "source_location": "L115",
       "_origin": "ast",
       "id": "src_services_authservice_updatecurrentuserpassword",
-      "community": 64,
-      "community_name": "React Core Dependency",
+      "community": 2,
+      "community_name": "Authentication and MFA",
       "norm_label": "updatecurrentuserpassword()"
     },
     {
@@ -11325,8 +11325,8 @@
       "source_location": "L226",
       "_origin": "ast",
       "id": "src_services_authservice_consumeinvitationcallback",
-      "community": 64,
-      "community_name": "React Core Dependency",
+      "community": 2,
+      "community_name": "Authentication and MFA",
       "norm_label": "consumeinvitationcallback()"
     },
     {
@@ -11336,8 +11336,8 @@
       "source_location": "L233",
       "_origin": "ast",
       "id": "src_services_authservice_signout",
-      "community": 64,
-      "community_name": "React Core Dependency",
+      "community": 135,
+      "community_name": "AuthProvider.jsx",
       "norm_label": "signout()"
     },
     {
@@ -11556,8 +11556,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_services_calendarservice",
-      "community": 14,
-      "community_name": "Site Content Storage",
+      "community": 70,
+      "community_name": "TipTap Text Styles",
       "norm_label": "calendarservice.js"
     },
     {
@@ -11578,8 +11578,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "src_services_calendarservice_getcalendarevents",
-      "community": 14,
-      "community_name": "Site Content Storage",
+      "community": 70,
+      "community_name": "TipTap Text Styles",
       "norm_label": "getcalendarevents()"
     },
     {
@@ -11589,8 +11589,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "src_services_calendarservice_getpubliccalendarevents",
-      "community": 29,
-      "community_name": "Blog Detail Experience",
+      "community": 91,
+      "community_name": "CalendarPage.jsx",
       "norm_label": "getpubliccalendarevents()"
     },
     {
@@ -11600,8 +11600,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "src_services_calendarservice_createsupabasecalendarevent",
-      "community": 14,
-      "community_name": "Site Content Storage",
+      "community": 70,
+      "community_name": "TipTap Text Styles",
       "norm_label": "createsupabasecalendarevent()"
     },
     {
@@ -11611,8 +11611,8 @@
       "source_location": "L71",
       "_origin": "ast",
       "id": "src_services_calendarservice_deletesupabasecalendarevent",
-      "community": 0,
-      "community_name": "Content Admin Workflows",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "deletesupabasecalendarevent()"
     },
     {
@@ -11622,8 +11622,8 @@
       "source_location": "L81",
       "_origin": "ast",
       "id": "src_services_calendarservice_updatesupabasecalendarevent",
-      "community": 14,
-      "community_name": "Site Content Storage",
+      "community": 0,
+      "community_name": "Content Admin Workflows",
       "norm_label": "updatesupabasecalendarevent()"
     },
     {
@@ -11820,8 +11820,8 @@
       "source_location": "L276",
       "_origin": "ast",
       "id": "src_services_contentservice_deletepost",
-      "community": 0,
-      "community_name": "Content Admin Workflows",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "deletepost()"
     },
     {
@@ -12194,8 +12194,8 @@
       "source_location": "L457",
       "_origin": "ast",
       "id": "src_services_formservice_deletepostedformcascade",
-      "community": 0,
-      "community_name": "Content Admin Workflows",
+      "community": 65,
+      "community_name": "React DOM Dependency",
       "norm_label": "deletepostedformcascade()"
     },
     {
@@ -12216,8 +12216,8 @@
       "source_location": "L490",
       "_origin": "ast",
       "id": "src_services_formservice_sendformresponseemail",
-      "community": 7,
-      "community_name": "Dashboard Audit Utilities",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "sendformresponseemail()"
     },
     {
@@ -12271,8 +12271,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "src_services_galleryservice_getpublicgalleryalbums",
-      "community": 35,
-      "community_name": "About Page Content",
+      "community": 29,
+      "community_name": "Blog Detail Experience",
       "norm_label": "getpublicgalleryalbums()"
     },
     {
@@ -12304,8 +12304,8 @@
       "source_location": "L63",
       "_origin": "ast",
       "id": "src_services_galleryservice_preparealbumdata",
-      "community": 35,
-      "community_name": "About Page Content",
+      "community": 14,
+      "community_name": "Site Content Storage",
       "norm_label": "preparealbumdata()"
     },
     {
@@ -12337,8 +12337,8 @@
       "source_location": "L139",
       "_origin": "ast",
       "id": "src_services_galleryservice_updategalleryalbum",
-      "community": 35,
-      "community_name": "About Page Content",
+      "community": 0,
+      "community_name": "Content Admin Workflows",
       "norm_label": "updategalleryalbum()"
     },
     {
@@ -12370,8 +12370,8 @@
       "source_location": "L250",
       "_origin": "ast",
       "id": "src_services_galleryservice_deletegalleryphotos",
-      "community": 0,
-      "community_name": "Content Admin Workflows",
+      "community": 35,
+      "community_name": "About Page Content",
       "norm_label": "deletegalleryphotos()"
     },
     {
@@ -12381,8 +12381,8 @@
       "source_location": "L274",
       "_origin": "ast",
       "id": "src_services_galleryservice_deletegalleryalbum",
-      "community": 0,
-      "community_name": "Content Admin Workflows",
+      "community": 35,
+      "community_name": "About Page Content",
       "norm_label": "deletegalleryalbum()"
     },
     {
@@ -12524,8 +12524,8 @@
       "source_location": "L91",
       "_origin": "ast",
       "id": "src_services_imageoptimizationservice_getreadableimagefile",
-      "community": 66,
-      "community_name": "scoutYearBackup.ts",
+      "community": 14,
+      "community_name": "Site Content Storage",
       "norm_label": "getreadableimagefile()"
     },
     {
@@ -12579,8 +12579,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_services_notificationservice",
-      "community": 11,
-      "community_name": "Shared Workspace Tasks",
+      "community": 70,
+      "community_name": "TipTap Text Styles",
       "norm_label": "notificationservice.js"
     },
     {
@@ -12590,8 +12590,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "src_services_notificationservice_normalizenotification",
-      "community": 11,
-      "community_name": "Shared Workspace Tasks",
+      "community": 70,
+      "community_name": "TipTap Text Styles",
       "norm_label": "normalizenotification()"
     },
     {
@@ -12601,8 +12601,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "src_services_notificationservice_getnotifications",
-      "community": 11,
-      "community_name": "Shared Workspace Tasks",
+      "community": 70,
+      "community_name": "TipTap Text Styles",
       "norm_label": "getnotifications()"
     },
     {
@@ -12612,8 +12612,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "src_services_notificationservice_marknotificationread",
-      "community": 11,
-      "community_name": "Shared Workspace Tasks",
+      "community": 70,
+      "community_name": "TipTap Text Styles",
       "norm_label": "marknotificationread()"
     },
     {
@@ -12623,8 +12623,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "src_services_notificationservice_markallnotificationsread",
-      "community": 11,
-      "community_name": "Shared Workspace Tasks",
+      "community": 70,
+      "community_name": "TipTap Text Styles",
       "norm_label": "markallnotificationsread()"
     },
     {
@@ -12634,8 +12634,8 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "src_services_notificationservice_marknotificationsdoneforentity",
-      "community": 11,
-      "community_name": "Shared Workspace Tasks",
+      "community": 70,
+      "community_name": "TipTap Text Styles",
       "norm_label": "marknotificationsdoneforentity()"
     },
     {
@@ -12645,8 +12645,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "src_services_notificationservice_deletenotification",
-      "community": 11,
-      "community_name": "Shared Workspace Tasks",
+      "community": 70,
+      "community_name": "TipTap Text Styles",
       "norm_label": "deletenotification()"
     },
     {
@@ -12689,8 +12689,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_services_permissionservice",
-      "community": 0,
-      "community_name": "Content Admin Workflows",
+      "community": 35,
+      "community_name": "About Page Content",
       "norm_label": "permissionservice.js"
     },
     {
@@ -12700,8 +12700,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "src_services_permissionservice_getpermissiondefinitions",
-      "community": 0,
-      "community_name": "Content Admin Workflows",
+      "community": 35,
+      "community_name": "About Page Content",
       "norm_label": "getpermissiondefinitions()"
     },
     {
@@ -12777,8 +12777,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "src_services_permissions_cancreategroupmeetings",
-      "community": 6,
-      "community_name": "Dashboard Attendance Bootstrap",
+      "community": 7,
+      "community_name": "Dashboard Audit Utilities",
       "norm_label": "cancreategroupmeetings()"
     },
     {
@@ -12854,8 +12854,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_services_privateworkspacefileservice",
-      "community": 7,
-      "community_name": "Dashboard Audit Utilities",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "privateworkspacefileservice.js"
     },
     {
@@ -12865,8 +12865,8 @@
       "source_location": "L2",
       "_origin": "ast",
       "id": "src_services_privateworkspacefileservice_requestprivateupload",
-      "community": 7,
-      "community_name": "Dashboard Audit Utilities",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "requestprivateupload()"
     },
     {
@@ -12876,8 +12876,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "src_services_privateworkspacefileservice_requestprivatedownload",
-      "community": 7,
-      "community_name": "Dashboard Audit Utilities",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "requestprivatedownload()"
     },
     {
@@ -12975,8 +12975,8 @@
       "source_location": "L111",
       "_origin": "ast",
       "id": "src_services_publicengagementservice_updatefaq",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 34,
+      "community_name": "Notifications and Submissions",
       "norm_label": "updatefaq()"
     },
     {
@@ -12986,8 +12986,8 @@
       "source_location": "L122",
       "_origin": "ast",
       "id": "src_services_publicengagementservice_deactivatefaq",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 34,
+      "community_name": "Notifications and Submissions",
       "norm_label": "deactivatefaq()"
     },
     {
@@ -13074,8 +13074,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "src_services_scoutservice_createscoutyearbackup",
-      "community": 7,
-      "community_name": "Dashboard Audit Utilities",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "createscoutyearbackup()"
     },
     {
@@ -13085,8 +13085,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "src_services_scoutservice_deletescoutyear",
-      "community": 7,
-      "community_name": "Dashboard Audit Utilities",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "deletescoutyear()"
     },
     {
@@ -13096,8 +13096,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "src_services_scoutservice_getscoutyeardeletionrecovery",
-      "community": 7,
-      "community_name": "Dashboard Audit Utilities",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "getscoutyeardeletionrecovery()"
     },
     {
@@ -13118,8 +13118,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "src_services_scoutservice_createscoutyear",
-      "community": 8,
-      "community_name": "Supabase Data Operations",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "createscoutyear()"
     },
     {
@@ -13129,8 +13129,8 @@
       "source_location": "L65",
       "_origin": "ast",
       "id": "src_services_scoutservice_setactivescoutyear",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 35,
+      "community_name": "About Page Content",
       "norm_label": "setactivescoutyear()"
     },
     {
@@ -13140,8 +13140,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "src_services_scoutservice_base64toblob",
-      "community": 8,
-      "community_name": "Supabase Data Operations",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "base64toblob()"
     },
     {
@@ -13162,8 +13162,8 @@
       "source_location": "L170",
       "_origin": "ast",
       "id": "src_services_scoutservice_updatescout",
-      "community": 13,
-      "community_name": "Storage Workspace Core",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "updatescout()"
     },
     {
@@ -13184,8 +13184,8 @@
       "source_location": "L204",
       "_origin": "ast",
       "id": "src_services_scoutservice_importregistrationsheettosupabase",
-      "community": 8,
-      "community_name": "Supabase Data Operations",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "importregistrationsheettosupabase()"
     },
     {
@@ -13195,8 +13195,8 @@
       "source_location": "L272",
       "_origin": "ast",
       "id": "src_services_scoutservice_savegroupingrules",
-      "community": 13,
-      "community_name": "Storage Workspace Core",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "savegroupingrules()"
     },
     {
@@ -13459,8 +13459,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "src_services_sitecontentservice_isstructuredsitecontentkey",
-      "community": 31,
-      "community_name": "Legacy Permission Helpers",
+      "community": 25,
+      "community_name": "Blog Content Services",
       "norm_label": "isstructuredsitecontentkey()"
     },
     {
@@ -13503,8 +13503,8 @@
       "source_location": "L118",
       "_origin": "ast",
       "id": "src_services_sitecontentservice_contenttext",
-      "community": 115,
-      "community_name": "settings.tsx",
+      "community": 25,
+      "community_name": "Blog Content Services",
       "norm_label": "contenttext()"
     },
     {
@@ -13525,8 +13525,8 @@
       "source_location": "L127",
       "_origin": "ast",
       "id": "src_services_sitecontentservice_contentimage",
-      "community": 25,
-      "community_name": "Blog Content Services",
+      "community": 115,
+      "community_name": "settings.tsx",
       "norm_label": "contentimage()"
     },
     {
@@ -13756,8 +13756,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_services_supabaseclient",
-      "community": 0,
-      "community_name": "Content Admin Workflows",
+      "community": 35,
+      "community_name": "About Page Content",
       "norm_label": "supabaseclient.js"
     },
     {
@@ -13778,8 +13778,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "src_services_supabaseclient_getstoredsupabasesession",
-      "community": 0,
-      "community_name": "Content Admin Workflows",
+      "community": 35,
+      "community_name": "About Page Content",
       "norm_label": "getstoredsupabasesession()"
     },
     {
@@ -13800,8 +13800,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "src_services_supabaseclient_clearsupabasesession",
-      "community": 2,
-      "community_name": "Authentication and MFA",
+      "community": 135,
+      "community_name": "AuthProvider.jsx",
       "norm_label": "clearsupabasesession()"
     },
     {
@@ -13811,81 +13811,81 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "src_services_supabaseclient_getcurrentsupabaseuserid",
-      "community": 8,
-      "community_name": "Supabase Data Operations",
+      "community": 70,
+      "community_name": "TipTap Text Styles",
       "norm_label": "getcurrentsupabaseuserid()"
     },
     {
-      "label": "supabaseResponseError()",
+      "label": "supabaseErrorMessage()",
       "file_type": "code",
       "source_file": "src/services/supabaseClient.js",
       "source_location": "L48",
       "_origin": "ast",
-      "id": "src_services_supabaseclient_supabaseresponseerror",
-      "community": 0,
-      "community_name": "Content Admin Workflows",
-      "norm_label": "supabaseresponseerror()"
+      "id": "src_services_supabaseclient_supabaseerrormessage",
+      "community": 35,
+      "community_name": "About Page Content",
+      "norm_label": "supabaseerrormessage()"
     },
     {
       "label": "refreshStoredSupabaseSession()",
       "file_type": "code",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L70",
+      "source_location": "L59",
       "_origin": "ast",
       "id": "src_services_supabaseclient_refreshstoredsupabasesession",
-      "community": 0,
-      "community_name": "Content Admin Workflows",
+      "community": 35,
+      "community_name": "About Page Content",
       "norm_label": "refreshstoredsupabasesession()"
     },
     {
       "label": "supabaseRequest()",
       "file_type": "code",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L110",
+      "source_location": "L99",
       "_origin": "ast",
       "id": "src_services_supabaseclient_supabaserequest",
-      "community": 0,
-      "community_name": "Content Admin Workflows",
+      "community": 35,
+      "community_name": "About Page Content",
       "norm_label": "supabaserequest()"
     },
     {
       "label": "getSupabaseTable()",
       "file_type": "code",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L152",
+      "source_location": "L141",
       "_origin": "ast",
       "id": "src_services_supabaseclient_getsupabasetable",
-      "community": 0,
-      "community_name": "Content Admin Workflows",
+      "community": 35,
+      "community_name": "About Page Content",
       "norm_label": "getsupabasetable()"
     },
     {
       "label": "normalizeSupabaseRows()",
       "file_type": "code",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L156",
+      "source_location": "L145",
       "_origin": "ast",
       "id": "src_services_supabaseclient_normalizesupabaserows",
-      "community": 0,
-      "community_name": "Content Admin Workflows",
+      "community": 35,
+      "community_name": "About Page Content",
       "norm_label": "normalizesupabaserows()"
     },
     {
       "label": "getSupabaseRows()",
       "file_type": "code",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L163",
+      "source_location": "L152",
       "_origin": "ast",
       "id": "src_services_supabaseclient_getsupabaserows",
-      "community": 0,
-      "community_name": "Content Admin Workflows",
+      "community": 35,
+      "community_name": "About Page Content",
       "norm_label": "getsupabaserows()"
     },
     {
       "label": "callSupabaseRpc()",
       "file_type": "code",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L168",
+      "source_location": "L157",
       "_origin": "ast",
       "id": "src_services_supabaseclient_callsupabaserpc",
       "community": 65,
@@ -13896,7 +13896,7 @@
       "label": "insertSupabaseRow()",
       "file_type": "code",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L175",
+      "source_location": "L164",
       "_origin": "ast",
       "id": "src_services_supabaseclient_insertsupabaserow",
       "community": 8,
@@ -13907,18 +13907,18 @@
       "label": "insertSupabaseRows()",
       "file_type": "code",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L183",
+      "source_location": "L172",
       "_origin": "ast",
       "id": "src_services_supabaseclient_insertsupabaserows",
-      "community": 0,
-      "community_name": "Content Admin Workflows",
+      "community": 35,
+      "community_name": "About Page Content",
       "norm_label": "insertsupabaserows()"
     },
     {
       "label": "upsertSupabaseRows()",
       "file_type": "code",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L191",
+      "source_location": "L180",
       "_origin": "ast",
       "id": "src_services_supabaseclient_upsertsupabaserows",
       "community": 0,
@@ -13929,18 +13929,18 @@
       "label": "updateSupabaseRow()",
       "file_type": "code",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L201",
+      "source_location": "L190",
       "_origin": "ast",
       "id": "src_services_supabaseclient_updatesupabaserow",
-      "community": 0,
-      "community_name": "Content Admin Workflows",
+      "community": 35,
+      "community_name": "About Page Content",
       "norm_label": "updatesupabaserow()"
     },
     {
       "label": "patchSupabaseRows()",
       "file_type": "code",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L209",
+      "source_location": "L198",
       "_origin": "ast",
       "id": "src_services_supabaseclient_patchsupabaserows",
       "community": 65,
@@ -13951,18 +13951,18 @@
       "label": "deleteSupabaseRows()",
       "file_type": "code",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L217",
+      "source_location": "L206",
       "_origin": "ast",
       "id": "src_services_supabaseclient_deletesupabaserows",
-      "community": 0,
-      "community_name": "Content Admin Workflows",
+      "community": 8,
+      "community_name": "Supabase Data Operations",
       "norm_label": "deletesupabaserows()"
     },
     {
       "label": "callSupabaseAuth()",
       "file_type": "code",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L224",
+      "source_location": "L213",
       "_origin": "ast",
       "id": "src_services_supabaseclient_callsupabaseauth",
       "community": 2,
@@ -13973,29 +13973,29 @@
       "label": "invokeSupabaseFunction()",
       "file_type": "code",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L232",
+      "source_location": "L221",
       "_origin": "ast",
       "id": "src_services_supabaseclient_invokesupabasefunction",
-      "community": 7,
-      "community_name": "Dashboard Audit Utilities",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "invokesupabasefunction()"
     },
     {
       "label": "invokeSupabaseFunctionForm()",
       "file_type": "code",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L240",
+      "source_location": "L229",
       "_origin": "ast",
       "id": "src_services_supabaseclient_invokesupabasefunctionform",
-      "community": 0,
-      "community_name": "Content Admin Workflows",
+      "community": 35,
+      "community_name": "About Page Content",
       "norm_label": "invokesupabasefunctionform()"
     },
     {
       "label": "uploadSupabaseFile()",
       "file_type": "code",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L248",
+      "source_location": "L237",
       "_origin": "ast",
       "id": "src_services_supabaseclient_uploadsupabasefile",
       "community": 14,
@@ -14006,29 +14006,29 @@
       "label": "createSupabaseSignedFileUrl()",
       "file_type": "code",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L281",
+      "source_location": "L270",
       "_origin": "ast",
       "id": "src_services_supabaseclient_createsupabasesignedfileurl",
-      "community": 0,
-      "community_name": "Content Admin Workflows",
+      "community": 27,
+      "community_name": "Settings and Archives",
       "norm_label": "createsupabasesignedfileurl()"
     },
     {
       "label": "deleteSupabaseFiles()",
       "file_type": "code",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L302",
+      "source_location": "L291",
       "_origin": "ast",
       "id": "src_services_supabaseclient_deletesupabasefiles",
-      "community": 0,
-      "community_name": "Content Admin Workflows",
+      "community": 35,
+      "community_name": "About Page Content",
       "norm_label": "deletesupabasefiles()"
     },
     {
       "label": "deleteSupabaseFile()",
       "file_type": "code",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L332",
+      "source_location": "L321",
       "_origin": "ast",
       "id": "src_services_supabaseclient_deletesupabasefile",
       "community": 0,
@@ -14039,7 +14039,7 @@
       "label": "getSupabasePublicFileUrl()",
       "file_type": "code",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L336",
+      "source_location": "L325",
       "_origin": "ast",
       "id": "src_services_supabaseclient_getsupabasepublicfileurl",
       "community": 35,
@@ -14207,8 +14207,8 @@
       "source_location": "L278",
       "_origin": "ast",
       "id": "src_services_supabasemappers_normalizeevent",
-      "community": 14,
-      "community_name": "Site Content Storage",
+      "community": 70,
+      "community_name": "TipTap Text Styles",
       "norm_label": "normalizeevent()"
     },
     {
@@ -14295,8 +14295,8 @@
       "source_location": "L80",
       "_origin": "ast",
       "id": "src_services_userservice_getprofilebyid",
-      "community": 130,
-      "community_name": "Layout.jsx",
+      "community": 135,
+      "community_name": "AuthProvider.jsx",
       "norm_label": "getprofilebyid()"
     },
     {
@@ -14339,8 +14339,8 @@
       "source_location": "L184",
       "_origin": "ast",
       "id": "src_services_userservice_deletedashboarduser",
-      "community": 7,
-      "community_name": "Dashboard Audit Utilities",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "deletedashboarduser()"
     },
     {
@@ -14350,8 +14350,8 @@
       "source_location": "L190",
       "_origin": "ast",
       "id": "src_services_userservice_adminresetuserpassword",
-      "community": 7,
-      "community_name": "Dashboard Audit Utilities",
+      "community": 69,
+      "community_name": "TipTap Link Extension",
       "norm_label": "adminresetuserpassword()"
     },
     {
@@ -14526,8 +14526,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_utils_collections",
-      "community": 16,
-      "community_name": "Scouting Workspace Integration",
+      "community": 13,
+      "community_name": "Storage Workspace Core",
       "norm_label": "collections.js"
     },
     {
@@ -14537,8 +14537,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_utils_collections_asarray",
-      "community": 16,
-      "community_name": "Scouting Workspace Integration",
+      "community": 13,
+      "community_name": "Storage Workspace Core",
       "norm_label": "asarray()"
     },
     {
@@ -14955,8 +14955,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_workspaces_focusedworkspaceshell",
-      "community": 108,
-      "community_name": "scoutYearBackupDeletion.test.js",
+      "community": 130,
+      "community_name": "Layout.jsx",
       "norm_label": "focusedworkspaceshell.jsx"
     },
     {
@@ -14966,8 +14966,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "src_workspaces_focusedworkspaceshell_focusedworkspaceshell",
-      "community": 108,
-      "community_name": "scoutYearBackupDeletion.test.js",
+      "community": 130,
+      "community_name": "Layout.jsx",
       "norm_label": "focusedworkspaceshell()"
     },
     {
@@ -15054,8 +15054,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_workspaces_workspacerecordmanager",
-      "community": 131,
-      "community_name": "inventoryService.js",
+      "community": 15,
+      "community_name": "Finance Workspace Core",
       "norm_label": "workspacerecordmanager.jsx"
     },
     {
@@ -15065,8 +15065,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "src_workspaces_workspacerecordmanager_initialvalues",
-      "community": 131,
-      "community_name": "inventoryService.js",
+      "community": 15,
+      "community_name": "Finance Workspace Core",
       "norm_label": "initialvalues()"
     },
     {
@@ -15076,8 +15076,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "src_workspaces_workspacerecordmanager_workspacerecordmanager",
-      "community": 131,
-      "community_name": "inventoryService.js",
+      "community": 15,
+      "community_name": "Finance Workspace Core",
       "norm_label": "workspacerecordmanager()"
     },
     {
@@ -15142,8 +15142,8 @@
       "source_location": "L57",
       "_origin": "ast",
       "id": "src_workspaces_workspacesharedsections_workspacenotifications",
-      "community": 11,
-      "community_name": "Shared Workspace Tasks",
+      "community": 70,
+      "community_name": "TipTap Text Styles",
       "norm_label": "workspacenotifications()"
     },
     {
@@ -15175,8 +15175,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_workspaces_workspaceswitcher",
-      "community": 108,
-      "community_name": "scoutYearBackupDeletion.test.js",
+      "community": 130,
+      "community_name": "Layout.jsx",
       "norm_label": "workspaceswitcher.jsx"
     },
     {
@@ -15186,8 +15186,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "src_workspaces_workspaceswitcher_workspaceswitcher",
-      "community": 108,
-      "community_name": "scoutYearBackupDeletion.test.js",
+      "community": 130,
+      "community_name": "Layout.jsx",
       "norm_label": "workspaceswitcher()"
     },
     {
@@ -15197,8 +15197,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_workspaces_workspacetabs",
-      "community": 131,
-      "community_name": "inventoryService.js",
+      "community": 13,
+      "community_name": "Storage Workspace Core",
       "norm_label": "workspacetabs.jsx"
     },
     {
@@ -15208,8 +15208,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_workspaces_workspacetabs_workspacetabs",
-      "community": 131,
-      "community_name": "inventoryService.js",
+      "community": 13,
+      "community_name": "Storage Workspace Core",
       "norm_label": "workspacetabs()"
     },
     {
@@ -15747,8 +15747,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "supabase_functions_shared_dashboardauthorization_authorizedcontext",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 137,
+      "community_name": "delete-scout-year/index.ts",
       "norm_label": "authorizedcontext"
     },
     {
@@ -16088,8 +16088,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "supabase_functions_shared_scoutyearbackup",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 66,
+      "community_name": "scoutYearBackup.ts",
       "norm_label": "scoutyearbackup.ts"
     },
     {
@@ -16099,8 +16099,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "supabase_functions_shared_scoutyearbackup_row",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 66,
+      "community_name": "scoutYearBackup.ts",
       "norm_label": "row"
     },
     {
@@ -16110,8 +16110,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "supabase_functions_shared_scoutyearbackup_backupsnapshot",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 137,
+      "community_name": "delete-scout-year/index.ts",
       "norm_label": "backupsnapshot"
     },
     {
@@ -16121,8 +16121,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "supabase_functions_shared_scoutyearbackup_csvexport",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 66,
+      "community_name": "scoutYearBackup.ts",
       "norm_label": "csvexport"
     },
     {
@@ -16132,8 +16132,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "supabase_functions_shared_scoutyearbackup_storagereference",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 66,
+      "community_name": "scoutYearBackup.ts",
       "norm_label": "storagereference"
     },
     {
@@ -16143,8 +16143,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "supabase_functions_shared_scoutyearbackup_downloadedfile",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 66,
+      "community_name": "scoutYearBackup.ts",
       "norm_label": "downloadedfile"
     },
     {
@@ -16154,8 +16154,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "supabase_functions_shared_scoutyearbackup_deterministiczipentry",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 66,
+      "community_name": "scoutYearBackup.ts",
       "norm_label": "deterministiczipentry"
     },
     {
@@ -16165,8 +16165,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "supabase_functions_shared_scoutyearbackup_isrecord",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 66,
+      "community_name": "scoutYearBackup.ts",
       "norm_label": "isrecord()"
     },
     {
@@ -16176,8 +16176,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "supabase_functions_shared_scoutyearbackup_compare",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 66,
+      "community_name": "scoutYearBackup.ts",
       "norm_label": "compare()"
     },
     {
@@ -16187,8 +16187,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "supabase_functions_shared_scoutyearbackup_referencekey",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 66,
+      "community_name": "scoutYearBackup.ts",
       "norm_label": "referencekey()"
     },
     {
@@ -16198,8 +16198,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "supabase_functions_shared_scoutyearbackup_validatebackupsnapshot",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 66,
+      "community_name": "scoutYearBackup.ts",
       "norm_label": "validatebackupsnapshot()"
     },
     {
@@ -16209,8 +16209,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "supabase_functions_shared_scoutyearbackup_canonicaljson",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 66,
+      "community_name": "scoutYearBackup.ts",
       "norm_label": "canonicaljson()"
     },
     {
@@ -16220,8 +16220,8 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "supabase_functions_shared_scoutyearbackup_rowstocsv",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 66,
+      "community_name": "scoutYearBackup.ts",
       "norm_label": "rowstocsv()"
     },
     {
@@ -16231,8 +16231,8 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "supabase_functions_shared_scoutyearbackup_createcsvexports",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 66,
+      "community_name": "scoutYearBackup.ts",
       "norm_label": "createcsvexports()"
     },
     {
@@ -16242,8 +16242,8 @@
       "source_location": "L69",
       "_origin": "ast",
       "id": "supabase_functions_shared_scoutyearbackup_safestoragereference",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 66,
+      "community_name": "scoutYearBackup.ts",
       "norm_label": "safestoragereference()"
     },
     {
@@ -16253,8 +16253,8 @@
       "source_location": "L79",
       "_origin": "ast",
       "id": "supabase_functions_shared_scoutyearbackup_normalizedpathkey",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 66,
+      "community_name": "scoutYearBackup.ts",
       "norm_label": "normalizedpathkey()"
     },
     {
@@ -16264,8 +16264,8 @@
       "source_location": "L83",
       "_origin": "ast",
       "id": "supabase_functions_shared_scoutyearbackup_collectstoragereferences",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 66,
+      "community_name": "scoutYearBackup.ts",
       "norm_label": "collectstoragereferences()"
     },
     {
@@ -16275,8 +16275,8 @@
       "source_location": "L177",
       "_origin": "ast",
       "id": "supabase_functions_shared_scoutyearbackup_createdeterministiczipentries",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 66,
+      "community_name": "scoutYearBackup.ts",
       "norm_label": "createdeterministiczipentries()"
     },
     {
@@ -16286,8 +16286,8 @@
       "source_location": "L192",
       "_origin": "ast",
       "id": "supabase_functions_shared_scoutyearbackup_sha256hex",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 66,
+      "community_name": "scoutYearBackup.ts",
       "norm_label": "sha256hex()"
     },
     {
@@ -16297,8 +16297,8 @@
       "source_location": "L197",
       "_origin": "ast",
       "id": "supabase_functions_shared_scoutyearbackup_createbackupmanifest",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 66,
+      "community_name": "scoutYearBackup.ts",
       "norm_label": "createbackupmanifest()"
     },
     {
@@ -16341,8 +16341,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "supabase_functions_delete_scout_year_index",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 137,
+      "community_name": "delete-scout-year/index.ts",
       "norm_label": "delete-scout-year/index.ts"
     },
     {
@@ -16352,8 +16352,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "supabase_functions_delete_scout_year_index_jsonobject",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 137,
+      "community_name": "delete-scout-year/index.ts",
       "norm_label": "jsonobject"
     },
     {
@@ -16363,8 +16363,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "supabase_functions_delete_scout_year_index_isobject",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 137,
+      "community_name": "delete-scout-year/index.ts",
       "norm_label": "isobject()"
     },
     {
@@ -16374,8 +16374,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "supabase_functions_delete_scout_year_index_rpcfailures",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 137,
+      "community_name": "delete-scout-year/index.ts",
       "norm_label": "rpcfailures"
     },
     {
@@ -16385,8 +16385,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "supabase_functions_delete_scout_year_index_reject",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 137,
+      "community_name": "delete-scout-year/index.ts",
       "norm_label": "reject()"
     },
     {
@@ -16396,8 +16396,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "supabase_functions_delete_scout_year_index_auditdeletion",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 137,
+      "community_name": "delete-scout-year/index.ts",
       "norm_label": "auditdeletion()"
     },
     {
@@ -16407,8 +16407,8 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "supabase_functions_delete_scout_year_index_validatemanifest",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 137,
+      "community_name": "delete-scout-year/index.ts",
       "norm_label": "validatemanifest()"
     },
     {
@@ -16418,8 +16418,8 @@
       "source_location": "L55",
       "_origin": "ast",
       "id": "supabase_functions_delete_scout_year_index_validatedcleanupinventory",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 137,
+      "community_name": "delete-scout-year/index.ts",
       "norm_label": "validatedcleanupinventory()"
     },
     {
@@ -16429,8 +16429,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "supabase_functions_parse_registration_upload_index",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 138,
+      "community_name": "parse-registration-upload/index.ts",
       "norm_label": "parse-registration-upload/index.ts"
     },
     {
@@ -16440,8 +16440,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "supabase_functions_parse_registration_upload_index_rule",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 138,
+      "community_name": "parse-registration-upload/index.ts",
       "norm_label": "rule"
     },
     {
@@ -16451,8 +16451,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "supabase_functions_parse_registration_upload_index_aliases",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 138,
+      "community_name": "parse-registration-upload/index.ts",
       "norm_label": "aliases"
     },
     {
@@ -16462,8 +16462,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "supabase_functions_parse_registration_upload_index_clean",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 138,
+      "community_name": "parse-registration-upload/index.ts",
       "norm_label": "clean()"
     },
     {
@@ -16473,8 +16473,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "supabase_functions_parse_registration_upload_index_normalizedheader",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 138,
+      "community_name": "parse-registration-upload/index.ts",
       "norm_label": "normalizedheader()"
     },
     {
@@ -16484,8 +16484,8 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "supabase_functions_parse_registration_upload_index_columnindex",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 138,
+      "community_name": "parse-registration-upload/index.ts",
       "norm_label": "columnindex()"
     },
     {
@@ -16495,8 +16495,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "supabase_functions_parse_registration_upload_index_numberfrom",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 138,
+      "community_name": "parse-registration-upload/index.ts",
       "norm_label": "numberfrom()"
     },
     {
@@ -16506,8 +16506,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "supabase_functions_parse_registration_upload_index_genderfrom",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 138,
+      "community_name": "parse-registration-upload/index.ts",
       "norm_label": "genderfrom()"
     },
     {
@@ -16517,8 +16517,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "supabase_functions_parse_registration_upload_index_groupfor",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 138,
+      "community_name": "parse-registration-upload/index.ts",
       "norm_label": "groupfor()"
     },
     {
@@ -16528,8 +16528,8 @@
       "source_location": "L67",
       "_origin": "ast",
       "id": "supabase_functions_parse_registration_upload_index_bytesfrombase64",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 138,
+      "community_name": "parse-registration-upload/index.ts",
       "norm_label": "bytesfrombase64()"
     },
     {
@@ -16605,8 +16605,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "supabase_functions_scout_registration_index",
-      "community": 32,
-      "community_name": "Edge Function Authorization",
+      "community": 122,
+      "community_name": "scout-registration/index.ts",
       "norm_label": "scout-registration/index.ts"
     },
     {
@@ -16616,8 +16616,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "supabase_functions_scout_registration_index_encoder",
-      "community": 32,
-      "community_name": "Edge Function Authorization",
+      "community": 122,
+      "community_name": "scout-registration/index.ts",
       "norm_label": "encoder"
     },
     {
@@ -16627,8 +16627,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "supabase_functions_scout_registration_index_allowed_mime_types",
-      "community": 32,
-      "community_name": "Edge Function Authorization",
+      "community": 122,
+      "community_name": "scout-registration/index.ts",
       "norm_label": "allowed_mime_types"
     },
     {
@@ -16638,8 +16638,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "supabase_functions_scout_registration_index_errormessage",
-      "community": 32,
-      "community_name": "Edge Function Authorization",
+      "community": 122,
+      "community_name": "scout-registration/index.ts",
       "norm_label": "errormessage()"
     },
     {
@@ -16649,8 +16649,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "supabase_functions_scout_registration_index_errorcode",
-      "community": 32,
-      "community_name": "Edge Function Authorization",
+      "community": 122,
+      "community_name": "scout-registration/index.ts",
       "norm_label": "errorcode()"
     },
     {
@@ -16660,8 +16660,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "supabase_functions_scout_registration_index_hash",
-      "community": 32,
-      "community_name": "Edge Function Authorization",
+      "community": 122,
+      "community_name": "scout-registration/index.ts",
       "norm_label": "hash()"
     },
     {
@@ -16671,8 +16671,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "supabase_functions_scout_registration_index_cleanphone",
-      "community": 32,
-      "community_name": "Edge Function Authorization",
+      "community": 122,
+      "community_name": "scout-registration/index.ts",
       "norm_label": "cleanphone()"
     },
     {
@@ -16682,8 +16682,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "supabase_functions_scout_registration_index_securecode",
-      "community": 32,
-      "community_name": "Edge Function Authorization",
+      "community": 122,
+      "community_name": "scout-registration/index.ts",
       "norm_label": "securecode()"
     },
     {
@@ -16693,8 +16693,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "supabase_functions_scout_registration_index_smsconfigured",
-      "community": 32,
-      "community_name": "Edge Function Authorization",
+      "community": 122,
+      "community_name": "scout-registration/index.ts",
       "norm_label": "smsconfigured()"
     },
     {
@@ -16704,8 +16704,8 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "supabase_functions_scout_registration_index_extensionfor",
-      "community": 32,
-      "community_name": "Edge Function Authorization",
+      "community": 122,
+      "community_name": "scout-registration/index.ts",
       "norm_label": "extensionfor()"
     },
     {
@@ -16715,8 +16715,8 @@
       "source_location": "L55",
       "_origin": "ast",
       "id": "supabase_functions_scout_registration_index_validsignature",
-      "community": 32,
-      "community_name": "Edge Function Authorization",
+      "community": 122,
+      "community_name": "scout-registration/index.ts",
       "norm_label": "validsignature()"
     },
     {
@@ -16726,8 +16726,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "supabase_functions_scout_registration_index_sendsms",
-      "community": 32,
-      "community_name": "Edge Function Authorization",
+      "community": 122,
+      "community_name": "scout-registration/index.ts",
       "norm_label": "sendsms()"
     },
     {
@@ -16737,8 +16737,8 @@
       "source_location": "L81",
       "_origin": "ast",
       "id": "supabase_functions_scout_registration_index_bucketandtype",
-      "community": 32,
-      "community_name": "Edge Function Authorization",
+      "community": 122,
+      "community_name": "scout-registration/index.ts",
       "norm_label": "bucketandtype()"
     },
     {
@@ -16748,8 +16748,8 @@
       "source_location": "L90",
       "_origin": "ast",
       "id": "supabase_functions_scout_registration_index_normalizename",
-      "community": 32,
-      "community_name": "Edge Function Authorization",
+      "community": 122,
+      "community_name": "scout-registration/index.ts",
       "norm_label": "normalizename()"
     },
     {
@@ -16759,8 +16759,8 @@
       "source_location": "L102",
       "_origin": "ast",
       "id": "supabase_functions_scout_registration_index_detectduplicates",
-      "community": 32,
-      "community_name": "Edge Function Authorization",
+      "community": 122,
+      "community_name": "scout-registration/index.ts",
       "norm_label": "detectduplicates()"
     },
     {
@@ -16770,8 +16770,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "supabase_functions_scout_year_backup_index",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 66,
+      "community_name": "scoutYearBackup.ts",
       "norm_label": "scout-year-backup/index.ts"
     },
     {
@@ -16781,8 +16781,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "supabase_functions_scout_year_backup_index_auditbackup",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 66,
+      "community_name": "scoutYearBackup.ts",
       "norm_label": "auditbackup()"
     },
     {
@@ -16891,8 +16891,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_access_control_bootstrapdatacontract_test",
-      "community": 0,
-      "community_name": "Content Admin Workflows",
+      "community": 6,
+      "community_name": "Dashboard Attendance Bootstrap",
       "norm_label": "bootstrapdatacontract.test.js"
     },
     {
@@ -16902,8 +16902,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_access_control_collectioncontract_test",
-      "community": 16,
-      "community_name": "Scouting Workspace Integration",
+      "community": 13,
+      "community_name": "Storage Workspace Core",
       "norm_label": "collectioncontract.test.js"
     },
     {
@@ -17111,8 +17111,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_access_control_layoutboundary_test",
-      "community": 70,
-      "community_name": "TipTap Text Styles",
+      "community": 130,
+      "community_name": "Layout.jsx",
       "norm_label": "layoutboundary.test.js"
     },
     {
@@ -17353,8 +17353,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_access_control_scoutyearbackupdeletion_test",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 108,
+      "community_name": "scoutYearBackupDeletion.test.js",
       "norm_label": "scoutyearbackupdeletion.test.js"
     },
     {
@@ -17364,8 +17364,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "tests_access_control_scoutyearbackupdeletion_test_migrationurl",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 108,
+      "community_name": "scoutYearBackupDeletion.test.js",
       "norm_label": "migrationurl"
     },
     {
@@ -17375,8 +17375,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "tests_access_control_scoutyearbackupdeletion_test_preserved",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 108,
+      "community_name": "scoutYearBackupDeletion.test.js",
       "norm_label": "preserved"
     },
     {
@@ -17386,8 +17386,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "tests_access_control_scoutyearbackupdeletion_test_transitive",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 108,
+      "community_name": "scoutYearBackupDeletion.test.js",
       "norm_label": "transitive"
     },
     {
@@ -17397,8 +17397,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "tests_access_control_scoutyearbackupdeletion_test_operational",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 108,
+      "community_name": "scoutYearBackupDeletion.test.js",
       "norm_label": "operational"
     },
     {
@@ -17408,8 +17408,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "tests_access_control_scoutyearbackupdeletion_test_registration",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 108,
+      "community_name": "scoutYearBackupDeletion.test.js",
       "norm_label": "registration"
     },
     {
@@ -17419,8 +17419,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "tests_access_control_scoutyearbackupdeletion_test_body",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 108,
+      "community_name": "scoutYearBackupDeletion.test.js",
       "norm_label": "body()"
     },
     {
@@ -17430,8 +17430,8 @@
       "source_location": "L130",
       "_origin": "ast",
       "id": "tests_access_control_scoutyearbackupdeletion_test_helperurl",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 108,
+      "community_name": "scoutYearBackupDeletion.test.js",
       "norm_label": "helperurl"
     },
     {
@@ -17441,8 +17441,8 @@
       "source_location": "L131",
       "_origin": "ast",
       "id": "tests_access_control_scoutyearbackupdeletion_test_functionurl",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 108,
+      "community_name": "scoutYearBackupDeletion.test.js",
       "norm_label": "functionurl"
     },
     {
@@ -17452,8 +17452,8 @@
       "source_location": "L135",
       "_origin": "ast",
       "id": "tests_access_control_scoutyearbackupdeletion_test_snapshothash",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 108,
+      "community_name": "scoutYearBackupDeletion.test.js",
       "norm_label": "snapshothash"
     },
     {
@@ -17463,8 +17463,8 @@
       "source_location": "L136",
       "_origin": "ast",
       "id": "tests_access_control_scoutyearbackupdeletion_test_fixturesnapshot",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 108,
+      "community_name": "scoutYearBackupDeletion.test.js",
       "norm_label": "fixturesnapshot()"
     },
     {
@@ -17474,8 +17474,8 @@
       "source_location": "L140",
       "_origin": "ast",
       "id": "tests_access_control_scoutyearbackupdeletion_test_helpers",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 108,
+      "community_name": "scoutYearBackupDeletion.test.js",
       "norm_label": "helpers()"
     },
     {
@@ -17485,8 +17485,8 @@
       "source_location": "L305",
       "_origin": "ast",
       "id": "tests_access_control_scoutyearbackupdeletion_test_edgeharness",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 108,
+      "community_name": "scoutYearBackupDeletion.test.js",
       "norm_label": "edgeharness()"
     },
     {
@@ -17496,8 +17496,8 @@
       "source_location": "L430",
       "_origin": "ast",
       "id": "tests_access_control_scoutyearbackupdeletion_test_deletionurl",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 108,
+      "community_name": "scoutYearBackupDeletion.test.js",
       "norm_label": "deletionurl"
     },
     {
@@ -17507,19 +17507,19 @@
       "source_location": "L433",
       "_origin": "ast",
       "id": "tests_access_control_scoutyearbackupdeletion_test_deletionharness",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 108,
+      "community_name": "scoutYearBackupDeletion.test.js",
       "norm_label": "deletionharness()"
     },
     {
       "label": "frontendServices()",
       "file_type": "code",
       "source_file": "tests/access-control/scoutYearBackupDeletion.test.js",
-      "source_location": "L821",
+      "source_location": "L820",
       "_origin": "ast",
       "id": "tests_access_control_scoutyearbackupdeletion_test_frontendservices",
-      "community": 67,
-      "community_name": "TipTap Font Extension",
+      "community": 108,
+      "community_name": "scoutYearBackupDeletion.test.js",
       "norm_label": "frontendservices()"
     },
     {
@@ -19476,8 +19476,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "src_data_calendar_plannedevents",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 29,
+      "community_name": "Blog Detail Experience",
       "norm_label": "plannedevents"
     },
     {
@@ -19487,8 +19487,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "src_data_groups_scoutgroups",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 29,
+      "community_name": "Blog Detail Experience",
       "norm_label": "scoutgroups"
     },
     {
@@ -19498,8 +19498,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "src_data_users_demousers",
-      "community": 69,
-      "community_name": "TipTap Link Extension",
+      "community": 29,
+      "community_name": "Blog Detail Experience",
       "norm_label": "demousers"
     },
     {
@@ -23458,7 +23458,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3546",
+      "source_location": "L3496",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -28084,7 +28084,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3384",
+      "source_location": "L3334",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -28120,7 +28120,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3390",
+      "source_location": "L3340",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -28156,7 +28156,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3395",
+      "source_location": "L3345",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -28192,7 +28192,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3400",
+      "source_location": "L3350",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -28264,7 +28264,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3405",
+      "source_location": "L3355",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -28300,7 +28300,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3411",
+      "source_location": "L3361",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -28360,7 +28360,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3350",
+      "source_location": "L3300",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -28396,7 +28396,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3368",
+      "source_location": "L3318",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -28432,7 +28432,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3378",
+      "source_location": "L3328",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -28588,7 +28588,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3195",
+      "source_location": "L3145",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -28840,7 +28840,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2358",
+      "source_location": "L2308",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -28876,7 +28876,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2384",
+      "source_location": "L2334",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -28900,7 +28900,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2142",
+      "source_location": "L2128",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -28924,7 +28924,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2271",
+      "source_location": "L2253",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -28948,7 +28948,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2054",
+      "source_location": "L2053",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -29092,7 +29092,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2398",
+      "source_location": "L2348",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -29128,7 +29128,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2404",
+      "source_location": "L2354",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -29164,7 +29164,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2717",
+      "source_location": "L2667",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -29200,7 +29200,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2898",
+      "source_location": "L2848",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -29236,7 +29236,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3207",
+      "source_location": "L3157",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -29272,7 +29272,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2929",
+      "source_location": "L2879",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -29308,7 +29308,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2808",
+      "source_location": "L2758",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -29344,7 +29344,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2731",
+      "source_location": "L2681",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -29380,7 +29380,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2697",
+      "source_location": "L2647",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -29416,7 +29416,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3001",
+      "source_location": "L2951",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -29476,7 +29476,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2996",
+      "source_location": "L2946",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -29536,7 +29536,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2977",
+      "source_location": "L2927",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -29572,7 +29572,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3141",
+      "source_location": "L3091",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -29632,7 +29632,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3134",
+      "source_location": "L3084",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -29740,7 +29740,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3081",
+      "source_location": "L3031",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -29776,7 +29776,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3151",
+      "source_location": "L3101",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -29836,7 +29836,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3248",
+      "source_location": "L3198",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -29896,7 +29896,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2418",
+      "source_location": "L2368",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -29932,7 +29932,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2431",
+      "source_location": "L2381",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -29968,7 +29968,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2447",
+      "source_location": "L2397",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -30004,7 +30004,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2463",
+      "source_location": "L2413",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -30148,7 +30148,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3209",
+      "source_location": "L3159",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -30340,7 +30340,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3639",
+      "source_location": "L3589",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -30484,7 +30484,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3665",
+      "source_location": "L3615",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -30556,7 +30556,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3650",
+      "source_location": "L3600",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -30592,7 +30592,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3329",
+      "source_location": "L3279",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -30628,7 +30628,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3211",
+      "source_location": "L3161",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -36217,7 +36217,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2650",
+      "source_location": "L2600",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -45883,7 +45883,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2756",
+      "source_location": "L2706",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -46087,7 +46087,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2773",
+      "source_location": "L2723",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -50541,7 +50541,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L5777",
+      "source_location": "L5727",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage",
@@ -50563,7 +50563,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L5758",
+      "source_location": "L5708",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage",
@@ -50574,7 +50574,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L5620",
+      "source_location": "L5570",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage",
@@ -50629,7 +50629,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L5579",
+      "source_location": "L5529",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage",
@@ -50706,7 +50706,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L5680",
+      "source_location": "L5630",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage",
@@ -50739,7 +50739,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L5768",
+      "source_location": "L5718",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage",
@@ -51102,7 +51102,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L5575",
+      "source_location": "L5525",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage",
@@ -51135,7 +51135,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L5661",
+      "source_location": "L5611",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage",
@@ -51623,7 +51623,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L4510",
+      "source_location": "L4460",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -51779,7 +51779,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2645",
+      "source_location": "L2595",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -51791,7 +51791,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2638",
+      "source_location": "L2588",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -51899,7 +51899,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3689",
+      "source_location": "L3639",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -51911,7 +51911,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3718",
+      "source_location": "L3668",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -51923,7 +51923,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3731",
+      "source_location": "L3681",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -51947,7 +51947,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3720",
+      "source_location": "L3670",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -52007,7 +52007,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L2411",
+      "source_location": "L2361",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -52175,7 +52175,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3599",
+      "source_location": "L3549",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -52211,7 +52211,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L4801",
+      "source_location": "L4751",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -52223,7 +52223,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L4846",
+      "source_location": "L4796",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -52235,7 +52235,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L4904",
+      "source_location": "L4854",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -52308,7 +52308,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3791",
+      "source_location": "L3741",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -52332,7 +52332,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3790",
+      "source_location": "L3740",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -52344,7 +52344,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3697",
+      "source_location": "L3647",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -52356,7 +52356,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3795",
+      "source_location": "L3745",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -52380,7 +52380,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/AdminDashboardPage.jsx",
-      "source_location": "L3464",
+      "source_location": "L3414",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_pages_admindashboardpage_admindashboardpage",
@@ -64808,7 +64808,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L224",
+      "source_location": "L213",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient",
@@ -64819,7 +64819,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L168",
+      "source_location": "L157",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient",
@@ -64841,7 +64841,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L281",
+      "source_location": "L270",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient",
@@ -64852,7 +64852,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L332",
+      "source_location": "L321",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient",
@@ -64863,7 +64863,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L302",
+      "source_location": "L291",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient",
@@ -64874,7 +64874,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L217",
+      "source_location": "L206",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient",
@@ -64907,7 +64907,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L336",
+      "source_location": "L325",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient",
@@ -64918,7 +64918,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L163",
+      "source_location": "L152",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient",
@@ -64929,7 +64929,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L152",
+      "source_location": "L141",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient",
@@ -64940,7 +64940,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L175",
+      "source_location": "L164",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient",
@@ -64951,7 +64951,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L183",
+      "source_location": "L172",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient",
@@ -64962,7 +64962,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L232",
+      "source_location": "L221",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient",
@@ -64973,7 +64973,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L240",
+      "source_location": "L229",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient",
@@ -64995,7 +64995,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L156",
+      "source_location": "L145",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient",
@@ -65006,7 +65006,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L209",
+      "source_location": "L198",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient",
@@ -65017,7 +65017,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L70",
+      "source_location": "L59",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient",
@@ -65039,7 +65039,18 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L110",
+      "source_location": "L48",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "src_services_supabaseclient",
+      "target": "src_services_supabaseclient_supabaseerrormessage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/services/supabaseClient.js",
+      "source_location": "L99",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient",
@@ -65050,18 +65061,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L48",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "src_services_supabaseclient",
-      "target": "src_services_supabaseclient_supabaseresponseerror",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "src/services/supabaseClient.js",
-      "source_location": "L201",
+      "source_location": "L190",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient",
@@ -65072,7 +65072,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L248",
+      "source_location": "L237",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient",
@@ -65083,7 +65083,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L191",
+      "source_location": "L180",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient",
@@ -65179,7 +65179,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L283",
+      "source_location": "L272",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_createsupabasesignedfileurl",
@@ -65191,7 +65191,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L313",
+      "source_location": "L302",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_deletesupabasefiles",
@@ -65215,7 +65215,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L71",
+      "source_location": "L60",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_refreshstoredsupabasesession",
@@ -65227,7 +65227,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L131",
+      "source_location": "L120",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_supabaserequest",
@@ -65239,7 +65239,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L253",
+      "source_location": "L242",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_uploadsupabasefile",
@@ -65251,7 +65251,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L95",
+      "source_location": "L84",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_refreshstoredsupabasesession",
@@ -65263,7 +65263,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L89",
+      "source_location": "L78",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_refreshstoredsupabasesession",
@@ -65347,11 +65347,11 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L87",
+      "source_location": "L76",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_refreshstoredsupabasesession",
-      "target": "src_services_supabaseclient_supabaseresponseerror",
+      "target": "src_services_supabaseclient_supabaseerrormessage",
       "confidence_score": 1.0
     },
     {
@@ -65359,11 +65359,11 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L142",
+      "source_location": "L131",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_supabaserequest",
-      "target": "src_services_supabaseclient_supabaseresponseerror",
+      "target": "src_services_supabaseclient_supabaseerrormessage",
       "confidence_score": 1.0
     },
     {
@@ -65371,7 +65371,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L135",
+      "source_location": "L124",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_supabaserequest",
@@ -65383,7 +65383,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L225",
+      "source_location": "L214",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_callsupabaseauth",
@@ -65395,7 +65395,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L169",
+      "source_location": "L158",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_callsupabaserpc",
@@ -65407,7 +65407,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L218",
+      "source_location": "L207",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_deletesupabaserows",
@@ -65419,7 +65419,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L153",
+      "source_location": "L142",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_getsupabasetable",
@@ -65431,7 +65431,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L176",
+      "source_location": "L165",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_insertsupabaserow",
@@ -65443,7 +65443,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L184",
+      "source_location": "L173",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_insertsupabaserows",
@@ -65455,7 +65455,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L233",
+      "source_location": "L222",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_invokesupabasefunction",
@@ -65467,7 +65467,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L241",
+      "source_location": "L230",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_invokesupabasefunctionform",
@@ -65479,7 +65479,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L210",
+      "source_location": "L199",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_patchsupabaserows",
@@ -65491,7 +65491,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L202",
+      "source_location": "L191",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_updatesupabaserow",
@@ -65503,7 +65503,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L194",
+      "source_location": "L183",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_upsertsupabaserows",
@@ -65515,7 +65515,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L164",
+      "source_location": "L153",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_getsupabaserows",
@@ -65527,7 +65527,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L165",
+      "source_location": "L154",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_getsupabaserows",
@@ -66055,7 +66055,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "src/services/supabaseClient.js",
-      "source_location": "L333",
+      "source_location": "L322",
       "weight": 1.0,
       "_origin": "ast",
       "source": "src_services_supabaseclient_deletesupabasefile",
@@ -69918,7 +69918,7 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "tests/access-control/scoutYearBackupDeletion.test.js",
-      "source_location": "L544",
+      "source_location": "L543",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_access_control_scoutyearbackupdeletion_test_deletionharness",
@@ -72187,7 +72187,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/access-control/scoutYearBackupDeletion.test.js",
-      "source_location": "L821",
+      "source_location": "L820",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_access_control_scoutyearbackupdeletion_test",
@@ -72298,7 +72298,7 @@
       "context": "argument",
       "confidence": "INFERRED",
       "source_file": "tests/access-control/scoutYearBackupDeletion.test.js",
-      "source_location": "L555",
+      "source_location": "L554",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_access_control_scoutyearbackupdeletion_test_deletionharness",
