@@ -527,6 +527,7 @@ async function deletionHarness(options = {}) {
       return { data: { claimId, inventory: survivingRecords.length ? [] : refs.filter((ref) => ref.deleteWithYear).map(({ bucket, path }) => ({ bucket, path })) }, error: null };
     }
     events.push("delete-rpc"); rpcCalls.push({ name, payload });
+    if (options.finalRpcError) return { data: null, error: { message: options.finalRpcError } };
     if (options.deletionFailureOnce && deletionAttempts++ === 0) return { data: null, error: { message: "internal transaction failure" } };
     if (options.rpcError) return { data: null, error: { message: options.rpcError } };
     receipt.used_at = new Date().toISOString();
@@ -932,6 +933,67 @@ test("Supabase errors surface JSON error text, message fallback, plain text, and
     const { client } = await frontendServices({ status: 409, responseBody });
     await assert.rejects(client.invokeSupabaseFunction("delete-scout-year", {}), (error) => error.message === expected);
   }
+});
+
+test("Supabase request and function errors preserve typed recovery metadata without changing Error messages", async () => {
+  for (const invoke of [
+    (client) => client.supabaseRequest("/functions/v1/delete-scout-year"),
+    (client) => client.invokeSupabaseFunction("delete-scout-year", {}),
+    (client) => client.invokeSupabaseFunctionForm("delete-scout-year", new FormData())
+  ]) {
+    const { client } = await frontendServices({ status: 503, responseBody: JSON.stringify({
+      error: "Cleanup is unknown", code: "storage_cleanup_ambiguous", status: 200,
+      operatorActionRequired: true, cleanupStatus: "unknown", claimStatus: "active", details: "private context"
+    }) });
+    await assert.rejects(invoke(client), (error) => {
+      assert.equal(error.name, "Error");
+      assert.equal(error.message, "Cleanup is unknown");
+      assert.equal(error.status, 503);
+      assert.equal(error.code, "storage_cleanup_ambiguous");
+      assert.equal(error.operatorActionRequired, true);
+      assert.equal(error.cleanupStatus, "unknown");
+      assert.equal(error.claimStatus, "active");
+      assert.equal(error.details, undefined);
+      return true;
+    });
+  }
+  const { client } = await frontendServices({ status: 409, responseBody: '{"error":"Failure","code":{},"operatorActionRequired":"true","claimStatus":{},"cleanupStatus":false}' });
+  await assert.rejects(client.invokeSupabaseFunction("delete-scout-year", {}), (error) => error.status === 409 && error.code === undefined && error.operatorActionRequired === undefined && error.claimStatus === undefined && error.cleanupStatus === undefined);
+});
+
+test("local pre-claim validation retains precise codes while post-claim failures advertise active recovery", async () => {
+  for (const [options, code] of [[{ staleSnapshot: true }, "stale_snapshot"], [{ receipt: { expires_at: "invalid" } }, "receipt_expired"], [{ manifest: () => null }, "incomplete_manifest"]]) {
+    const harness = await deletionHarness(options);
+    const response = await harness.request();
+    assert.equal(response.status, 409);
+    assert.equal((await response.json()).code, code);
+    assert.equal(harness.events.includes("claim"), false);
+  }
+  const harness = await deletionHarness({ finalRpcError: "stale_snapshot" });
+  const response = await harness.request();
+  const result = await response.json();
+  assert.equal(response.status, 409);
+  assert.equal(result.code, "stale_snapshot");
+  assert.equal(result.claimStatus, "active", "same code after a claim must not allow replacement backup");
+});
+
+test("structured errors survive a refreshed request and rejected session refresh without changing session behavior", async () => {
+  const refreshed = await frontendServices({
+    session: { refresh_token: "refresh-token" },
+    responses: [
+      { status: 401, responseBody: '{"error":"expired JWT"}' },
+      { status: 200, responseBody: '{"access_token":"new-token","refresh_token":"refresh-token"}' },
+      { status: 409, responseBody: '{"error":"Fresh backup required","code":"stale_snapshot"}' }
+    ]
+  });
+  await assert.rejects(refreshed.client.invokeSupabaseFunction("delete-scout-year", {}), (error) => error.message === "Fresh backup required" && error.code === "stale_snapshot" && error.status === 409);
+  assert.equal(refreshed.requests[2].headers.Authorization, "Bearer new-token");
+  const rejected = await frontendServices({
+    session: { refresh_token: "refresh-token" },
+    responses: [{ status: 401, responseBody: '{"error":"expired JWT"}' }, { status: 400, responseBody: '{"error":"Session expired","code":"refresh_token_not_found"}' }]
+  });
+  await assert.rejects(rejected.client.invokeSupabaseFunction("delete-scout-year", {}), (error) => error.message === "Session expired" && error.code === "refresh_token_not_found" && error.status === 400);
+  assert.deepEqual(rejected.removedKeys, ["scouts-supabase-session"]);
 });
 
 test("a 401 followed by a JSON refresh failure exposes one clean error and clears invalid sessions", async () => {

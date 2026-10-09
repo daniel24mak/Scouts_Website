@@ -30,7 +30,7 @@ const rpcFailures: Record<string, [string, number]> = {
 
 function reject(code: string): never {
   const [message, status] = rpcFailures[code];
-  throw new AuthorizationError(message, status);
+  throw Object.assign(new AuthorizationError(message, status), { code });
 }
 
 async function auditDeletion(context: AuthorizedContext, yearId: string | null, outcome: "success" | "failed", metadata: JsonObject) {
@@ -99,6 +99,7 @@ Deno.serve(async (req) => {
   let failureCode = "authorization_failed";
   let cleanupClaimId: string | null = null;
   let cleanupOutcomeAmbiguous = false;
+  let claimEstablished = false;
   try {
     context = await requireDashboardPermission(req, "registration.retention.manage");
     failureCode = "invalid_request";
@@ -158,6 +159,7 @@ Deno.serve(async (req) => {
       throw new Error("Scouting year deletion could not be claimed");
     }
     if (!isObject(claim) || typeof claim.claimId !== "string" || !Array.isArray(claim.inventory)) throw new Error("Invalid deletion claim");
+    claimEstablished = true;
     // SQL may remove shared objects from the cleanup inventory, but can never
     // add paths beyond this independently reconstructed, trusted inventory.
     const allowed = new Set(cleanup.map(({ bucket, path }) => JSON.stringify([bucket, path])));
@@ -231,6 +233,8 @@ Deno.serve(async (req) => {
       ...(auditPending ? { auditPending: true } : {})
     });
   } catch (error) {
+    if (error instanceof AuthorizationError && isObject(error) && typeof error.code === "string"
+      && Object.prototype.hasOwnProperty.call(rpcFailures, error.code)) failureCode = error.code;
     const operatorActionRequired = cleanupOutcomeAmbiguous || failureCode === "cleanup_start_failed";
     if (operatorActionRequired) failureCode = failureCode === "storage_cleanup_failed" ? "storage_cleanup_ambiguous"
       : failureCode === "cleanup_start_failed" ? "cleanup_start_ambiguous" : "cleanup_confirmation_ambiguous";
@@ -255,6 +259,7 @@ Deno.serve(async (req) => {
       : failureCode === "storage_cleanup_failed" || failureCode === "cleanup_confirmation_failed"
         ? "Source file cleanup failed. The scouting year was not deleted. Retry using this backup; the staged ZIP is retained for recovery."
         : "Scouting year deletion failed", code: failureCode,
+      ...(claimEstablished ? { claimStatus: "active" } : {}),
       ...(operatorActionRequired ? { operatorActionRequired: true, cleanupStatus: "unknown" } : {}) }, status);
   }
 });

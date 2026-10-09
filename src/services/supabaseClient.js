@@ -45,15 +45,26 @@ export function getCurrentSupabaseUserId() {
   return getStoredSupabaseSession()?.user?.id ?? null;
 }
 
-async function supabaseErrorMessage(response, fallback) {
+async function supabaseResponseError(response, fallback) {
   const text = (await response.text()).trim();
+  let payload;
+  let message;
   try {
-    const payload = JSON.parse(text);
-    return [payload?.error, payload?.message, payload?.error_description]
+    payload = JSON.parse(text);
+    message = [payload?.error, payload?.message, payload?.error_description]
       .find((value) => typeof value === "string" && value.trim()) ?? fallback;
   } catch {
-    return text || fallback;
+    message = text || fallback;
   }
+  // Preserve the ordinary Error contract for existing callers, and expose only
+  // typed workflow metadata. Never copy arbitrary response fields onto errors.
+  const error = new Error(message);
+  error.status = response.status;
+  if (typeof payload?.code === "string") error.code = payload.code;
+  if (typeof payload?.operatorActionRequired === "boolean") error.operatorActionRequired = payload.operatorActionRequired;
+  if (typeof payload?.cleanupStatus === "string") error.cleanupStatus = payload.cleanupStatus;
+  if (["active", "absent", "unknown"].includes(payload?.claimStatus)) error.claimStatus = payload.claimStatus;
+  return error;
 }
 
 async function refreshStoredSupabaseSession() {
@@ -73,11 +84,11 @@ async function refreshStoredSupabaseSession() {
     })
       .then(async (response) => {
         if (!response.ok) {
-          const message = await supabaseErrorMessage(response, `Session refresh failed: ${response.status}`);
+          const error = await supabaseResponseError(response, `Session refresh failed: ${response.status}`);
           if (response.status === 400 || response.status === 401) {
             clearSupabaseSession();
           }
-          throw new Error(message);
+          throw error;
         }
 
         const refreshedSession = await response.json();
@@ -128,7 +139,7 @@ export async function supabaseRequest(path, options = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(await supabaseErrorMessage(response, `Supabase request failed: ${response.status}`));
+    throw await supabaseResponseError(response, `Supabase request failed: ${response.status}`);
   }
 
   if (response.status === 204) {

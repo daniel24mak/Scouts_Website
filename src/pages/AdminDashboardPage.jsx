@@ -2036,6 +2036,7 @@ export default function AdminDashboardPage({
     return Boolean(
       backup?.yearId === yearId
       && backup.receiptId
+      && backup.status !== "expired"
       && Number.isFinite(Date.parse(backup.expiresAt))
       && (backup.deletionAttempted || Date.parse(backup.expiresAt) > Date.now())
     );
@@ -2066,13 +2067,26 @@ export default function AdminDashboardPage({
         for (const [yearId, backup] of Object.entries(next)) {
           // Only the authoritative absence of a previously recovered claim can
           // acknowledge a completed deletion or audited abort from another tab.
-          if (backup.recoverable && backup.status !== "deleting" && !result.claims.some((claim) => claim.yearId === yearId)) delete next[yearId];
+          if (backup.status === "deleting" || result.claims.some((claim) => claim.yearId === yearId)) continue;
+          if (backup.recoverable) {
+            delete next[yearId];
+          } else if (backup.deletionAttempted && !backup.deletionOutcomeUnknown) {
+            // A fresh, post-response read may release a provisional attempt.
+            // Transport loss is different: its request could still acquire a
+            // claim after this read, so absence alone must not unlock it.
+            next[yearId] = {
+              ...backup, deletionAttempted: false, claimStatus: undefined,
+              operatorActionRequired: false, cleanupRunning: false,
+              status: backup.status === "expired" || Date.parse(backup.expiresAt) <= Date.now() ? "expired" : "ready"
+            };
+          }
         }
         for (const claim of claims) {
           const previous = next[claim.yearId];
           next[claim.yearId] = {
             ...(previous?.receiptId === claim.receiptId ? previous : {}),
-            ...claim, recoverable: true, deletionAttempted: true,
+            ...claim, recoverable: true, deletionAttempted: true, claimStatus: "active",
+            deletionOutcomeUnknown: false, operatorActionRequired: Boolean(claim.cleanupRunning),
             status: previous?.status === "deleting" ? "deleting" : "ready",
             error: claim.cleanupRunning ? "Cleanup is still fenced. An operator must confirm no storage request remains in flight before releasing it." : previous?.cleanupRunning ? "" : previous?.error ?? ""
           };
@@ -2243,6 +2257,8 @@ export default function AdminDashboardPage({
 
     const requestVersion = scoutYearDeleteVersionRef.current + 1;
     const requestUserId = scoutYearOperationUserRef.current;
+    scoutYearRecoveryVersionRef.current += 1;
+    setScoutYearRecoveryStatus("ready");
     scoutYearBackupVersionRef.current[targetYear.id] = (scoutYearBackupVersionRef.current[targetYear.id] ?? 0) + 1;
     scoutYearBackupBusyRef.current.delete(targetYear.id);
     scoutYearDeleteVersionRef.current = requestVersion;
@@ -2284,10 +2300,38 @@ export default function AdminDashboardPage({
       }
     } catch (error) {
       if (!scoutYearOperationsMountedRef.current || scoutYearOperationUserRef.current !== requestUserId || scoutYearDeleteVersionRef.current !== requestVersion) return;
-      setScoutYearBackups((current) => ({
-        ...current,
-        [targetYear.id]: { ...current[targetYear.id], status: "ready", error: error.message }
-      }));
+      // A recovery read begun before the failure response cannot establish that
+      // this attempt left no claim. Require a fresh read after this boundary.
+      scoutYearRecoveryVersionRef.current += 1;
+      setScoutYearRecoveryStatus("ready");
+      setScoutYearBackups((current) => {
+        const previous = current[targetYear.id];
+        const needsFreshBackup = [
+          "stale_snapshot", "receipt_expired", "archive_not_found", "incomplete_manifest",
+          "receipt_not_found", "receipt_used", "receipt_wrong_year", "receipt_wrong_user"
+        ].includes(error.code);
+        const noClaimRejection = needsFreshBackup || error.claimStatus === "absent"
+          || ["invalid_request", "permission_denied", "active_year", "year_not_found", "label_mismatch", "unsafe_cleanup_path"].includes(error.code);
+        const activeClaim = Boolean(previous?.recoverable || previous?.claimId || previous?.claimStatus === "active" || error.claimStatus === "active"
+          || [
+            "storage_cleanup_failed", "storage_cleanup_ambiguous", "cleanup_start_failed", "cleanup_start_ambiguous",
+            "cleanup_confirmation_failed", "cleanup_confirmation_ambiguous", "cleanup_in_progress", "cleanup_not_complete", "deletion_transaction_failed"
+          ].includes(error.code));
+        const rejectedBeforeClaim = noClaimRejection && !activeClaim && !previous?.deletionOutcomeUnknown
+          && !previous?.operatorActionRequired && error.operatorActionRequired !== true && error.cleanupStatus !== "unknown" && error.code !== "deletion_claim_busy";
+        return {
+          ...current,
+          [targetYear.id]: {
+            ...previous, error: error.message,
+            status: rejectedBeforeClaim && (needsFreshBackup || Date.parse(previous?.expiresAt) <= Date.now()) ? "expired" : "ready",
+            deletionAttempted: !rejectedBeforeClaim,
+            recoverable: rejectedBeforeClaim ? false : previous?.recoverable,
+            claimStatus: activeClaim ? "active" : undefined,
+            operatorActionRequired: error.operatorActionRequired === true || previous?.operatorActionRequired === true,
+            deletionOutcomeUnknown: !rejectedBeforeClaim && !activeClaim && (previous?.deletionOutcomeUnknown === true || error.code !== "deletion_claim_busy")
+          }
+        };
+      });
       setSaveMessage(`Scouting year deletion failed: ${error.message}`);
     } finally {
       if (scoutYearOperationUserRef.current === requestUserId && scoutYearDeleteVersionRef.current === requestVersion) {
