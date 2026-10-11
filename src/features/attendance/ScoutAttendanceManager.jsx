@@ -115,7 +115,7 @@ export default function ScoutAttendanceManager({ dataOverride = null, userOverri
       setRecords({});
       setSaveMessage("Attendance saved to the database.");
       try {
-        await refresh();
+        await refresh({ throwOnError: true });
       } catch (error) {
         setSaveMessage(`Attendance was saved, but the refreshed list could not be loaded: ${error.message}`);
       }

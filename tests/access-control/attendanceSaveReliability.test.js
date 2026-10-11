@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
+import { loadBootstrapHook } from "./helpers/bootstrapHarness.js";
 
 function readSql(name) {
   const path = new URL(`../../database/${name}`, import.meta.url);
@@ -173,6 +174,20 @@ for (const [manager, source, saveName, prefix] of [
     await handleSave();
     assert.equal(state.message, `${prefix} was saved, but the refreshed list could not be loaded: Refresh unavailable`);
     assert.doesNotMatch(state.message, /could not be saved/);
+    assert.equal(state.isSaving, false);
+    assert.equal(context.saveInFlightRef.current, false);
+  });
+
+  test(`${manager} manager detects a real bootstrap refresh failure after a confirmed save`, async () => {
+    const failure = new Error("Actual bootstrap failed");
+    const stale = { groups: [{ id: "stale-group" }] };
+    const bootstrap = loadBootstrapHook(async () => { throw failure; }, stale);
+    const { handleSave, state, context } = loadAttendanceHandler(source, saveName, async () => ({ id: "saved-session" }), bootstrap.refresh);
+    await handleSave();
+    assert.equal(state.message, `${prefix} was saved, but the refreshed list could not be loaded: Actual bootstrap failed`);
+    assert.deepEqual(Object.keys(state.records), []);
+    assert.equal(bootstrap.state.error, failure);
+    assert.equal(bootstrap.state.data, stale);
     assert.equal(state.isSaving, false);
     assert.equal(context.saveInFlightRef.current, false);
   });

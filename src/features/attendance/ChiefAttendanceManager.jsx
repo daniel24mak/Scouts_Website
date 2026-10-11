@@ -57,7 +57,7 @@ export default function ChiefAttendanceManager({ dataOverride = null, userOverri
       setRecords({});
       setSaveMessage("Chief attendance saved to the database.");
       try {
-        await refresh();
+        await refresh({ throwOnError: true });
       } catch (error) {
         setSaveMessage(`Chief attendance was saved, but the refreshed list could not be loaded: ${error.message}`);
       }

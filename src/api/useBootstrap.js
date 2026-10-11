@@ -58,7 +58,7 @@ export function useBootstrap() {
   const [isLoading, setIsLoading] = useState(!safeCachedBootstrap);
   const [error, setError] = useState(null);
 
-  async function refresh() {
+  async function refresh(options = {}) {
     setError(null);
     try {
       const nextData = await loadBootstrap({ force: true });
@@ -66,6 +66,7 @@ export function useBootstrap() {
       return nextData;
     } catch (nextError) {
       setError(nextError);
+      if (options?.throwOnError === true) throw nextError;
       return data;
     } finally {
       setIsLoading(false);
