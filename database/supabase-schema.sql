@@ -899,13 +899,13 @@ BEGIN
     SELECT 1 FROM jsonb_each_text(target_records) AS record
     WHERE NOT EXISTS (
       SELECT 1 FROM public.user_profiles
-      WHERE id = record.key::uuid AND account_status = 'active'
+      WHERE id = record.key::uuid
         -- Matches the chief role synthesized by normalizeProfile for the attendance UI.
         AND (role = 'chief' OR group_id IS NOT NULL OR chief_level IS NOT NULL
           OR cardinality(coordinator_group_ids) > 0)
     )
   ) THEN
-    RAISE EXCEPTION 'Chief attendance records must reference active chiefs' USING ERRCODE = '22023';
+    RAISE EXCEPTION 'Chief attendance records must reference chiefs' USING ERRCODE = '22023';
   END IF;
 
   PERFORM pg_advisory_xact_lock(hashtextextended(

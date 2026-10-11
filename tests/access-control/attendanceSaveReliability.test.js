@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
+import vm from "node:vm";
 
 function readSql(name) {
   const path = new URL(`../../database/${name}`, import.meta.url);
@@ -9,6 +10,8 @@ function readSql(name) {
 
 const migrationSql = readSql("supabase-attendance-save-fix.sql");
 const schemaSql = readSql("supabase-schema.sql");
+const mapperSource = fs.readFileSync(new URL("../../src/services/supabaseMappers.js", import.meta.url), "utf8");
+const chiefUiSource = fs.readFileSync(new URL("../../src/features/attendance/ChiefAttendanceManager.jsx", import.meta.url), "utf8");
 const signatures = {
   save_scout_attendance: "text, uuid, text, date, text, jsonb",
   save_chief_attendance: "date, text, jsonb"
@@ -26,6 +29,31 @@ test("attendance migration is additive and transaction-wrapped with an exact cle
   assert.doesNotMatch(migrationSql, /DROP TABLE|ALTER TABLE|DELETE FROM public\.(?:attendance_sessions|chief_attendance_sessions)/i);
   for (const name of Object.keys(signatures)) {
     assert.equal(definition(schemaSql, name), definition(migrationSql, name));
+  }
+});
+
+test("chief recipient eligibility follows the existing UI for inactive chiefs and assigned admins", () => {
+  const normalizeSource = mapperSource.match(/export function normalizeProfile\(profile\) \{[\s\S]*?\n\}/)[0].replace("export ", "");
+  const accessSource = chiefUiSource.match(/function hasChiefAccess\(user\) \{[\s\S]*?\n\}/)[0];
+  const { normalizeProfile, hasChiefAccess } = vm.runInNewContext(`${normalizeSource}\n${accessSource}\n({ normalizeProfile, hasChiefAccess })`);
+  for (const [profile, expected] of [
+    [{ role: "chief", account_status: "active" }, true],
+    [{ role: "chief", account_status: "disabled" }, true],
+    [{ role: "chief", account_status: "retired" }, true],
+    [{ role: "admin", group_id: "wolves", account_status: "disabled" }, true],
+    [{ role: "admin", chief_level: "head", account_status: "retired" }, true],
+    [{ role: "admin", coordinator_group_ids: ["wolves"], account_status: "active" }, true],
+    [{ role: "admin", account_status: "active" }, false]
+  ]) {
+    assert.equal(hasChiefAccess(normalizeProfile(profile)), expected, JSON.stringify(profile));
+  }
+  for (const sql of [migrationSql, schemaSql]) {
+    const chief = definition(sql, "save_chief_attendance");
+    const membership = chief.match(/WHERE NOT EXISTS \([\s\S]*?\n    \)/)[0];
+    assert.match(membership, /FROM public\.user_profiles[\s\S]*?id = record\.key::uuid/);
+    assert.match(membership, /role = 'chief' OR group_id IS NOT NULL OR chief_level IS NOT NULL\s+OR cardinality\(coordinator_group_ids\) > 0/);
+    assert.doesNotMatch(membership, /account_status/, "recipients included by the UI must not be rejected because their account is inactive");
+    assert.match(chief, /IF NOT public\.is_admin\(\) THEN[\s\S]*?RAISE EXCEPTION/, "the caller must still be an authorized administrator");
   }
 });
 
@@ -68,7 +96,7 @@ for (const [file, sql] of [["migration", migrationSql], ["clean schema", schemaS
       assert.match(validation, /FROM jsonb_each_text\(target_records\)/);
       assert.match(validation, /WHERE NOT EXISTS[\s\S]*?RAISE EXCEPTION/i);
       if (chief) {
-        assert.match(validation, /FROM public\.user_profiles[\s\S]*?id = record\.key::uuid[\s\S]*?account_status = 'active'/i);
+        assert.match(validation, /FROM public\.user_profiles[\s\S]*?id = record\.key::uuid/i);
         assert.match(validation, /role = 'chief'/);
       } else {
         assert.match(validation, /FROM public\.scouts[\s\S]*?id = record\.key::uuid[\s\S]*?scout_year_id = active_year_id[\s\S]*?group_id = target_group_id[\s\S]*?equipe_id = target_equipe_id/i);
