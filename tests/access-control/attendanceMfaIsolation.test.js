@@ -62,8 +62,8 @@ function recoveryHarness(endpoint = async () => ({ claims: [] })) {
 test("admin dashboard and non-registration navigation never request retention recovery", async () => {
   const flow = recoveryHarness();
   const sections = [...dashboard.matchAll(/if \(activeSection === "([^"]+)"\)/g)]
-    .map((match) => match[1]).filter((section) => section !== "scouts");
-  for (const section of ["overview", "scoutAttendance", "chiefAttendance", "attendanceSheets", ...sections]) {
+    .map((match) => match[1]).filter((section) => section !== "upload");
+  for (const section of ["overview", "scouts", "scoutAttendance", "chiefAttendance", "attendanceSheets", ...sections]) {
     flow.render(section);
   }
   await flow.settle();
@@ -75,6 +75,8 @@ test("entering registration requests recovery for an identified system administr
   flow.render("scoutAttendance");
   assert.equal(flow.state.requests, 0);
   flow.render("scouts");
+  assert.equal(flow.state.requests, 0, "ordinary scout editing must not request retention recovery");
+  flow.render("upload");
   assert.equal(flow.state.requests, 1);
   await flow.settle();
   assert.equal(flow.state.status, "ready");
@@ -82,7 +84,7 @@ test("entering registration requests recovery for an identified system administr
 
 test("registration does not request recovery for non-system administrators or missing users", async () => {
   const flow = recoveryHarness();
-  for (const user of [{ id: "chief", systemAdmin: false }, { systemAdmin: true }, null]) flow.render("scouts", user);
+  for (const user of [{ id: "chief", systemAdmin: false }, { systemAdmin: true }, null]) flow.render("upload", user);
   await flow.settle();
   assert.equal(flow.state.requests, 0);
 });
@@ -92,16 +94,18 @@ test("year-list changes refresh recovery only while registration is active", asy
   flow.render("overview");
   flow.render("overview", undefined, [{ id: "year-a" }]);
   flow.render("scoutAttendance", undefined, [{ id: "year-b" }]);
+  flow.render("scouts", undefined, [{ id: "scout-year-a" }]);
+  flow.render("scouts", undefined, [{ id: "scout-year-b" }]);
   assert.equal(flow.state.requests, 0);
-  flow.render("scouts");
+  flow.render("upload");
   assert.equal(flow.state.requests, 1);
-  flow.render("scouts");
+  flow.render("upload");
   assert.equal(flow.state.requests, 1, "unchanged effect dependencies must not request again");
-  flow.render("scouts", undefined, [{ id: "year-c" }]);
+  flow.render("upload", undefined, [{ id: "year-c" }]);
   assert.equal(flow.state.requests, 2);
   flow.render("attendanceSheets", undefined, [{ id: "year-d" }]);
   assert.equal(flow.state.requests, 2);
-  flow.render("scouts");
+  flow.render("upload");
   assert.equal(flow.state.requests, 3, "returning to registration must refresh recovery");
   await flow.settle();
   for (const dependency of ["activeSection", "user?.id", "data.scoutYears"]) assert.ok(recoveryEffect[2].includes(dependency));
@@ -113,7 +117,7 @@ test("retention MFA failures stay local and clear before a successful retry", as
     if (fail) throw new Error("Multi-factor authentication is required for retention management.");
     return { claims: [] };
   });
-  flow.render("scouts");
+  flow.render("upload");
   await flow.settle();
   assert.equal(flow.state.status, "error");
   assert.equal(flow.state.error, "Multi-factor authentication is required for retention management.");
@@ -121,7 +125,7 @@ test("retention MFA failures stay local and clear before a successful retry", as
   flow.render("scoutAttendance");
   assert.equal(flow.state.requests, 1);
   fail = false;
-  flow.render("scouts");
+  flow.render("upload");
   assert.equal(flow.state.status, "loading");
   assert.equal(flow.state.error, "");
   await flow.settle();
@@ -150,7 +154,7 @@ test("registration backup controls stay locked until a successful valid recovery
   const pending = deferred();
   const flow = recoveryHarness(() => pending.promise);
   assert.match(dashboard, /\[scoutYearRecoveryStatus, setScoutYearRecoveryStatus\] = useState\("loading"\)/);
-  flow.render("scouts");
+  flow.render("upload");
   assert.equal(flow.state.status, "loading");
   pending.resolve({ claims: [] });
   await flow.settle();
@@ -184,4 +188,12 @@ test("late recovery errors cannot overwrite a newer successful response or a cha
   await changedRequest;
   assert.equal(second.state.status, "loading");
   assert.equal(second.state.error, "");
+});
+
+test("automatic recovery targets the section that actually renders scouting-year controls", () => {
+  const registration = dashboard.slice(dashboard.indexOf("const renderUpload ="), dashboard.indexOf("const renderScouts ="));
+  assert.match(registration, /scout-year-backup-status/);
+  assert.match(dashboard, /if \(activeSection === "upload"\) return renderUpload\(\)/);
+  assert.match(recoveryEffect[1], /activeSection === "upload"/);
+  assert.doesNotMatch(recoveryEffect[1], /activeSection === "scouts"/);
 });

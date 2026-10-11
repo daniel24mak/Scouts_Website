@@ -212,7 +212,7 @@ test("recovery late after unmount or account switch never hydrates another sessi
 test("recovery API and dashboard load/refresh wiring remain server-backed", () => {
   assert.match(client, /export function getScoutYearDeletionRecovery\(\)/);
   assert.match(client, /getScoutYearDeletionRecoveryInSupabase\(\)/);
-  assert.match(dashboard, /activeSection === "scouts" && user\?\.id && canManageSystem\(user\)[\s\S]*?hydrateScoutYearDeletionRecovery\(\);[\s\S]*?\[activeSection, user\?\.id, data\.scoutYears\]/);
+  assert.match(dashboard, /activeSection === "upload" && user\?\.id && canManageSystem\(user\)[\s\S]*?hydrateScoutYearDeletionRecovery\(\);[\s\S]*?\[activeSection, user\?\.id, data\.scoutYears\]/);
   assert.match(dashboard, /disabled=\{[^}]*hasPendingScoutYearDeletion\(year\.id\)/);
 });
 

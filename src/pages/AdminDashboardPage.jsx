@@ -1038,7 +1038,7 @@ export default function AdminDashboardPage({
     return cleanupScoutYearOperations;
   }, [user?.id]);
   useEffect(() => {
-    if (activeSection === "scouts" && user?.id && canManageSystem(user)) {
+    if (activeSection === "upload" && user?.id && canManageSystem(user)) {
       void hydrateScoutYearDeletionRecovery();
     }
   }, [activeSection, user?.id, data.scoutYears]);
