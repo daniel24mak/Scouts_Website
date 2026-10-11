@@ -50,3 +50,4 @@ tmp-*/
 tmp-dashboard-checks/
 
 .codex/
+.worktrees/
