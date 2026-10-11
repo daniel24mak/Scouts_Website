@@ -991,6 +991,7 @@ export default function AdminDashboardPage({
   const [registrationImportLoading, setRegistrationImportLoading] = useState(false);
   const [scoutYearBackups, setScoutYearBackups] = useState({});
   const [scoutYearRecoveryStatus, setScoutYearRecoveryStatus] = useState("loading");
+  const [scoutYearRecoveryError, setScoutYearRecoveryError] = useState("");
   const [scoutYearDeleteRequest, setScoutYearDeleteRequest] = useState(null);
   const [scoutYearDeleteLabel, setScoutYearDeleteLabel] = useState("");
   const registrationFileInputRef = useRef(null);
@@ -1033,13 +1034,14 @@ export default function AdminDashboardPage({
     setScoutYearDeleteRequest(null);
     setScoutYearDeleteLabel("");
     setScoutYearRecoveryStatus("loading");
+    setScoutYearRecoveryError("");
     return cleanupScoutYearOperations;
   }, [user?.id]);
   useEffect(() => {
-    if (user?.id && canManageSystem(user)) {
+    if (activeSection === "scouts" && user?.id && canManageSystem(user)) {
       void hydrateScoutYearDeletionRecovery();
     }
-  }, [user?.id, data.scoutYears]);
+  }, [activeSection, user?.id, data.scoutYears]);
   useEffect(() => {
     registrationParseVersionRef.current += 1;
     setPendingRegistrationImport(null);
@@ -2050,6 +2052,7 @@ export default function AdminDashboardPage({
     if (!requestUserId) return;
     const requestVersion = ++scoutYearRecoveryVersionRef.current;
     setScoutYearRecoveryStatus("loading");
+    setScoutYearRecoveryError("");
     try {
       const result = await getScoutYearDeletionRecovery();
       if (!scoutYearOperationsMountedRef.current || scoutYearOperationUserRef.current !== requestUserId || scoutYearRecoveryVersionRef.current !== requestVersion) return;
@@ -2094,10 +2097,11 @@ export default function AdminDashboardPage({
         return next;
       });
       setScoutYearRecoveryStatus("ready");
+      setScoutYearRecoveryError("");
     } catch (error) {
       if (!scoutYearOperationsMountedRef.current || scoutYearOperationUserRef.current !== requestUserId || scoutYearRecoveryVersionRef.current !== requestVersion) return;
       setScoutYearRecoveryStatus("error");
-      setSaveMessage(`Scouting year recovery could not be loaded: ${error.message}. Refresh before creating a backup.`);
+      setScoutYearRecoveryError(error?.message || "Recovery state unavailable. Refresh before creating a new backup.");
     }
   };
   const invalidateScoutYearBackup = (yearId) => {
@@ -3868,7 +3872,7 @@ export default function AdminDashboardPage({
                             <div className="scout-year-backup-status" aria-live="polite">
                               {backupState?.status === "loading" && <span>Building the ZIP and verifying all database records and files...</span>}
                               {scoutYearRecoveryStatus === "loading" && <span>Checking for recoverable deletions...</span>}
-                              {scoutYearRecoveryStatus === "error" && <span role="alert">Recovery state unavailable. Refresh before creating a new backup.</span>}
+                              {scoutYearRecoveryStatus === "error" && <span role="alert">{scoutYearRecoveryError || "Recovery state unavailable. Refresh before creating a new backup."}</span>}
                               {backupState?.recoverable && backupState.status !== "deleting" && <span>Original backup receipt restored. Resume this deletion; a new backup cannot replace its recovery archive.</span>}
                               {backupState?.status === "ready" && !backupState.recoverable && hasValidScoutYearReceipt(year.id) && (
                                 <span>Backup ready: {backupRecordCount} records and {backupFileCount} files. Receipt expires {new Date(backupState.expiresAt).toLocaleString()}.</span>
