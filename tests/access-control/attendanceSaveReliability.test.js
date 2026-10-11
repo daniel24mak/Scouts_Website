@@ -12,6 +12,7 @@ const migrationSql = readSql("supabase-attendance-save-fix.sql");
 const schemaSql = readSql("supabase-schema.sql");
 const mapperSource = fs.readFileSync(new URL("../../src/services/supabaseMappers.js", import.meta.url), "utf8");
 const chiefUiSource = fs.readFileSync(new URL("../../src/features/attendance/ChiefAttendanceManager.jsx", import.meta.url), "utf8");
+const attendanceSource = fs.readFileSync(new URL("../../src/services/attendanceService.js", import.meta.url), "utf8");
 const signatures = {
   save_scout_attendance: "text, uuid, text, date, text, jsonb",
   save_chief_attendance: "date, text, jsonb"
@@ -21,6 +22,90 @@ function definition(sql, name) {
   const result = sql.match(new RegExp(`CREATE OR REPLACE FUNCTION public\\.${name}\\([\\s\\S]*?\\$\\$;`, "i"));
   assert.ok(result, `${name} RPC definition must exist`);
   return result[0];
+}
+
+function loadAttendanceService(callSupabaseRpc) {
+  const source = attendanceSource.replace(/import[\s\S]*?from\s+"[^"]+";/g, "").replace(/export /g, "");
+  const unexpectedRequest = () => { throw new Error("Unexpected non-RPC attendance request"); };
+  return vm.runInNewContext(`${source}\n({ saveSupabaseScoutAttendance, saveSupabaseChiefAttendance })`, {
+    callSupabaseRpc,
+    getActiveScoutYearId: unexpectedRequest,
+    getCurrentSupabaseUserId: unexpectedRequest,
+    getSupabaseRows: unexpectedRequest,
+    insertSupabaseRow: unexpectedRequest,
+    deleteSupabaseRows: unexpectedRequest,
+    logAuditEvent: unexpectedRequest
+  });
+}
+
+test("attendance saves share a strict records validator before issuing their RPCs", () => {
+  assert.match(attendanceSource, /import\s*\{[^}]*\bcallSupabaseRpc\b[^}]*\}\s*from "\.\/supabaseClient\.js"/);
+  assert.match(attendanceSource, /function validateAttendanceRecords\(records\)/);
+  for (const name of ["saveSupabaseScoutAttendance", "saveSupabaseChiefAttendance"]) {
+    const body = attendanceSource.match(new RegExp(`export async function ${name}\\([\\s\\S]*?\\n\\}`))[0];
+    assert.match(body, /validateAttendanceRecords\(records\)/);
+    assert.ok(body.indexOf("validateAttendanceRecords(records)") < body.indexOf("callSupabaseRpc("));
+    assert.doesNotMatch(body, /deleteSupabaseRows|insertSupabaseRow|logAuditEvent|getActiveScoutYearId|getCurrentSupabaseUserId|getSupabaseRows/);
+  }
+});
+
+for (const [saveName, rpcName, defaultTopic] of [
+  ["saveSupabaseScoutAttendance", "save_scout_attendance", "Meeting"],
+  ["saveSupabaseChiefAttendance", "save_chief_attendance", "Chief meeting"]
+]) {
+  test(`${saveName} sends exactly the atomic RPC arguments and returns its result`, async () => {
+    const calls = [];
+    const result = { id: "saved-session", recordCount: 4 };
+    const service = loadAttendanceService((name, payload) => {
+      calls.push({ name, payload });
+      return Promise.resolve(result);
+    });
+    const records = { first: "Present", second: "Absent", third: "Late", fourth: "Excused" };
+    for (const overrides of [{}, { equipeId: "equipe-id", scope: "equipe", topic: "Custom meeting" }]) {
+      const payload = { groupId: "wolves", date: "2026-10-11", records, ...overrides };
+      assert.equal(await service[saveName](payload), result);
+      const expected = {
+        ...(rpcName === "save_scout_attendance" ? {
+          target_group_id: "wolves",
+          target_equipe_id: overrides.equipeId ?? null,
+          target_scope: overrides.scope ?? "group"
+        } : {}),
+        target_date: payload.date,
+        target_topic: overrides.topic ?? defaultTopic,
+        target_records: records
+      };
+      const call = calls.at(-1);
+      assert.equal(call.name, rpcName);
+      assert.deepEqual(JSON.parse(JSON.stringify(call.payload)), expected);
+      assert.equal(call.payload.target_records, records);
+    }
+    assert.equal(calls.length, 2);
+    await service[saveName]({ date: "2026-10-11", records: {}, groupId: "wolves" });
+    assert.equal(calls.at(-1).payload.target_records.constructor, Object);
+  });
+
+  test(`${saveName} rejects invalid records and non-exact statuses before any network request`, async () => {
+    let requests = 0;
+    const service = loadAttendanceService(() => { requests += 1; });
+    for (const records of [null, undefined, [], "Present", 1, true]) {
+      await assert.rejects(service[saveName]({ records }), /Attendance records must be an object/);
+    }
+    for (const status of ["present", "Present ", "Unknown", "", null, undefined, 1, true, {}, ["Present"]]) {
+      await assert.rejects(service[saveName]({ records: { first: "Present", second: status } }), /Invalid attendance status/);
+    }
+    assert.equal(requests, 0);
+  });
+
+  test(`${saveName} propagates a failed atomic RPC without follow-up writes`, async () => {
+    const failure = new Error("Atomic attendance replacement failed");
+    let requests = 0;
+    const service = loadAttendanceService(() => {
+      requests += 1;
+      return Promise.reject(failure);
+    });
+    await assert.rejects(service[saveName]({ records: { first: "Present" } }), (error) => error === failure);
+    assert.equal(requests, 1);
+  });
 }
 
 test("attendance migration is additive and transaction-wrapped with an exact clean-schema mirror", () => {
