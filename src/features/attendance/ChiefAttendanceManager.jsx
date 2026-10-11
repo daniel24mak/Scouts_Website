@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { saveChiefAttendance } from "../../api/client.js";
 import { useBootstrap } from "../../api/useBootstrap.js";
 
@@ -37,19 +37,36 @@ export default function ChiefAttendanceManager({ dataOverride = null, userOverri
   const [selectedDate, setSelectedDate] = useState(getTodayDateInputValue);
   const [records, setRecords] = useState({});
   const [saveMessage, setSaveMessage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const saveInFlightRef = useRef(false);
   const meeting = data.chiefAttendanceMeetings.find((item) => item.date === selectedDate);
   const effectiveRecords = { ...(meeting?.records ?? {}), ...records };
   const handleSave = async () => {
-    await saveChiefAttendance({
-      date: selectedDate,
-      topic: meeting?.topic ?? "Chief meeting",
-      records: Object.fromEntries(
-        allChiefs.map((chief) => [chief.id, effectiveRecords[chief.id] ?? "Present"])
-      )
-    });
-    setRecords({});
-    setSaveMessage("Chief attendance saved to the database.");
-    await refresh();
+    if (saveInFlightRef.current) return;
+    saveInFlightRef.current = true;
+    setIsSaving(true);
+    try {
+      const payload = {
+        date: selectedDate,
+        topic: meeting?.topic ?? "Chief meeting",
+        records: Object.fromEntries(
+          allChiefs.map((chief) => [chief.id, effectiveRecords[chief.id] ?? "Present"])
+        )
+      };
+      await saveChiefAttendance(payload);
+      setRecords({});
+      setSaveMessage("Chief attendance saved to the database.");
+      try {
+        await refresh();
+      } catch (error) {
+        setSaveMessage(`Chief attendance was saved, but the refreshed list could not be loaded: ${error.message}`);
+      }
+    } catch (error) {
+      setSaveMessage(`Chief attendance could not be saved: ${error.message}`);
+    } finally {
+      saveInFlightRef.current = false;
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -93,8 +110,8 @@ export default function ChiefAttendanceManager({ dataOverride = null, userOverri
             <h2>{meeting?.topic ?? "Chief meeting"}</h2>
             <p>{selectedDate}</p>
           </div>
-          <button type="button" className="inline-action" onClick={handleSave}>
-            Save to {data.chiefAttendanceSheet?.fileName}
+          <button type="button" className="inline-action" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? "Saving..." : `Save to ${data.chiefAttendanceSheet?.fileName ?? ""}`}
           </button>
         </div>
         <table>

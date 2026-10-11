@@ -376,9 +376,7 @@ export function deleteAttendanceSession(sessionId) {
 }
 export function saveChiefAttendance(payload) {
   if (isSupabaseConfigured) {
-    return saveSupabaseChiefAttendance(payload).catch(() =>
-      request("/attendance/chiefs", { method: "POST", body: JSON.stringify(payload) })
-    );
+    return saveSupabaseChiefAttendance(payload);
   }
 
   return request("/attendance/chiefs", { method: "POST", body: JSON.stringify(payload) });

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { saveScoutAttendance } from "../../api/client.js";
 import { useBootstrap } from "../../api/useBootstrap.js";
 import { useAuth } from "../../auth/AuthProvider.jsx";
@@ -58,6 +58,8 @@ export default function ScoutAttendanceManager({ dataOverride = null, userOverri
   const [selectedEquipeId, setSelectedEquipeId] = useState("");
   const [records, setRecords] = useState({});
   const [saveMessage, setSaveMessage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const saveInFlightRef = useRef(false);
   const visibleGroups = data.groups.filter((group) => group.id === user.groupId);
 
   const selectedGroup = visibleGroups[0];
@@ -92,22 +94,37 @@ export default function ScoutAttendanceManager({ dataOverride = null, userOverri
     setRecords((current) => ({ ...current, [scoutId]: status }));
   };
   const handleSave = async () => {
+    if (saveInFlightRef.current) return;
     if (effectiveScope === "equipe" && !effectiveEquipeId) {
       setSaveMessage("You need an assigned equipe before taking equipe attendance.");
       return;
     }
 
-    await saveScoutAttendance({
-      groupId: selectedGroup.id,
-      equipeId: effectiveScope === "equipe" ? effectiveEquipeId : null,
-      scope: effectiveScope,
-      date: selectedDate,
-      topic: selectedMeeting?.topic ?? "Meeting",
-      records: Object.fromEntries(scopedScouts.map((scout) => [scout.id, effectiveRecords[scout.id] ?? "Present"]))
-    });
-    setRecords({});
-    setSaveMessage("Attendance saved to the database.");
-    await refresh();
+    saveInFlightRef.current = true;
+    setIsSaving(true);
+    try {
+      const payload = {
+        groupId: selectedGroup.id,
+        equipeId: effectiveScope === "equipe" ? effectiveEquipeId : null,
+        scope: effectiveScope,
+        date: selectedDate,
+        topic: selectedMeeting?.topic ?? "Meeting",
+        records: Object.fromEntries(scopedScouts.map((scout) => [scout.id, effectiveRecords[scout.id] ?? "Present"]))
+      };
+      await saveScoutAttendance(payload);
+      setRecords({});
+      setSaveMessage("Attendance saved to the database.");
+      try {
+        await refresh();
+      } catch (error) {
+        setSaveMessage(`Attendance was saved, but the refreshed list could not be loaded: ${error.message}`);
+      }
+    } catch (error) {
+      setSaveMessage(`Attendance could not be saved: ${error.message}`);
+    } finally {
+      saveInFlightRef.current = false;
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -183,8 +200,8 @@ export default function ScoutAttendanceManager({ dataOverride = null, userOverri
                   {selectedDate} - {selectedMeeting?.topic ?? "New attendance day"}
                 </p>
               </div>
-              <button type="button" className="inline-action" onClick={handleSave}>
-                Save to {attendanceSheet?.fileName}
+              <button type="button" className="inline-action" onClick={handleSave} disabled={isSaving}>
+                {isSaving ? "Saving..." : `Save to ${attendanceSheet?.fileName ?? ""}`}
               </button>
             </div>
             <table>

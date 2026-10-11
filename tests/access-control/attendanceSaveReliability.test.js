@@ -12,7 +12,9 @@ const migrationSql = readSql("supabase-attendance-save-fix.sql");
 const schemaSql = readSql("supabase-schema.sql");
 const mapperSource = fs.readFileSync(new URL("../../src/services/supabaseMappers.js", import.meta.url), "utf8");
 const chiefUiSource = fs.readFileSync(new URL("../../src/features/attendance/ChiefAttendanceManager.jsx", import.meta.url), "utf8");
+const scoutUiSource = fs.readFileSync(new URL("../../src/features/attendance/ScoutAttendanceManager.jsx", import.meta.url), "utf8");
 const attendanceSource = fs.readFileSync(new URL("../../src/services/attendanceService.js", import.meta.url), "utf8");
+const clientSource = fs.readFileSync(new URL("../../src/api/client.js", import.meta.url), "utf8");
 const signatures = {
   save_scout_attendance: "text, uuid, text, date, text, jsonb",
   save_chief_attendance: "date, text, jsonb"
@@ -37,6 +39,192 @@ function loadAttendanceService(callSupabaseRpc) {
     logAuditEvent: unexpectedRequest
   });
 }
+
+function saveHandlerSource(source) {
+  const handler = source.match(/const handleSave = async \(\) => \{[\s\S]*?\n  \};/);
+  assert.ok(handler, "attendance manager must provide a save handler");
+  return handler[0];
+}
+
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((accept, fail) => { resolve = accept; reject = fail; });
+  return { promise, resolve, reject };
+}
+
+function loadAttendanceHandler(source, saveName, save, refresh = async () => {}) {
+  const state = { records: { edited: "Absent" }, message: "", isSaving: false, events: [] };
+  const context = {
+    effectiveScope: "equipe",
+    effectiveEquipeId: "equipe-id",
+    selectedGroup: { id: "wolves" },
+    selectedDate: "2026-10-11",
+    selectedMeeting: { topic: "Scout topic" },
+    meeting: { topic: "Chief topic" },
+    scopedScouts: [{ id: "edited" }, { id: "saved" }, { id: "default" }],
+    allChiefs: [{ id: "edited" }, { id: "saved" }, { id: "default" }],
+    effectiveRecords: { edited: "Absent", saved: "Late" },
+    saveInFlightRef: { current: false },
+    setRecords: (records) => { state.records = records; state.events.push("clear"); },
+    setSaveMessage: (message) => { state.message = message; state.events.push(message); },
+    setIsSaving: (value) => { state.isSaving = value; },
+    [saveName]: save,
+    refresh
+  };
+  const handleSave = vm.runInNewContext(`${saveHandlerSource(source)}\nhandleSave`, context);
+  return { handleSave, state, context };
+}
+
+for (const [manager, source, saveName, prefix] of [
+  ["scout", scoutUiSource, "saveScoutAttendance", "Attendance"],
+  ["chief", chiefUiSource, "saveChiefAttendance", "Chief attendance"]
+]) {
+  test(`${manager} manager guards synchronously and shows saving state without disabling attendance selects`, () => {
+    assert.match(source, /import \{[^}]*\buseRef\b[^}]*\} from "react"/);
+    assert.match(source, /const \[isSaving, setIsSaving\] = useState\(false\)/);
+    assert.match(source, /const saveInFlightRef = useRef\(false\)/);
+    const handler = saveHandlerSource(source);
+    assert.match(handler, /^const handleSave = async \(\) => \{\s*if \(saveInFlightRef\.current\) return;/);
+    assert.ok(handler.indexOf("saveInFlightRef.current = true") < handler.indexOf("await "));
+    assert.match(handler, /finally\s*\{\s*saveInFlightRef\.current = false;\s*setIsSaving\(false\);/);
+    const button = source.match(/<button\b[^>]*onClick=\{handleSave\}[^>]*>[\s\S]*?<\/button>/)?.[0];
+    assert.ok(button, "save button must remain wired to handleSave");
+    assert.match(button, /disabled=\{isSaving\}/);
+    assert.match(button, /isSaving\s*\?\s*"Saving\.\.\."/);
+    for (const select of source.matchAll(/<select\b[^>]*>/g)) {
+      assert.doesNotMatch(select[0], /\bdisabled\b/);
+    }
+    assert.match(source, /const attendanceStatuses = \["Present", "Absent", "Late", "Excused"\]/);
+  });
+
+  test(`${manager} manager submits one complete snapshot until save and refresh settle`, async () => {
+    const savePending = deferred();
+    const refreshPending = deferred();
+    const refreshStarted = deferred();
+    const calls = [];
+    let refreshCalls = 0;
+    const { handleSave, state, context } = loadAttendanceHandler(source, saveName, (payload) => {
+      calls.push(payload);
+      return savePending.promise;
+    }, () => { refreshCalls += 1; refreshStarted.resolve(); return refreshPending.promise; });
+    const first = handleSave();
+    const duplicate = handleSave();
+    assert.equal(calls.length, 1, "second invocation before a rerender must not submit");
+    await duplicate;
+    assert.equal(state.isSaving, true);
+    assert.equal(context.saveInFlightRef.current, true);
+    assert.deepEqual(state.records, { edited: "Absent" }, "edits remain until save resolves");
+    assert.equal(refreshCalls, 0);
+
+    context.selectedDate = "2026-10-12";
+    context.effectiveScope = "group";
+    context.effectiveEquipeId = "another-equipe";
+    context.selectedGroup.id = "another-group";
+    context.selectedMeeting.topic = "Changed scout topic";
+    context.meeting.topic = "Changed chief topic";
+    context.effectiveRecords.edited = "Excused";
+    context.scopedScouts.push({ id: "later-scout" });
+    context.allChiefs.push({ id: "later-chief" });
+    assert.deepEqual(JSON.parse(JSON.stringify(calls[0])), {
+      ...(manager === "scout" ? { groupId: "wolves", equipeId: "equipe-id", scope: "equipe" } : {}),
+      date: "2026-10-11",
+      topic: manager === "scout" ? "Scout topic" : "Chief topic",
+      records: { edited: "Absent", saved: "Late", default: "Present" }
+    });
+    savePending.resolve({ id: "saved-session" });
+    await refreshStarted.promise;
+    assert.deepEqual(Object.keys(state.records), []);
+    assert.equal(state.message, `${prefix} saved to the database.`);
+    assert.equal(refreshCalls, 1);
+    assert.equal(state.isSaving, true, "saving state must cover refresh too");
+    await handleSave();
+    assert.equal(calls.length, 1);
+    refreshPending.resolve();
+    await first;
+    assert.equal(state.isSaving, false);
+    assert.equal(context.saveInFlightRef.current, false);
+  });
+
+  test(`${manager} manager retains edits on save failure and releases the guard for retry`, async () => {
+    let calls = 0;
+    let refreshCalls = 0;
+    const { handleSave, state, context } = loadAttendanceHandler(source, saveName, () => {
+      calls += 1;
+      return Promise.reject(new Error("Database unavailable"));
+    }, async () => { refreshCalls += 1; });
+    await handleSave();
+    assert.deepEqual(state.records, { edited: "Absent" });
+    assert.ok(!state.events.includes("clear"));
+    assert.equal(state.message, `${prefix} could not be saved: Database unavailable`);
+    assert.equal(refreshCalls, 0);
+    assert.equal(state.isSaving, false);
+    assert.equal(context.saveInFlightRef.current, false);
+    await handleSave();
+    assert.equal(calls, 2, "a failed save must allow retry");
+  });
+
+  test(`${manager} manager reports confirmed saves separately from refresh failures`, async () => {
+    const { handleSave, state, context } = loadAttendanceHandler(source, saveName, async () => ({ id: "saved-session" }), async () => {
+      assert.deepEqual(Object.keys(state.records), [], "clear edits before refreshing a confirmed save");
+      assert.equal(state.message, `${prefix} saved to the database.`);
+      throw new Error("Refresh unavailable");
+    });
+    await handleSave();
+    assert.equal(state.message, `${prefix} was saved, but the refreshed list could not be loaded: Refresh unavailable`);
+    assert.doesNotMatch(state.message, /could not be saved/);
+    assert.equal(state.isSaving, false);
+    assert.equal(context.saveInFlightRef.current, false);
+  });
+}
+
+test("scout manager validates equipe scope before acquiring the save guard", async () => {
+  let calls = 0;
+  const { handleSave, state, context } = loadAttendanceHandler(scoutUiSource, "saveScoutAttendance", async () => { calls += 1; });
+  context.effectiveEquipeId = "";
+  await handleSave();
+  assert.equal(calls, 0);
+  assert.equal(state.message, "You need an assigned equipe before taking equipe attendance.");
+  assert.deepEqual(state.records, { edited: "Absent" });
+  assert.equal(state.isSaving, false);
+  assert.equal(context.saveInFlightRef.current, false);
+});
+
+test("configured chief attendance saves propagate the Supabase failure without a fallback request", async () => {
+  const failure = new Error("Supabase rejected attendance");
+  const payload = { date: "2026-10-11", records: { edited: "Absent" } };
+  let rpcCalls = 0;
+  let fallbackCalls = 0;
+  const wrapperSource = clientSource.match(/export function saveChiefAttendance\(payload\) \{[\s\S]*?\n\}/)[0].replace("export ", "");
+  const save = vm.runInNewContext(`${wrapperSource}\nsaveChiefAttendance`, {
+    isSupabaseConfigured: true,
+    saveSupabaseChiefAttendance: (sent) => {
+      assert.equal(sent, payload);
+      rpcCalls += 1;
+      return Promise.reject(failure);
+    },
+    request: async () => { fallbackCalls += 1; return { id: "unexpected-fallback" }; }
+  });
+  await assert.rejects(save(payload), (error) => error === failure);
+  assert.equal(rpcCalls, 1);
+  assert.equal(fallbackCalls, 0);
+});
+
+test("unconfigured chief attendance saves keep the local API branch", async () => {
+  const payload = { date: "2026-10-11", records: { edited: "Absent" } };
+  const result = { id: "local-save" };
+  const calls = [];
+  const wrapperSource = clientSource.match(/export function saveChiefAttendance\(payload\) \{[\s\S]*?\n\}/)[0].replace("export ", "");
+  const save = vm.runInNewContext(`${wrapperSource}\nsaveChiefAttendance`, {
+    isSupabaseConfigured: false,
+    saveSupabaseChiefAttendance: () => { throw new Error("Unexpected Supabase request"); },
+    request: async (path, options) => { calls.push({ path, options }); return result; }
+  });
+  assert.equal(await save(payload), result);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [{
+    path: "/attendance/chiefs", options: { method: "POST", body: JSON.stringify(payload) }
+  }]);
+});
 
 test("attendance saves share a strict records validator before issuing their RPCs", () => {
   assert.match(attendanceSource, /import\s*\{[^}]*\bcallSupabaseRpc\b[^}]*\}\s*from "\.\/supabaseClient\.js"/);
