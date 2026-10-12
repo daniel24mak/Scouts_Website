@@ -19,17 +19,21 @@ function validateAttendanceRecords(records) {
   }
 }
 
-export async function getAttendanceData() {
+export async function getAttendanceData(options = {}) {
+  const readRows = (table, query) => getSupabaseRows(table, query).catch((error) => {
+    if (options?.requireAttendance === true) throw error;
+    return [];
+  });
   const [
     attendanceMeetings,
     attendanceRecords,
     chiefAttendanceMeetings,
     chiefAttendanceRecords
   ] = await Promise.all([
-    getSupabaseRows("attendance_sessions", "select=*&order=date.asc").catch(() => []),
-    getSupabaseRows("attendance_records", "select=*").catch(() => []),
-    getSupabaseRows("chief_attendance_sessions", "select=*&order=date.asc").catch(() => []),
-    getSupabaseRows("chief_attendance_records", "select=*").catch(() => [])
+    readRows("attendance_sessions", "select=*&order=date.asc"),
+    readRows("attendance_records", "select=*"),
+    readRows("chief_attendance_sessions", "select=*&order=date.asc"),
+    readRows("chief_attendance_records", "select=*")
   ]);
 
   return {

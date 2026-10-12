@@ -218,7 +218,10 @@ BEGIN
     RETURNING id INTO saved_session_id;
   END IF;
 
-  DELETE FROM public.chief_attendance_records WHERE session_id = saved_session_id;
+  -- A year/date session is shared by all groups; preserve chiefs omitted from this save.
+  DELETE FROM public.chief_attendance_records
+  WHERE session_id = saved_session_id
+    AND chief_id IN (SELECT key::uuid FROM jsonb_each_text(target_records));
   INSERT INTO public.chief_attendance_records (session_id, chief_id, status)
   SELECT saved_session_id, key::uuid, value
   FROM jsonb_each_text(target_records);

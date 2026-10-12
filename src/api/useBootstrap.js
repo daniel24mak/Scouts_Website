@@ -15,7 +15,7 @@ function currentCache() {
   return cachedBootstrap;
 }
 
-function loadBootstrap({ force = false } = {}) {
+function loadBootstrap({ force = false, requireAttendance = false } = {}) {
   const userId = getCurrentSupabaseUserId();
   if (!force && currentCache()) {
     return Promise.resolve(cachedBootstrap);
@@ -28,7 +28,7 @@ function loadBootstrap({ force = false } = {}) {
   console.debug("[dashboard] bootstrap fetch start", { force });
 
   inFlightBootstrapUserId = userId;
-  const request = getBootstrap()
+  const request = getBootstrap({ requireAttendance: requireAttendance === true })
     .then((nextData) => {
       const safeData = normalizeBootstrapData(nextData, loadingData);
       cachedBootstrap = safeData;
@@ -61,7 +61,7 @@ export function useBootstrap() {
   async function refresh(options = {}) {
     setError(null);
     try {
-      const nextData = await loadBootstrap({ force: true });
+      const nextData = await loadBootstrap({ force: true, requireAttendance: options?.requireAttendance === true });
       setData(nextData);
       return nextData;
     } catch (nextError) {

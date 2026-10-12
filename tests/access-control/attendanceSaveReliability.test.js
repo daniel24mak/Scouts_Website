@@ -16,6 +16,8 @@ const chiefUiSource = fs.readFileSync(new URL("../../src/features/attendance/Chi
 const scoutUiSource = fs.readFileSync(new URL("../../src/features/attendance/ScoutAttendanceManager.jsx", import.meta.url), "utf8");
 const attendanceSource = fs.readFileSync(new URL("../../src/services/attendanceService.js", import.meta.url), "utf8");
 const clientSource = fs.readFileSync(new URL("../../src/api/client.js", import.meta.url), "utf8");
+const draftSource = fs.readFileSync(new URL("../../src/features/attendance/useAttendanceDraft.js", import.meta.url), "utf8")
+  .replace(/import[^;]+;/g, "").replace(/export /g, "");
 const signatures = {
   save_scout_attendance: "text, uuid, text, date, text, jsonb",
   save_chief_attendance: "date, text, jsonb"
@@ -67,12 +69,26 @@ function loadAttendanceHandler(source, saveName, save, refresh = async () => {})
     allChiefs: [{ id: "edited" }, { id: "saved" }, { id: "default" }],
     effectiveRecords: { edited: "Absent", saved: "Late" },
     saveInFlightRef: { current: false },
-    setRecords: (records) => { state.records = records; state.events.push("clear"); },
     setSaveMessage: (message) => { state.message = message; state.events.push(message); },
     setIsSaving: (value) => { state.isSaving = value; },
     [saveName]: save,
     refresh
   };
+  // Execute the shared production draft hook instead of replacing selective
+  // cleanup with an unconditional test-only setter.
+  const draftStates = [{ current: state.records }, {}];
+  let draftIndex = 0;
+  const draft = vm.runInNewContext(`${draftSource}\nuseAttendanceDraft("current", effectiveRecords)`, {
+    effectiveRecords: context.effectiveRecords,
+    useState: () => {
+      const index = draftIndex++;
+      return [draftStates[index], (update) => {
+        draftStates[index] = typeof update === "function" ? update(draftStates[index]) : update;
+        if (index === 0) { state.records = draftStates[index].current; state.events.push("clear"); }
+      }];
+    }
+  });
+  Object.assign(context, draft);
   const handleSave = vm.runInNewContext(`${saveHandlerSource(source)}\nhandleSave`, context);
   return { handleSave, state, context };
 }

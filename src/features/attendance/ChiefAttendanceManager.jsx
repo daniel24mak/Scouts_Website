@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { saveChiefAttendance } from "../../api/client.js";
 import { useBootstrap } from "../../api/useBootstrap.js";
+import { useAttendanceDraft } from "./useAttendanceDraft.js";
 
 const attendanceStatuses = ["Present", "Absent", "Late", "Excused"];
 
@@ -28,24 +29,26 @@ function matchesSearch(item, query, fields) {
   });
 }
 
-export default function ChiefAttendanceManager({ dataOverride = null, userOverride = null, searchQuery = "" } = {}) {
-  const { data: bootstrapData, refresh } = useBootstrap();
+export default function ChiefAttendanceManager({ dataOverride = null, userOverride = null, onRefresh = null, searchQuery = "" } = {}) {
+  const { data: bootstrapData, refresh: bootstrapRefresh } = useBootstrap();
+  const refresh = onRefresh ?? bootstrapRefresh;
   const data = dataOverride ?? bootstrapData;
   const groupId = userOverride?.groupId;
   const allChiefs = data.users.filter((chief) => hasChiefAccess(chief) && (!groupId || chief.groupId === groupId));
   const chiefs = allChiefs.filter((chief) => matchesSearch(chief, searchQuery, ["name", "email", "role", "chiefLevel", "groupId", (item) => data.groups.find((group) => group.id === item.groupId)?.name]));
   const [selectedDate, setSelectedDate] = useState(getTodayDateInputValue);
-  const [records, setRecords] = useState({});
   const [saveMessage, setSaveMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const saveInFlightRef = useRef(false);
   const meeting = data.chiefAttendanceMeetings.find((item) => item.date === selectedDate);
-  const effectiveRecords = { ...(meeting?.records ?? {}), ...records };
+  const attendanceContext = JSON.stringify([data.activeScoutYearId, groupId, selectedDate]);
+  const { records, effectiveRecords, setRecords, commitSubmittedRecords, clearCommittedRecords } = useAttendanceDraft(attendanceContext, meeting?.records);
   const handleSave = async () => {
     if (saveInFlightRef.current) return;
     saveInFlightRef.current = true;
     setIsSaving(true);
     try {
+      const submittedEdits = { ...records };
       const payload = {
         date: selectedDate,
         topic: meeting?.topic ?? "Chief meeting",
@@ -54,10 +57,11 @@ export default function ChiefAttendanceManager({ dataOverride = null, userOverri
         )
       };
       await saveChiefAttendance(payload);
-      setRecords({});
+      commitSubmittedRecords(payload.records, submittedEdits);
       setSaveMessage("Chief attendance saved to the database.");
       try {
-        await refresh({ throwOnError: true });
+        await refresh({ throwOnError: true, requireAttendance: true });
+        clearCommittedRecords();
       } catch (error) {
         setSaveMessage(`Chief attendance was saved, but the refreshed list could not be loaded: ${error.message}`);
       }
@@ -87,7 +91,6 @@ export default function ChiefAttendanceManager({ dataOverride = null, userOverri
               value={selectedDate}
               onChange={(event) => {
                 setSelectedDate(event.target.value);
-                setRecords({});
               }}
             />
           </label>

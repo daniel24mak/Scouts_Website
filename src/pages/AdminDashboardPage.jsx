@@ -5212,9 +5212,9 @@ export default function AdminDashboardPage({
     if (activeSection === "contactMessages") return renderContactMessages();
     if (activeSection === "notifications") return renderNotifications();
     if (activeSection === "approvals") return renderApprovals();
-    if (activeSection === "scoutAttendance") return <><div className="cms-panel-stack">{renderCoordinatorGroupSwitcher("Take attendance for group")}</div><ScoutAttendanceManager dataOverride={data} userOverride={scopedUser} searchQuery={search} /></>;
+    if (activeSection === "scoutAttendance") return <><div className="cms-panel-stack">{renderCoordinatorGroupSwitcher("Take attendance for group")}</div><ScoutAttendanceManager dataOverride={data} userOverride={scopedUser} onRefresh={refresh} searchQuery={search} /></>;
     if (activeSection === "attendanceSheets") return <><div className="cms-panel-stack">{renderCoordinatorGroupSwitcher("View attendance for group")}</div><AttendanceSheetsManager dataOverride={data} userOverride={scopedUser} searchQuery={search} /></>;
-    if (activeSection === "chiefAttendance") return <><div className="cms-panel-stack">{renderCoordinatorGroupSwitcher("Take chief attendance for group")}</div><ChiefAttendanceManager dataOverride={data} userOverride={scopedUser} searchQuery={search} /></>;
+    if (activeSection === "chiefAttendance") return <><div className="cms-panel-stack">{renderCoordinatorGroupSwitcher("Take chief attendance for group")}</div><ChiefAttendanceManager dataOverride={data} userOverride={scopedUser} onRefresh={refresh} searchQuery={search} /></>;
     if (["manageForms", "formsCreate", "formTemplates", "postedForms", "formResponses", "myForms", "myFormDrafts", "mySubmittedForms"].includes(activeSection)) {
       return <FormsDashboard data={data} user={scopedUser} isAdmin={isAdmin} mode={activeSection} initialFormId={requestedFormId} onRefresh={refresh} setSaveMessage={setSaveMessage} searchQuery={search} />;
     }
