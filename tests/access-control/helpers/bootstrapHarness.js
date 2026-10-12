@@ -18,6 +18,7 @@ export function loadBootstrapHook(getBootstrap, loadingData) {
       return [initial, (value) => { state[key] = value; }];
     },
     useEffect: () => {},
+    useRef: (initial) => ({ current: initial }),
     getBootstrap,
     loadingData,
     normalizeBootstrapData,

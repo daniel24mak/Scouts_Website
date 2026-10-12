@@ -95,6 +95,15 @@ function managerHarness(manager, { embedded = true, save = async () => {}, refre
   return { render, controls, calls, edit, setDate, save: () => saveButton().props.onClick(), attendanceSelects, props, user };
 }
 
+function authoritativeStatus(ui, manager, status) {
+  const key = manager === "scout" ? "attendanceMeetings" : "chiefAttendanceMeetings";
+  ui.props.dataOverride = {
+    ...ui.props.dataOverride,
+    [key]: ui.props.dataOverride[key].map((meeting) => ({ ...meeting, records: { ...meeting.records, edited: status } }))
+  };
+  ui.render();
+}
+
 for (const manager of ["scout", "chief"]) {
   test(`${manager} dashboard save refreshes its rendered parent data once with required attendance`, async () => {
     const ui = managerHarness(manager);
@@ -160,6 +169,103 @@ for (const manager of ["scout", "chief"]) {
     assert.ok(ui.controls().some((node) => node.type === "p" && node.props.children.some((text) => typeof text === "string" && text.includes("was saved, but the refreshed list could not be loaded"))));
     await ui.save();
     assert.equal(ui.calls.saves[1].records.edited, "Absent");
+  });
+
+  test(`${manager} retains confirmed Absent for the same stale records but reveals a newer authoritative Excused`, async () => {
+    const ui = managerHarness(manager, { refresh: async () => { throw new Error("Attendance records unavailable"); } });
+    ui.edit("Absent");
+    await ui.save();
+    ui.render();
+    assert.equal(ui.attendanceSelects()[0].props.value, "Absent");
+    ui.props.dataOverride = { ...ui.props.dataOverride };
+    ui.render();
+    assert.equal(ui.attendanceSelects()[0].props.value, "Absent", "a new parent wrapper containing the same stale records must retain the confirmed snapshot");
+    authoritativeStatus(ui, manager, "Excused");
+    assert.equal(ui.attendanceSelects()[0].props.value, "Excused", "a later authoritative records object must supersede the confirmed fallback");
+    await ui.save();
+    assert.equal(ui.calls.saves[1].records.edited, "Excused", "subsequent saves must use recovered authoritative attendance");
+  });
+
+  test(`${manager} a resolved superseded refresh keeps confirmed Absent until rendered authority changes`, async () => {
+    const result = fixture();
+    const key = manager === "scout" ? "attendanceMeetings" : "chiefAttendanceMeetings";
+    result[key][0].records.edited = "Absent";
+    // A superseded bootstrap call still resolves its original payload but is
+    // correctly fenced from updating the authoritative parent's rendered data.
+    const ui = managerHarness(manager, { refresh: async () => result });
+    ui.edit("Absent");
+    await ui.save();
+    ui.render();
+    assert.equal(ui.attendanceSelects()[0].props.value, "Absent", "promise resolution alone cannot discard confirmed attendance over stale props");
+    authoritativeStatus(ui, manager, "Excused");
+    assert.equal(ui.attendanceSelects()[0].props.value, "Excused");
+  });
+
+  test(`${manager} refresh completion without a new authoritative records object retains confirmed Absent`, async () => {
+    const refreshing = deferred();
+    const started = deferred();
+    const ui = managerHarness(manager, { refresh: () => { started.resolve(); return refreshing.promise; } });
+    ui.edit("Absent");
+    const saving = ui.save();
+    await started.promise;
+    const key = manager === "scout" ? "attendanceMeetings" : "chiefAttendanceMeetings";
+    ui.props.dataOverride = { ...ui.props.dataOverride, [key]: [] };
+    ui.render();
+    assert.equal(ui.attendanceSelects()[0].props.value, "Absent");
+    refreshing.resolve();
+    await saving;
+    ui.render();
+    assert.equal(ui.attendanceSelects()[0].props.value, "Absent", "missing authoritative records do not prove the confirmed value was replaced");
+  });
+
+  test(`${manager} newer authority preserves unsaved edits made after the submitted snapshot`, async () => {
+    const pending = deferred();
+    const ui = managerHarness(manager, {
+      save: () => pending.promise,
+      refresh: async () => { throw new Error("Attendance records unavailable"); }
+    });
+    ui.edit("Absent");
+    const saving = ui.save();
+    ui.edit("Late");
+    pending.resolve({ id: "saved-session" });
+    await saving;
+    ui.render();
+    assert.equal(ui.attendanceSelects()[0].props.value, "Late");
+    authoritativeStatus(ui, manager, "Excused");
+    assert.equal(ui.attendanceSelects()[0].props.value, "Late", "a post-submit unsaved edit still wins over recovered authority");
+    await ui.save();
+    assert.equal(ui.calls.saves[1].records.edited, "Late");
+  });
+
+  test(`${manager} installs confirmed records against the latest authority seen while the save was pending`, async () => {
+    const pending = deferred();
+    const ui = managerHarness(manager, {
+      save: () => pending.promise,
+      refresh: async () => { throw new Error("Attendance records unavailable"); }
+    });
+    ui.edit("Absent");
+    const saving = ui.save();
+    authoritativeStatus(ui, manager, "Late");
+    pending.resolve({ id: "saved-session" });
+    await saving;
+    ui.render();
+    assert.equal(ui.attendanceSelects()[0].props.value, "Absent", "an authority fetched before confirmation cannot discard the confirmed save");
+    ui.render();
+    assert.equal(ui.attendanceSelects()[0].props.value, "Absent");
+    authoritativeStatus(ui, manager, "Excused");
+    assert.equal(ui.attendanceSelects()[0].props.value, "Excused");
+  });
+
+  test(`${manager} retains a confirmed new meeting across rerenders without an authoritative records object`, async () => {
+    const ui = managerHarness(manager, { refresh: async () => { throw new Error("Attendance records unavailable"); } });
+    ui.setDate("2026-10-12");
+    ui.edit("Absent");
+    await ui.save();
+    ui.render();
+    assert.equal(ui.attendanceSelects()[0].props.value, "Absent");
+    ui.props.dataOverride = { ...ui.props.dataOverride };
+    ui.render();
+    assert.equal(ui.attendanceSelects()[0].props.value, "Absent", "an absent meeting must not create a new empty-object version on every render");
   });
 
   test(`${manager} retains edits made during the authoritative refresh after save`, async () => {

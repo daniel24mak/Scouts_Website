@@ -80,6 +80,7 @@ function loadAttendanceHandler(source, saveName, save, refresh = async () => {})
   let draftIndex = 0;
   const draft = vm.runInNewContext(`${draftSource}\nuseAttendanceDraft("current", effectiveRecords)`, {
     effectiveRecords: context.effectiveRecords,
+    useRef: (initial) => ({ current: initial }),
     useState: () => {
       const index = draftIndex++;
       return [draftStates[index], (update) => {
