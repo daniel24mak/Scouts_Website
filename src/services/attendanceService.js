@@ -20,7 +20,9 @@ function validateAttendanceRecords(records) {
 }
 
 export async function getAttendanceData(options = {}) {
+  let attendanceReadComplete = true;
   const readRows = (table, query) => getSupabaseRows(table, query).catch((error) => {
+    attendanceReadComplete = false;
     if (options?.requireAttendance === true) throw error;
     return [];
   });
@@ -37,6 +39,7 @@ export async function getAttendanceData(options = {}) {
   ]);
 
   return {
+    attendanceReadComplete,
     attendanceMeetings: attendanceMeetings.map((meeting) => ({
       id: meeting.id,
       groupId: meeting.group_id,

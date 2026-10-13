@@ -91,7 +91,7 @@ export default function ScoutAttendanceManager({ dataOverride = null, userOverri
   );
   const scouts = scopedScouts.filter((scout) => matchesSearch(scout, searchQuery, ["name", "schoolGrade", "school", "age", "groupId"]));
   const attendanceContext = JSON.stringify([data.activeScoutYearId, selectedGroup?.id, effectiveScope, effectiveEquipeId, selectedDate]);
-  const { records, effectiveRecords, setRecords, commitSubmittedRecords, clearCommittedRecords } = useAttendanceDraft(attendanceContext, selectedMeeting?.records);
+  const { records, effectiveRecords, setRecords, commitSubmittedRecords, clearCommittedRecords } = useAttendanceDraft(attendanceContext, selectedMeeting?.records, data.attendanceReadComplete);
   const handleRecordChange = (scoutId, status) => {
     setRecords((current) => ({ ...current, [scoutId]: status }));
   };

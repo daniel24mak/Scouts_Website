@@ -88,6 +88,7 @@ export const fallbackData = {
   scoutYears: [],
   activeScoutYearId: null,
   groupingRulesStore,
+  attendanceReadComplete: false,
   attendanceMeetings,
   attendanceSheets,
   chiefAttendanceMeetings,
@@ -186,6 +187,7 @@ export async function getBootstrap(options = {}) {
       groupingRulesStore
     });
     const attendanceData = valueAt(2, {
+      attendanceReadComplete: false,
       attendanceMeetings: [],
       attendanceSheets: [],
       chiefAttendanceMeetings: [],
@@ -229,7 +231,13 @@ export async function getBootstrap(options = {}) {
   }
 
   try {
-    return normalizeBootstrapData(await request("/bootstrap"), fallbackData);
+    const localData = await request("/bootstrap");
+    return normalizeBootstrapData({
+      ...localData,
+      attendanceReadComplete: localData?.attendanceReadComplete !== false
+        && Array.isArray(localData?.attendanceMeetings)
+        && Array.isArray(localData?.chiefAttendanceMeetings)
+    }, fallbackData);
   } catch (error) {
     if (requireAttendance) throw error;
     return normalizeBootstrapData(fallbackData, fallbackData);

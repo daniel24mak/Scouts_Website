@@ -29,6 +29,7 @@ function nodes(tree) {
 
 function fixture() {
   return {
+    attendanceReadComplete: true,
     groups: [{ id: "wolves", name: "Wolves" }, { id: "lions", name: "Lions" }],
     users: [{ id: "edited", name: "Chief A", role: "chief", groupId: "wolves" }, { id: "other", name: "Chief B", role: "chief", groupId: "lions" }],
     registeredScouts: [{ id: "edited", name: "Scout A", groupId: "wolves", equipeId: "equipe-a" }, { id: "default", name: "Scout B", groupId: "wolves", equipeId: "equipe-b" }],

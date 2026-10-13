@@ -42,7 +42,7 @@ export default function ChiefAttendanceManager({ dataOverride = null, userOverri
   const saveInFlightRef = useRef(false);
   const meeting = data.chiefAttendanceMeetings.find((item) => item.date === selectedDate);
   const attendanceContext = JSON.stringify([data.activeScoutYearId, groupId, selectedDate]);
-  const { records, effectiveRecords, setRecords, commitSubmittedRecords, clearCommittedRecords } = useAttendanceDraft(attendanceContext, meeting?.records);
+  const { records, effectiveRecords, setRecords, commitSubmittedRecords, clearCommittedRecords } = useAttendanceDraft(attendanceContext, meeting?.records, data.attendanceReadComplete);
   const handleSave = async () => {
     if (saveInFlightRef.current) return;
     saveInFlightRef.current = true;
