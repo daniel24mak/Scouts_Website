@@ -88,6 +88,7 @@ export const fallbackData = {
   scoutYears: [],
   activeScoutYearId: null,
   groupingRulesStore,
+  attendanceReadComplete: false,
   attendanceMeetings,
   attendanceSheets,
   chiefAttendanceMeetings,
@@ -149,12 +150,13 @@ async function request(path, options = {}) {
   return response.json();
 }
 
-export async function getBootstrap() {
+export async function getBootstrap(options = {}) {
+  const requireAttendance = options?.requireAttendance === true;
   if (isSupabaseConfigured) {
     const results = await Promise.allSettled([
       getProfiles(),
       getScoutData(),
-      getAttendanceData(),
+      getAttendanceData({ requireAttendance }),
       getCalendarEvents(),
       getPosts(),
       getGallery(),
@@ -166,6 +168,9 @@ export async function getBootstrap() {
       getWebsiteContentRevisions(),
       getDocumentsWorkspaceData()
     ]);
+    if (requireAttendance && results[2]?.status === "rejected") {
+      throw results[2].reason;
+    }
     const valueAt = (index, fallback) =>
       results[index]?.status === "fulfilled" ? results[index].value : fallback;
     const usersValue = valueAt(0, []);
@@ -182,6 +187,7 @@ export async function getBootstrap() {
       groupingRulesStore
     });
     const attendanceData = valueAt(2, {
+      attendanceReadComplete: false,
       attendanceMeetings: [],
       attendanceSheets: [],
       chiefAttendanceMeetings: [],
@@ -225,8 +231,15 @@ export async function getBootstrap() {
   }
 
   try {
-    return normalizeBootstrapData(await request("/bootstrap"), fallbackData);
-  } catch {
+    const localData = await request("/bootstrap");
+    return normalizeBootstrapData({
+      ...localData,
+      attendanceReadComplete: localData?.attendanceReadComplete !== false
+        && Array.isArray(localData?.attendanceMeetings)
+        && Array.isArray(localData?.chiefAttendanceMeetings)
+    }, fallbackData);
+  } catch (error) {
+    if (requireAttendance) throw error;
     return normalizeBootstrapData(fallbackData, fallbackData);
   }
 }
@@ -376,9 +389,7 @@ export function deleteAttendanceSession(sessionId) {
 }
 export function saveChiefAttendance(payload) {
   if (isSupabaseConfigured) {
-    return saveSupabaseChiefAttendance(payload).catch(() =>
-      request("/attendance/chiefs", { method: "POST", body: JSON.stringify(payload) })
-    );
+    return saveSupabaseChiefAttendance(payload);
   }
 
   return request("/attendance/chiefs", { method: "POST", body: JSON.stringify(payload) });

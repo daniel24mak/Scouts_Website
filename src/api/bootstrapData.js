@@ -41,6 +41,7 @@ export function normalizeBootstrapData(value, defaults = {}) {
   const safeDefaults = objectOrEmpty(defaults);
   const source = objectOrEmpty(value);
   const normalized = { ...safeDefaults, ...source };
+  normalized.attendanceReadComplete = source.attendanceReadComplete === true;
 
   collectionKeys.forEach((key) => {
     if (!Array.isArray(normalized[key])) {

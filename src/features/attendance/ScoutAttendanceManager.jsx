@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { saveScoutAttendance } from "../../api/client.js";
 import { useBootstrap } from "../../api/useBootstrap.js";
 import { useAuth } from "../../auth/AuthProvider.jsx";
+import { useAttendanceDraft } from "./useAttendanceDraft.js";
 
 const attendanceStatuses = ["Present", "Absent", "Late", "Excused"];
 const attendedStatuses = ["Present", "Late"];
@@ -48,16 +49,18 @@ function getAttendancePercentage(scoutId, groupMeetings) {
   return `${Math.round((attended / groupMeetings.length) * 100)}%`;
 }
 
-export default function ScoutAttendanceManager({ dataOverride = null, userOverride = null, searchQuery = "" } = {}) {
+export default function ScoutAttendanceManager({ dataOverride = null, userOverride = null, onRefresh = null, searchQuery = "" } = {}) {
   const { user: authUser } = useAuth();
-  const { data: bootstrapData, refresh } = useBootstrap();
+  const { data: bootstrapData, refresh: bootstrapRefresh } = useBootstrap();
+  const refresh = onRefresh ?? bootstrapRefresh;
   const user = userOverride ?? authUser;
   const data = dataOverride ?? bootstrapData;
   const [selectedDate, setSelectedDate] = useState(getTodayDateInputValue);
   const [attendanceScope, setAttendanceScope] = useState("group");
   const [selectedEquipeId, setSelectedEquipeId] = useState("");
-  const [records, setRecords] = useState({});
   const [saveMessage, setSaveMessage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const saveInFlightRef = useRef(false);
   const visibleGroups = data.groups.filter((group) => group.id === user.groupId);
 
   const selectedGroup = visibleGroups[0];
@@ -87,27 +90,45 @@ export default function ScoutAttendanceManager({ dataOverride = null, userOverri
     data.registrationImportSettings.sortBy
   );
   const scouts = scopedScouts.filter((scout) => matchesSearch(scout, searchQuery, ["name", "schoolGrade", "school", "age", "groupId"]));
-  const effectiveRecords = { ...(selectedMeeting?.records ?? {}), ...records };
+  const attendanceContext = JSON.stringify([data.activeScoutYearId, selectedGroup?.id, effectiveScope, effectiveEquipeId, selectedDate]);
+  const { records, effectiveRecords, setRecords, commitSubmittedRecords, clearCommittedRecords } = useAttendanceDraft(attendanceContext, selectedMeeting?.records, data.attendanceReadComplete);
   const handleRecordChange = (scoutId, status) => {
     setRecords((current) => ({ ...current, [scoutId]: status }));
   };
   const handleSave = async () => {
+    if (saveInFlightRef.current) return;
     if (effectiveScope === "equipe" && !effectiveEquipeId) {
       setSaveMessage("You need an assigned equipe before taking equipe attendance.");
       return;
     }
 
-    await saveScoutAttendance({
-      groupId: selectedGroup.id,
-      equipeId: effectiveScope === "equipe" ? effectiveEquipeId : null,
-      scope: effectiveScope,
-      date: selectedDate,
-      topic: selectedMeeting?.topic ?? "Meeting",
-      records: Object.fromEntries(scopedScouts.map((scout) => [scout.id, effectiveRecords[scout.id] ?? "Present"]))
-    });
-    setRecords({});
-    setSaveMessage("Attendance saved to the database.");
-    await refresh();
+    saveInFlightRef.current = true;
+    setIsSaving(true);
+    try {
+      const submittedEdits = { ...records };
+      const payload = {
+        groupId: selectedGroup.id,
+        equipeId: effectiveScope === "equipe" ? effectiveEquipeId : null,
+        scope: effectiveScope,
+        date: selectedDate,
+        topic: selectedMeeting?.topic ?? "Meeting",
+        records: Object.fromEntries(scopedScouts.map((scout) => [scout.id, effectiveRecords[scout.id] ?? "Present"]))
+      };
+      await saveScoutAttendance(payload);
+      commitSubmittedRecords(payload.records, submittedEdits);
+      setSaveMessage("Attendance saved to the database.");
+      try {
+        await refresh({ throwOnError: true, requireAttendance: true });
+        clearCommittedRecords();
+      } catch (error) {
+        setSaveMessage(`Attendance was saved, but the refreshed list could not be loaded: ${error.message}`);
+      }
+    } catch (error) {
+      setSaveMessage(`Attendance could not be saved: ${error.message}`);
+    } finally {
+      saveInFlightRef.current = false;
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -128,7 +149,6 @@ export default function ScoutAttendanceManager({ dataOverride = null, userOverri
               value={selectedDate}
               onChange={(event) => {
                 setSelectedDate(event.target.value);
-                setRecords({});
               }}
             />
           </label>
@@ -139,7 +159,7 @@ export default function ScoutAttendanceManager({ dataOverride = null, userOverri
             <>
               <label className="compact-field">
                 Scope
-                <select value={attendanceScope} onChange={(event) => { setAttendanceScope(event.target.value); setRecords({}); }}>
+                <select value={attendanceScope} onChange={(event) => setAttendanceScope(event.target.value)}>
                   <option value="equipe">Select Equipe</option>
                   <option value="group">Whole Group</option>
                 </select>
@@ -147,7 +167,7 @@ export default function ScoutAttendanceManager({ dataOverride = null, userOverri
               {attendanceScope === "equipe" && (
                 <label className="compact-field">
                   Equipe
-                  <select value={effectiveEquipeId} onChange={(event) => { setSelectedEquipeId(event.target.value); setRecords({}); }}>
+                  <select value={effectiveEquipeId} onChange={(event) => setSelectedEquipeId(event.target.value)}>
                     {groupEquipes.map((equipe) => <option value={equipe.id} key={equipe.id}>{equipe.name}</option>)}
                   </select>
                 </label>
@@ -183,8 +203,8 @@ export default function ScoutAttendanceManager({ dataOverride = null, userOverri
                   {selectedDate} - {selectedMeeting?.topic ?? "New attendance day"}
                 </p>
               </div>
-              <button type="button" className="inline-action" onClick={handleSave}>
-                Save to {attendanceSheet?.fileName}
+              <button type="button" className="inline-action" onClick={handleSave} disabled={isSaving}>
+                {isSaving ? "Saving..." : `Save to ${attendanceSheet?.fileName ?? ""}`}
               </button>
             </div>
             <table>

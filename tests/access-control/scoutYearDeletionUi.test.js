@@ -89,6 +89,7 @@ function deletionHarness(overrides = {}) {
     const scoutYearRecoveryVersionRef = { current: 0 };
     const scoutYearOperationUserRef = { current: user.id };
     const setScoutYearRecoveryStatus = (status) => { scoutYearRecoveryStatus = status; };
+    const setScoutYearRecoveryError = () => {};
     let scoutYearDeleteRequest = initialRequest;
     let scoutYearDeleteLabel = initialLabel;
     let registrationYearId = initialRegistrationYearId;
@@ -211,7 +212,7 @@ test("recovery late after unmount or account switch never hydrates another sessi
 test("recovery API and dashboard load/refresh wiring remain server-backed", () => {
   assert.match(client, /export function getScoutYearDeletionRecovery\(\)/);
   assert.match(client, /getScoutYearDeletionRecoveryInSupabase\(\)/);
-  assert.match(dashboard, /hydrateScoutYearDeletionRecovery\(\);[\s\S]*?\[user\?\.id, data\.scoutYears\]/);
+  assert.match(dashboard, /activeSection === "upload" && user\?\.id && canManageSystem\(user\)[\s\S]*?hydrateScoutYearDeletionRecovery\(\);[\s\S]*?\[activeSection, user\?\.id, data\.scoutYears\]/);
   assert.match(dashboard, /disabled=\{[^}]*hasPendingScoutYearDeletion\(year\.id\)/);
 });
 
