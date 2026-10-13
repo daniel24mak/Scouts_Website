@@ -6,7 +6,7 @@ import { getSafeWorkspaceSection, getWorkspaceNavigationIds, isWorkspaceSectionA
 
 test("Scouting exposes the focused service navigation only", () => {
   assert.deepEqual(getWorkspaceNavigationIds("scouting"), [
-    "overview", "aiAssistant", "myGroup", "registrationVerification", "scoutAttendance", "myForms",
+    "overview", "aiAssistant", "myGroup", "equipes", "registrationVerification", "scoutAttendance", "myForms",
     "scoutingStorage", "calendar", "documents", "reports", "myWork", "notifications"
   ]);
   for (const hidden of ["chiefAttendance", "archives", "posts", "gallery", "usersPermissions"]) {
@@ -17,6 +17,7 @@ test("Scouting exposes the focused service navigation only", () => {
 test("Administration and Media use focused workspace navigation", () => {
   assert.equal(isWorkspaceSectionAllowed("admin", "usersPermissions"), true);
   assert.equal(isWorkspaceSectionAllowed("admin", "archives"), true);
+  assert.equal(isWorkspaceSectionAllowed("admin", "equipes"), false);
   assert.equal(isWorkspaceSectionAllowed("media", "posts"), true);
   assert.equal(isWorkspaceSectionAllowed("media", "usersPermissions"), false);
 });
