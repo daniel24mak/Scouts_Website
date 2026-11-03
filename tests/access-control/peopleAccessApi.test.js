@@ -87,6 +87,16 @@ test("removing a user assignment deletes the membership while preserving audit h
   }
 });
 
+test("saving a scouting position updates the existing group assignment and legacy chief level", () => {
+  const start = sql.search(/FUNCTION public\.save_user_group_assignment\(payload jsonb\)/i);
+  assert.ok(start >= 0, "save_user_group_assignment must exist");
+  const body = sql.slice(start, start + 6000);
+
+  assert.match(body, /FROM public\.user_group_assignments[\s\S]*user_id\s*=\s*\(payload->>'userId'\)::uuid[\s\S]*group_id\s*=\s*payload->>'groupId'/i);
+  assert.match(body, /UPDATE public\.user_group_assignments[\s\S]*SET[\s\S]*position\s*=\s*payload->>'position'/i);
+  assert.match(body, /UPDATE public\.user_profiles[\s\S]*chief_level\s*=\s*CASE saved\.position[\s\S]*WHEN 'head_chief' THEN 'head'[\s\S]*WHEN 'vice_chief' THEN 'vice'[\s\S]*ELSE 'chief'/i);
+});
+
 test("retiring an account revokes access without deleting contribution attribution", () => {
   const start = sql.search(/FUNCTION public\.retire_dashboard_user\(target_user_id uuid, reason text\)/i);
   assert.ok(start >= 0, "retire_dashboard_user must exist");

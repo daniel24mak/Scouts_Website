@@ -231,13 +231,56 @@ END; $$;
 
 CREATE OR REPLACE FUNCTION public.save_user_group_assignment(payload jsonb)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
-DECLARE row_id uuid:=NULLIF(payload->>'id','')::uuid; saved public.user_group_assignments; previous jsonb;
+DECLARE
+  row_id uuid:=NULLIF(payload->>'id','')::uuid;
+  saved public.user_group_assignments;
+  previous jsonb;
+  matched_existing boolean:=false;
+  creating boolean:=false;
 BEGIN
   PERFORM public.require_people_access_permission('users.assign_groups');
-  IF row_id IS NOT NULL THEN SELECT to_jsonb(x) INTO previous FROM public.user_group_assignments x WHERE id=row_id FOR UPDATE; END IF;
-  IF row_id IS NULL THEN INSERT INTO public.user_group_assignments(user_id,group_id,position,is_primary,starts_at,expires_at,assigned_by) VALUES((payload->>'userId')::uuid,payload->>'groupId',payload->>'position',COALESCE((payload->>'isPrimary')::boolean,false),COALESCE(NULLIF(payload->>'startsAt','')::timestamptz,now()),NULLIF(payload->>'expiresAt','')::timestamptz,auth.uid()) RETURNING * INTO saved;
-  ELSE UPDATE public.user_group_assignments SET group_id=payload->>'groupId',position=payload->>'position',is_primary=COALESCE((payload->>'isPrimary')::boolean,false),starts_at=COALESCE(NULLIF(payload->>'startsAt','')::timestamptz,starts_at),expires_at=NULLIF(payload->>'expiresAt','')::timestamptz,updated_at=now() WHERE id=row_id RETURNING * INTO saved; END IF;
-  PERFORM public.write_people_access_audit(CASE WHEN row_id IS NULL THEN 'group_assignment_created' ELSE 'group_assignment_updated' END,'User group assignment',saved.id::text,saved.user_id,previous,to_jsonb(saved),payload->>'reason'); RETURN to_jsonb(saved);
+  IF row_id IS NULL THEN
+    SELECT assignment.id INTO row_id
+    FROM public.user_group_assignments assignment
+    WHERE assignment.user_id=(payload->>'userId')::uuid
+      AND assignment.group_id=payload->>'groupId'
+      AND assignment.starts_at<=now()
+      AND (assignment.expires_at IS NULL OR assignment.expires_at>now())
+    ORDER BY assignment.is_primary DESC, assignment.updated_at DESC
+    LIMIT 1
+    FOR UPDATE;
+    matched_existing:=row_id IS NOT NULL;
+  END IF;
+
+  IF row_id IS NULL THEN
+    creating:=true;
+    INSERT INTO public.user_group_assignments(user_id,group_id,position,is_primary,starts_at,expires_at,assigned_by)
+    VALUES((payload->>'userId')::uuid,payload->>'groupId',payload->>'position',COALESCE((payload->>'isPrimary')::boolean,false),COALESCE(NULLIF(payload->>'startsAt','')::timestamptz,now()),NULLIF(payload->>'expiresAt','')::timestamptz,auth.uid())
+    RETURNING * INTO saved;
+  ELSE
+    SELECT to_jsonb(assignment) INTO previous FROM public.user_group_assignments assignment WHERE assignment.id=row_id FOR UPDATE;
+    IF previous IS NULL THEN RAISE EXCEPTION 'The group assignment no longer exists.' USING ERRCODE='P0002'; END IF;
+    UPDATE public.user_group_assignments
+    SET group_id=payload->>'groupId',
+        position=payload->>'position',
+        is_primary=CASE WHEN matched_existing THEN is_primary ELSE COALESCE((payload->>'isPrimary')::boolean,is_primary) END,
+        starts_at=COALESCE(NULLIF(payload->>'startsAt','')::timestamptz,starts_at),
+        expires_at=NULLIF(payload->>'expiresAt','')::timestamptz,
+        updated_at=now()
+    WHERE id=row_id
+    RETURNING * INTO saved;
+  END IF;
+
+  UPDATE public.user_profiles AS profile
+  SET group_id=CASE WHEN saved.is_primary THEN saved.group_id ELSE profile.group_id END,
+      chief_level=CASE saved.position WHEN 'head_chief' THEN 'head' WHEN 'vice_chief' THEN 'vice' ELSE 'chief' END,
+      role=CASE WHEN profile.role='admin' THEN profile.role ELSE 'chief' END,
+      updated_at=now()
+  WHERE profile.id=saved.user_id
+    AND (saved.is_primary OR profile.group_id=saved.group_id);
+
+  PERFORM public.write_people_access_audit(CASE WHEN creating THEN 'group_assignment_created' ELSE 'group_assignment_updated' END,'User group assignment',saved.id::text,saved.user_id,previous,to_jsonb(saved),payload->>'reason');
+  RETURN to_jsonb(saved);
 END; $$;
 
 CREATE OR REPLACE FUNCTION public.revoke_user_group_assignment(target_assignment_id uuid, reason text)

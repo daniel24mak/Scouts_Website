@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Download, Save, Trash2 } from "lucide-react";
 import {
   deleteAttendanceSession,
@@ -7,6 +7,7 @@ import {
 } from "../../api/client.js";
 import { useBootstrap } from "../../api/useBootstrap.js";
 import { useAuth } from "../../auth/AuthProvider.jsx";
+import { filterAttendanceSheet, getSessionLabel } from "./attendanceSheetsModel.js";
 
 const attendedStatuses = ["Present", "Late"];
 
@@ -15,22 +16,6 @@ function hasRole(user, role) { return user?.role === role || user?.roles?.includ
 
 function sortScouts(scouts, sortBy) {
   return [...scouts].sort((a, b) => String(a[sortBy] ?? a.name).localeCompare(String(b[sortBy] ?? b.name)));
-}
-
-function getSessionLabel(session) {
-  const label = String(session.topic ?? "").trim();
-
-  return label && label !== "Meeting" ? label : session.date;
-}
-
-function matchesSearch(item, query, fields) {
-  const term = query.trim().toLowerCase();
-  if (!term) return true;
-
-  return fields.some((field) => {
-    const value = typeof field === "function" ? field(item) : item?.[field];
-    return String(value ?? "").toLowerCase().includes(term);
-  });
 }
 
 function getAttendancePercentage(scoutId, sessions) {
@@ -83,44 +68,40 @@ export default function AttendanceSheetsManager({ dataOverride = null, userOverr
   const { data: bootstrapData, isLoading, error, refresh } = useBootstrap();
   const user = userOverride ?? authUser;
   const data = dataOverride ?? bootstrapData;
-  const canViewAllGroups = hasRole(user, "admin");
-  const accessibleGroups = useMemo(() => {
-    const assignedGroupIds = Array.from(new Set([
-      user?.groupId,
-      ...(user?.assignedGroupIds ?? []),
-      ...(user?.coordinatorGroupIds ?? [])
-    ].filter(Boolean)));
-    return canViewAllGroups ? data.groups : data.groups.filter((group) => assignedGroupIds.includes(group.id));
-  }, [canViewAllGroups, data.groups, user?.assignedGroupIds, user?.coordinatorGroupIds, user?.groupId]);  const [selectedGroupId, setSelectedGroupId] = useState("");
+  const assignedGroupIds = Array.from(new Set([
+    user?.groupId,
+    ...(user?.assignedGroupIds ?? []),
+    ...(user?.coordinatorGroupIds ?? [])
+  ].filter(Boolean)));
+  const selectedGroup = data.groups.find((group) => group.id === user?.groupId)
+    ?? data.groups.find((group) => assignedGroupIds.includes(group.id));
   const [labelEdits, setLabelEdits] = useState({});
   const [dateEdits, setDateEdits] = useState({});
   const [saveMessage, setSaveMessage] = useState("");
   const [saveError, setSaveError] = useState("");
 
-  useEffect(() => {
-    if (!selectedGroupId && accessibleGroups[0]?.id) {
-      setSelectedGroupId(accessibleGroups[0].id);
-    }
-  }, [accessibleGroups, selectedGroupId]);
-
-  const selectedGroup = accessibleGroups.find((group) => group.id === selectedGroupId) ?? accessibleGroups[0];
   const canManageColumns = hasRole(user, "admin") || ["head", "vice"].includes(user?.chiefLevel);
-  const groupSessions = useMemo(
+  const allGroupSessions = useMemo(
     () =>
       data.attendanceMeetings
         .filter((session) => session.groupId === selectedGroup?.id && (session.scope ?? "group") !== "equipe")
-        .filter((session) => matchesSearch(session, searchQuery, ["date", "topic", (item) => getSessionLabel(item)]))
         .sort((a, b) => String(a.date).localeCompare(String(b.date))),
-    [data.attendanceMeetings, searchQuery, selectedGroup?.id]
+    [data.attendanceMeetings, selectedGroup?.id]
   );
-  const groupScouts = useMemo(
+  const allGroupScouts = useMemo(
     () =>
       sortScouts(
-        data.registeredScouts.filter((scout) => scout.groupId === selectedGroup?.id && scout.status !== "Archived" && matchesSearch(scout, searchQuery, ["name", "schoolGrade", "school", "age", "groupId"])),
+        data.registeredScouts.filter((scout) => scout.groupId === selectedGroup?.id && scout.status !== "Archived"),
         data.registrationImportSettings.sortBy
       ),
-    [data.registeredScouts, data.registrationImportSettings.sortBy, searchQuery, selectedGroup?.id]
+    [data.registeredScouts, data.registrationImportSettings.sortBy, selectedGroup?.id]
   );
+  const visibleAttendance = useMemo(
+    () => filterAttendanceSheet({ scouts: allGroupScouts, sessions: allGroupSessions, query: searchQuery }),
+    [allGroupScouts, allGroupSessions, searchQuery]
+  );
+  const groupScouts = visibleAttendance.scouts;
+  const groupSessions = visibleAttendance.sessions;
 
   const handleLabelSave = async (session) => {
     const nextLabel = String(labelEdits[session.id] ?? session.topic ?? "").trim() || "Meeting";
@@ -199,7 +180,7 @@ export default function AttendanceSheetsManager({ dataOverride = null, userOverr
     );
   }
 
-  if (!accessibleGroups.length) {
+  if (!selectedGroup) {
     return (
       <section className="page-section">
         <p className="eyebrow">Attendance sheets</p>
@@ -210,7 +191,7 @@ export default function AttendanceSheetsManager({ dataOverride = null, userOverr
   }
 
   return (
-    <section className="page-section">
+    <section className="page-section attendance-sheets-page">
       <p className="eyebrow">Attendance sheets</p>
       <h1>View and download group attendance</h1>
       <p className="helper-text">
@@ -218,28 +199,15 @@ export default function AttendanceSheetsManager({ dataOverride = null, userOverr
       </p>
 
       <div className="attendance-sheet-toolbar">
-        {canViewAllGroups && (
-          <label className="compact-field">
-            Group
-            <select value={selectedGroup?.id ?? ""} onChange={(event) => setSelectedGroupId(event.target.value)}>
-              {accessibleGroups.map((group) => (
-                <option value={group.id} key={group.id}>
-                  {group.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        {!canViewAllGroups && (
-          <article className="attendance-sheet-group-card">
-            <span>Group</span>
-            <strong>{selectedGroup?.name}</strong>
-          </article>
-        )}
+        <div className="attendance-sheet-context">
+          <span>Selected group</span>
+          <strong>{selectedGroup?.name}</strong>
+          <small>{allGroupScouts.length} scouts · {allGroupSessions.length} sessions</small>
+        </div>
         <button
           type="button"
           className="inline-action"
-          onClick={() => downloadCsv({ group: selectedGroup, scouts: groupScouts, sessions: groupSessions })}
+          onClick={() => downloadCsv({ group: selectedGroup, scouts: allGroupScouts, sessions: allGroupSessions })}
           disabled={!selectedGroup}
         >
           <Download size={16} aria-hidden="true" />
@@ -247,8 +215,8 @@ export default function AttendanceSheetsManager({ dataOverride = null, userOverr
         </button>
       </div>
 
-      {saveMessage && <p className="helper-text">{saveMessage}</p>}
-      {saveError && <p className="form-error">{saveError}</p>}
+      {saveMessage && <p className="helper-text" role="status">{saveMessage}</p>}
+      {saveError && <p className="form-error" role="alert">{saveError}</p>}
 
       <article className="table-panel attendance-sheet-panel">
         <div className="panel-heading">
@@ -271,50 +239,74 @@ export default function AttendanceSheetsManager({ dataOverride = null, userOverr
                 {groupSessions.map((session) => (
                   <th key={session.id}>
                     <div className="attendance-session-heading">
-                      <input
-                        value={labelEdits[session.id] ?? getSessionLabel(session)}
-                        onChange={(event) =>
-                          setLabelEdits((current) => ({ ...current, [session.id]: event.target.value }))
-                        }
-                        aria-label={`Attendance label for ${session.date}`}
-                      />
-                      <small>{session.date}</small>
-                      <button type="button" onClick={() => handleLabelSave(session)}>
-                        <Save size={14} aria-hidden="true" />
-                        Save
-                      </button>
-                      {canManageColumns && (
-                        <>
-                          <input
-                            type="date"
-                            value={dateEdits[session.id] ?? session.date}
-                            onChange={(event) =>
-                              setDateEdits((current) => ({ ...current, [session.id]: event.target.value }))
-                            }
-                            aria-label={`Attendance date for ${getSessionLabel(session)}`}
-                          />
-                          <button type="button" onClick={() => handleDateSave(session)}>
+                      <div className="attendance-session-summary">
+                        <strong>{getSessionLabel(session)}</strong>
+                        <small>{session.date}</small>
+                      </div>
+                      <details className="attendance-session-editor">
+                        <summary>Edit session</summary>
+                        <div className="attendance-session-fields">
+                          <label>
+                            <span>Label</span>
+                            <input
+                              value={labelEdits[session.id] ?? getSessionLabel(session)}
+                              onChange={(event) =>
+                                setLabelEdits((current) => ({ ...current, [session.id]: event.target.value }))
+                              }
+                              aria-label={`Attendance label for ${session.date}`}
+                            />
+                          </label>
+                          {canManageColumns && (
+                            <label>
+                              <span>Date</span>
+                              <input
+                                type="date"
+                                value={dateEdits[session.id] ?? session.date}
+                                onChange={(event) =>
+                                  setDateEdits((current) => ({ ...current, [session.id]: event.target.value }))
+                                }
+                                aria-label={`Attendance date for ${getSessionLabel(session)}`}
+                              />
+                            </label>
+                          )}
+                        </div>
+                        <div className="attendance-session-actions">
+                          <button type="button" onClick={() => handleLabelSave(session)}>
                             <Save size={14} aria-hidden="true" />
-                            Date
+                            Save label
                           </button>
-                          <button
-                            type="button"
-                            className="attendance-delete-session-button"
-                            onClick={() => handleDeleteSession(session)}
-                          >
-                            <Trash2 size={14} aria-hidden="true" />
-                            Delete
-                          </button>
-                        </>
-                      )}
+                          {canManageColumns && (
+                            <>
+                              <button type="button" onClick={() => handleDateSave(session)}>
+                                <Save size={14} aria-hidden="true" />
+                                Save date
+                              </button>
+                              <button
+                                type="button"
+                                className="attendance-delete-session-button"
+                                onClick={() => handleDeleteSession(session)}
+                              >
+                                <Trash2 size={14} aria-hidden="true" />
+                                Delete
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </details>
                     </div>
                   </th>
                 ))}
-                <th>Attendance %</th>
+                <th className="attendance-percentage-column">Attendance %</th>
               </tr>
             </thead>
             <tbody>
-              {groupScouts.length ? (
+              {!visibleAttendance.hasMatches ? (
+                <tr>
+                  <td className="attendance-no-results" colSpan={groupSessions.length + 2}>
+                    No attendance records match "{searchQuery.trim()}".
+                  </td>
+                </tr>
+              ) : groupScouts.length ? (
                 groupScouts.map((scout) => (
                   <tr key={scout.id}>
                     <td className="attendance-sticky-column">{scout.name}</td>
@@ -329,7 +321,7 @@ export default function AttendanceSheetsManager({ dataOverride = null, userOverr
                         </td>
                       );
                     })}
-                    <td>{getAttendancePercentage(scout.id, groupSessions)}</td>
+                    <td className="attendance-percentage-column">{getAttendancePercentage(scout.id, groupSessions)}</td>
                   </tr>
                 ))
               ) : (
