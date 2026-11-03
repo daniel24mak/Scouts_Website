@@ -26,10 +26,6 @@ function sortScouts(scouts, sortBy) {
   );
 }
 
-function getSchoolGrade(scout) {
-  return scout.schoolGrade || scout.school || "Unspecified";
-}
-
 function matchesSearch(item, query, fields) {
   const term = query.trim().toLowerCase();
   if (!term) return true;
@@ -211,8 +207,6 @@ export default function ScoutAttendanceManager({ dataOverride = null, userOverri
               <thead>
                 <tr>
                   <th>Name</th>
-                  <th>School Grade</th>
-                  <th>Age</th>
                   <th>Attendance</th>
                   <th>Attendance %</th>
                 </tr>
@@ -221,8 +215,6 @@ export default function ScoutAttendanceManager({ dataOverride = null, userOverri
                 {scouts.map((scout) => (
                   <tr key={scout.id}>
                     <td>{scout.name}</td>
-                    <td>{getSchoolGrade(scout)}</td>
-                    <td>{scout.age}</td>
                     <td>
                       <select
                         value={effectiveRecords[scout.id] ?? "Present"}

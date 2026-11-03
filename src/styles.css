@@ -7184,55 +7184,78 @@ textarea:focus-visible {
 .attendance-sheet-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 14px;
-  align-items: end;
+  gap: 16px;
+  align-items: center;
   justify-content: space-between;
-  margin: 26px 0 18px;
+  margin: 20px 0 16px;
 }
 
-.attendance-sheet-toolbar .compact-field {
-  min-width: min(100%, 260px);
+.attendance-sheet-context {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 8px 12px;
+  flex-wrap: wrap;
 }
 
-.attendance-sheet-group-card {
-  display: grid;
-  gap: 4px;
-  min-width: min(100%, 240px);
-  border: 1px solid #dce4d7;
-  border-radius: 8px;
-  padding: 12px 14px;
-  background: #ffffff;
+.attendance-sheet-context span,
+.attendance-sheet-context small {
+  color: var(--dashboard-muted, #667085);
+  font-size: 0.84rem;
+  font-weight: 750;
 }
 
-.attendance-sheet-group-card span {
-  color: #66756e;
-  font-size: 0.82rem;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.attendance-sheet-group-card strong {
-  color: #17392b;
+.attendance-sheet-context strong {
+  color: var(--dashboard-text, #172044);
+  font-size: 1rem;
+  font-weight: 900;
 }
 
 .attendance-sheet-panel {
   overflow: hidden;
+  border-color: var(--dashboard-line, #dfe5ef);
 }
 
 .attendance-sheet-scroll {
   overflow-x: auto;
   max-width: 100%;
+  scrollbar-gutter: stable;
 }
 
 .attendance-sheet-table {
   min-width: 760px;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 .attendance-sheet-table th,
 .attendance-sheet-table td {
   min-width: 140px;
-  vertical-align: top;
+  border-bottom: 1px solid var(--dashboard-line, #dfe5ef);
+  vertical-align: middle;
   white-space: nowrap;
+}
+
+.attendance-sheet-table thead th {
+  padding: 14px 12px;
+  background: var(--dashboard-soft, #f8faff);
+  vertical-align: top;
+}
+
+.attendance-sheet-table tbody td {
+  padding: 13px 14px;
+  background: #ffffff;
+  transition: background-color var(--motion-fast, 160ms ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .attendance-sheet-table tbody td {
+    transition: none;
+  }
+}
+
+.attendance-sheet-table tbody tr:hover td {
+  background: #f8faff;
 }
 
 .attendance-sheet-table .attendance-sticky-column {
@@ -7241,46 +7264,108 @@ textarea:focus-visible {
   z-index: 2;
   min-width: 210px;
   background: #ffffff;
-  box-shadow: 1px 0 0 #edf1ea;
+  box-shadow: 1px 0 0 var(--dashboard-line, #dfe5ef);
 }
 
 .attendance-sheet-table th.attendance-sticky-column {
   z-index: 3;
-  background: #f8faf6;
+  background: var(--dashboard-soft, #f8faff);
+}
+
+.attendance-sheet-table .attendance-percentage-column {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  min-width: 130px;
+  background: #ffffff;
+  box-shadow: -1px 0 0 var(--dashboard-line, #dfe5ef);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 850;
+}
+
+.attendance-sheet-table th.attendance-percentage-column {
+  z-index: 3;
+  background: var(--dashboard-soft, #f8faff);
 }
 
 .attendance-session-heading {
   display: grid;
-  gap: 7px;
-  min-width: 150px;
+  gap: 10px;
+  min-width: 190px;
 }
 
-.attendance-session-heading input {
+.attendance-session-summary {
+  display: grid;
+  gap: 2px;
+}
+
+.attendance-session-summary strong {
+  max-width: 24ch;
+  overflow: hidden;
+  color: var(--dashboard-text, #172044);
+  font-size: 0.94rem;
+  text-overflow: ellipsis;
+}
+
+.attendance-session-summary small,
+.attendance-session-fields label > span {
+  color: var(--dashboard-muted, #667085);
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+.attendance-session-fields {
+  display: grid;
+  gap: 8px;
+}
+
+.attendance-session-fields label {
+  display: grid;
+  gap: 4px;
+}
+
+.attendance-session-fields input {
   width: 100%;
-  border: 1px solid #bfcec1;
-  border-radius: 8px;
-  padding: 8px 9px;
-  color: #17392b;
-  font-weight: 800;
-}
-
-.attendance-session-heading small {
-  color: #66756e;
-  font-weight: 700;
-}
-
-.attendance-session-heading button {
-  display: inline-flex;
-  width: fit-content;
-  align-items: center;
-  gap: 5px;
-  border: 1px solid #bfcec1;
+  min-height: 38px;
+  border: 1px solid var(--dashboard-line, #dfe5ef);
   border-radius: 8px;
   padding: 7px 9px;
-  color: #17392b;
+  color: var(--dashboard-text, #172044);
   background: #ffffff;
-  font-weight: 800;
+  font-weight: 750;
+}
+
+.attendance-session-fields input:focus-visible,
+.attendance-session-actions button:focus-visible {
+  outline: 3px solid rgb(64 85 166 / 0.24);
+  outline-offset: 2px;
+}
+
+.attendance-session-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.attendance-session-actions button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--dashboard-line, #dfe5ef);
+  border-radius: 8px;
+  padding: 6px 8px;
+  color: var(--dashboard-text, #172044);
+  background: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 850;
   cursor: pointer;
+}
+
+.attendance-session-actions button:hover {
+  border-color: rgb(64 85 166 / 0.34);
+  background: #f8faff;
 }
 
 .attendance-status {
@@ -7310,14 +7395,20 @@ textarea:focus-visible {
   color: #35427f;
 }
 
+.attendance-no-results {
+  min-height: 120px;
+  color: var(--dashboard-muted, #667085);
+  text-align: center;
+  white-space: normal !important;
+}
+
 @media (max-width: 720px) {
   .attendance-sheet-toolbar {
     align-items: stretch;
   }
 
   .attendance-sheet-toolbar .inline-action,
-  .attendance-sheet-toolbar .compact-field,
-  .attendance-sheet-group-card {
+  .attendance-sheet-context {
     width: 100%;
   }
 
@@ -7333,6 +7424,12 @@ textarea:focus-visible {
 
   .attendance-sheet-table .attendance-sticky-column {
     min-width: 170px;
+  }
+
+  .attendance-sheet-table .attendance-percentage-column {
+    position: static;
+    min-width: 120px;
+    box-shadow: none;
   }
 }
 
@@ -21036,5 +21133,73 @@ button.registration-form-brand,
   .scout-year-delete-modal {
     max-height: calc(100dvh - 20px);
     border-radius: 18px;
+  }
+}
+
+/* Attendance sheets: compact session editing and opaque sticky table edges. */
+.admin-cms-shell .attendance-sheets-page {
+  width: 100%;
+  gap: 12px;
+  padding: 0 !important;
+}
+
+.admin-cms-shell .attendance-sheets-page .attendance-sheet-toolbar {
+  margin: 0;
+}
+
+.attendance-session-editor {
+  margin-top: 6px;
+}
+
+.attendance-session-editor summary {
+  width: fit-content;
+  border-radius: 6px;
+  padding: 5px 7px;
+  color: var(--dashboard-text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.attendance-session-editor[open] summary {
+  margin-bottom: 8px;
+  background: var(--dashboard-surface);
+}
+
+.admin-cms-shell .attendance-sheet-table tbody td.attendance-sticky-column,
+.admin-cms-shell .attendance-sheet-table tbody td.attendance-percentage-column {
+  background: var(--dashboard-surface) !important;
+}
+
+.admin-cms-shell .attendance-sheet-table th.attendance-sticky-column,
+.admin-cms-shell .attendance-sheet-table th.attendance-percentage-column {
+  background: var(--dashboard-surface-2) !important;
+}
+
+.admin-cms-shell .attendance-sheet-table tbody tr:hover td.attendance-sticky-column,
+.admin-cms-shell .attendance-sheet-table tbody tr:hover td.attendance-percentage-column {
+  background: var(--dashboard-surface-2) !important;
+}
+
+.admin-cms-shell .attendance-sheet-table .attendance-sticky-column {
+  min-width: 230px;
+}
+
+.admin-cms-shell .attendance-sheet-table .attendance-percentage-column {
+  min-width: 150px;
+}
+
+/* Light dashboard tables: sticky cells must cover content scrolling beneath them. */
+.admin-cms-shell:not(.dashboard-theme-dark) .table-panel th {
+  background: var(--dashboard-surface-2) !important;
+}
+
+@media (max-width: 900px) {
+  .admin-cms-shell:not(.dashboard-theme-dark) .table-panel td:first-child {
+    background: var(--dashboard-surface) !important;
+  }
+
+  .admin-cms-shell:not(.dashboard-theme-dark) .table-panel tbody tr:hover td:first-child {
+    background: var(--dashboard-surface-2) !important;
   }
 }
